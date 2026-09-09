@@ -1,201 +1,936 @@
 <svg width="1200" height="520" viewBox="0 0 1200 520"
-  xmlns="http://www.w3.org/2000/svg"
-  role="img"
-  aria-labelledby="title desc">
+xmlns="http://www.w3.org/2000/svg">
 
-  <title id="title">KYARA HIGH-TECH v1 — System Online</title>
-  <desc id="desc">Animated system status panel for the Kyara WhatsApp ecosystem.</desc>
+<defs>
 
-  <defs>
-    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M48 0H0V48" fill="none" stroke="#ffffff" stroke-opacity=".08"/>
-    </pattern>
+  <!-- GRID -->
+  <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+    <path d="M48 0H0V48"
+      fill="none"
+      stroke="#ffffff"
+      stroke-opacity=".07"/>
+  </pattern>
 
-    <linearGradient id="line" x1="0" x2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#ffffff" stop-opacity=".9"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
+  <!-- LINHAS -->
+  <linearGradient id="line" x1="0" x2="1">
+    <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+    <stop offset=".5" stop-color="#ffffff" stop-opacity=".9"/>
+    <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+  </linearGradient>
 
-    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="45%" stop-color="#9b9b9b"/>
-      <stop offset="100%" stop-color="#ffffff"/>
-    </linearGradient>
+  <!-- METAL -->
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffffff"/>
+    <stop offset=".45" stop-color="#888888"/>
+    <stop offset=".7" stop-color="#ffffff"/>
+    <stop offset="1" stop-color="#777777"/>
+  </linearGradient>
 
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
+  <!-- BRILHO -->
+  <filter id="glow"
+    x="-100%" y="-100%"
+    width="300%" height="300%">
 
-    <style>
-      .mono {
-        font-family: "Courier New", Courier, monospace;
+    <feGaussianBlur
+      stdDeviation="4"
+      result="blur"/>
+
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+
+  </filter>
+
+  <!-- BRILHO FORTE -->
+  <filter id="strongGlow"
+    x="-100%" y="-100%"
+    width="300%" height="300%">
+
+    <feGaussianBlur
+      stdDeviation="8"
+      result="blur"/>
+
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+
+  </filter>
+
+  <style>
+
+    .mono {
+      font-family:
+        "Courier New",
+        Courier,
+        monospace;
+    }
+
+    .title {
+      font-family:
+        "Courier New",
+        Courier,
+        monospace;
+
+      font-weight: 700;
+      letter-spacing: 10px;
+    }
+
+    .small {
+      font-family:
+        "Courier New",
+        Courier,
+        monospace;
+
+      letter-spacing: 3px;
+    }
+
+    /* STATUS */
+    .pulse {
+      animation:
+        pulse 2.2s ease-in-out infinite;
+    }
+
+    .blink {
+      animation:
+        blink 1.8s ease-in-out infinite;
+    }
+
+    .blink2 {
+      animation:
+        blink 1.8s ease-in-out .6s infinite;
+    }
+
+    /* BARRAS */
+    .load {
+      transform-origin: left center;
+      animation:
+        load 3s ease-in-out infinite;
+    }
+
+    .load2 {
+      transform-origin: left center;
+      animation:
+        load 3s ease-in-out .4s infinite;
+    }
+
+    .load3 {
+      transform-origin: left center;
+      animation:
+        load 3s ease-in-out .8s infinite;
+    }
+
+    .load4 {
+      transform-origin: left center;
+      animation:
+        load 3s ease-in-out 1.2s infinite;
+    }
+
+    /* SCAN */
+    .scan {
+      animation:
+        scan 4s linear infinite;
+    }
+
+    /* LOGO */
+    .logoGlow {
+      animation:
+        logoPulse 3s ease-in-out infinite;
+    }
+
+    /* TEXT GLITCH */
+    .glitch {
+      animation:
+        glitch 5s steps(1) infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,100% {
+        opacity:.35;
       }
 
-      .title {
-        font-family: "Courier New", Courier, monospace;
-        font-weight: 700;
-        letter-spacing: 8px;
+      50% {
+        opacity:1;
       }
 
-      .blink {
-        animation: blink 1.8s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+      0%,100% {
+        opacity:.25;
       }
 
-      .blink-delay {
-        animation: blink 1.8s ease-in-out .6s infinite;
+      50% {
+        opacity:1;
       }
 
-      .pulse {
-        animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes load {
+
+      0% {
+        transform:scaleX(.35);
+        opacity:.35;
       }
 
-      .scan {
-        animation: scan 4s linear infinite;
+      50% {
+        transform:scaleX(1);
+        opacity:1;
       }
 
-      .load {
-        animation: load 2.8s ease-in-out infinite;
-        transform-origin: left center;
+      100% {
+        transform:scaleX(.35);
+        opacity:.35;
       }
 
-      @keyframes blink {
-        0%, 100% { opacity: .35; }
-        50% { opacity: 1; }
+    }
+
+    @keyframes scan {
+
+      0% {
+        transform:translateY(-120px);
+        opacity:0;
       }
 
-      @keyframes pulse {
-        0%, 100% { opacity: .45; }
-        50% { opacity: 1; }
+      15% {
+        opacity:.65;
       }
 
-      @keyframes scan {
-        0% { transform: translateY(-160px); opacity: 0; }
-        15% { opacity: .8; }
-        75% { opacity: .8; }
-        100% { transform: translateY(500px); opacity: 0; }
+      75% {
+        opacity:.65;
       }
 
-      @keyframes load {
-        0% { transform: scaleX(.35); opacity: .4; }
-        50% { transform: scaleX(1); opacity: 1; }
-        100% { transform: scaleX(.35); opacity: .4; }
+      100% {
+        transform:translateY(560px);
+        opacity:0;
       }
-    </style>
-  </defs>
 
-  <rect width="1200" height="520" rx="22" fill="#070707"/>
-  <rect x="1" y="1" width="1198" height="518" rx="21"
-    fill="url(#grid)" stroke="#424242" stroke-width="2"/>
+    }
 
-  <!-- Technical frame -->
-  <path d="M34 92V34H92M1108 34H1166V92M34 428V486H92M1108 486H1166V428"
-    fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="2"/>
+    @keyframes logoPulse {
 
-  <path d="M34 118H1166M34 402H1166"
-    stroke="#ffffff" stroke-opacity=".12"/>
+      0%,100% {
+        opacity:.75;
+      }
 
-  <!-- Header -->
-  <text x="64" y="72" class="mono" font-size="13" fill="#8c8c8c">
-    KYARA / ENGINE MONITOR / BUILD 001
+      50% {
+        opacity:1;
+      }
+
+    }
+
+    @keyframes glitch {
+
+      0%,90%,100% {
+        transform:translateX(0);
+      }
+
+      92% {
+        transform:translateX(-2px);
+      }
+
+      94% {
+        transform:translateX(2px);
+      }
+
+      96% {
+        transform:translateX(-1px);
+      }
+
+    }
+
+  </style>
+
+</defs>
+
+
+<!-- ========================================================= -->
+<!-- BACKGROUND -->
+<!-- ========================================================= -->
+
+<rect
+  width="1200"
+  height="520"
+  rx="22"
+  fill="#050505"/>
+
+<rect
+  x="1"
+  y="1"
+  width="1198"
+  height="518"
+  rx="21"
+  fill="url(#grid)"
+  stroke="#3c3c3c"
+  stroke-width="2"/>
+
+
+<!-- ========================================================= -->
+<!-- OUTER HUD FRAME -->
+<!-- ========================================================= -->
+
+<path
+  d="
+  M34 92
+  V34
+  H92
+
+  M1108 34
+  H1166
+  V92
+
+  M34 428
+  V486
+  H92
+
+  M1108 486
+  H1166
+  V428
+  "
+  fill="none"
+  stroke="#ffffff"
+  stroke-opacity=".55"
+  stroke-width="2"/>
+
+
+<!-- HUD CORNER DETAILS -->
+
+<path
+  d="M50 60H180"
+  stroke="#ffffff"
+  stroke-opacity=".15"/>
+
+<path
+  d="M1020 60H1150"
+  stroke="#ffffff"
+  stroke-opacity=".15"/>
+
+<path
+  d="M50 460H180"
+  stroke="#ffffff"
+  stroke-opacity=".15"/>
+
+<path
+  d="M1020 460H1150"
+  stroke="#ffffff"
+  stroke-opacity=".15"/>
+
+
+<!-- ========================================================= -->
+<!-- HEADER -->
+<!-- ========================================================= -->
+
+<text
+  x="64"
+  y="72"
+  class="mono"
+  font-size="13"
+  fill="#858585">
+
+  KYARA / ENGINE MONITOR / BUILD 001
+
+</text>
+
+
+<text
+  x="1136"
+  y="72"
+  text-anchor="end"
+  class="mono"
+  font-size="13"
+  fill="#858585">
+
+  NODE-LTS // SECURE
+
+</text>
+
+
+<!-- ========================================================= -->
+<!-- KYARA LOGO -->
+<!-- ========================================================= -->
+
+<g
+  class="logoGlow"
+  filter="url(#glow)">
+
+  <!-- símbolo geométrico -->
+  <path
+    d="
+      M570 112
+      L590 88
+      L600 103
+      L610 88
+      L630 112
+      L615 112
+      L600 125
+      L585 112
+      Z"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="3"/>
+
+  <circle
+    cx="600"
+    cy="108"
+    r="3"
+    fill="#ffffff"/>
+
+</g>
+
+
+<text
+  x="600"
+  y="165"
+  text-anchor="middle"
+  class="title glitch"
+  font-size="58"
+  fill="url(#metal)">
+
+  KYARA
+
+</text>
+
+
+<text
+  x="600"
+  y="201"
+  text-anchor="middle"
+  class="mono"
+  font-size="16"
+  letter-spacing="6"
+  fill="#999999">
+
+  HIGH-TECH v1 / MODULAR WHATSAPP ECOSYSTEM
+
+</text>
+
+
+<!-- ========================================================= -->
+<!-- SIDE INFORMATION -->
+<!-- ========================================================= -->
+
+<path
+  d="M64 137V201"
+  stroke="#ffffff"
+  stroke-width="2"/>
+
+<text
+  x="82"
+  y="154"
+  class="mono"
+  font-size="11"
+  fill="#8c8c8c">
+
+  MAIS QUE UM BOT,
+
+</text>
+
+<text
+  x="82"
+  y="172"
+  class="mono"
+  font-size="11"
+  fill="#8c8c8c">
+
+  UM ECOSSISTEMA.
+
+</text>
+
+<text
+  x="82"
+  y="190"
+  class="mono"
+  font-size="11"
+  fill="#ffffff">
+
+  KYARA.
+
+</text>
+
+
+<!-- RIGHT SYSTEM LIST -->
+
+<path
+  d="M1070 137V201"
+  stroke="#ffffff"
+  stroke-width="2"/>
+
+<text
+  x="1090"
+  y="153"
+  class="mono"
+  font-size="11"
+  fill="#ffffff">
+
+  AI // RPG // MEDIA
+
+</text>
+
+<text
+  x="1090"
+  y="171"
+  class="mono"
+  font-size="11"
+  fill="#999999">
+
+  ECONOMY // GROUP
+
+</text>
+
+<text
+  x="1090"
+  y="189"
+  class="mono"
+  font-size="11"
+  fill="#999999">
+
+  DOWNLOADS // SOCIAL
+
+</text>
+
+
+<!-- ========================================================= -->
+<!-- SYSTEM STATUS -->
+<!-- ========================================================= -->
+
+<circle
+  cx="78"
+  cy="246"
+  r="5"
+  fill="#ffffff"
+  filter="url(#strongGlow)"
+  class="pulse"/>
+
+
+<text
+  x="96"
+  y="251"
+  class="mono"
+  font-size="15"
+  fill="#d0d0d0">
+
+  BOOT SEQUENCE COMPLETE
+
+</text>
+
+
+<text
+  x="1122"
+  y="251"
+  text-anchor="end"
+  class="mono"
+  font-size="15"
+  fill="#ffffff">
+
+  SYSTEM ONLINE
+
+</text>
+
+
+<line
+  x1="78"
+  y1="270"
+  x2="1122"
+  y2="270"
+  stroke="url(#line)"
+  stroke-width="2"/>
+
+
+<!-- ========================================================= -->
+<!-- CORE CARD FUNCTION -->
+<!-- ========================================================= -->
+
+
+<!-- AI -->
+
+<g>
+
+  <circle
+    cx="100"
+    cy="315"
+    r="5"
+    fill="#ffffff"
+    filter="url(#glow)"
+    class="blink"/>
+
+  <text
+    x="120"
+    y="311"
+    class="mono"
+    font-size="15"
+    fill="#777777">
+
+    AI CORE
+
   </text>
 
-  <text x="1136" y="72" class="mono" text-anchor="end"
-    font-size="13" fill="#8c8c8c">
-    NODE-LTS // SECURE
+  <text
+    x="120"
+    y="333"
+    class="mono"
+    font-size="15"
+    fill="#ffffff">
+
+    ONLINE
+
   </text>
 
-  <text x="600" y="166" text-anchor="middle"
-    class="title" font-size="58" fill="url(#metal)">
-    KYARA
+  <rect
+    x="120"
+    y="346"
+    width="180"
+    height="3"
+    fill="#252525"/>
+
+  <rect
+    x="120"
+    y="346"
+    width="180"
+    height="3"
+    fill="#ffffff"
+    class="load"/>
+
+  <text
+    x="304"
+    y="349"
+    class="mono"
+    font-size="10"
+    fill="#888888">
+
+    100%
+
   </text>
 
-  <text x="600" y="201" text-anchor="middle"
-    class="mono" font-size="16" letter-spacing="6" fill="#999999">
-    HIGH-TECH v1 / MODULAR WHATSAPP ECOSYSTEM
+</g>
+
+
+<!-- MEDIA -->
+
+<g>
+
+  <circle
+    cx="370"
+    cy="315"
+    r="5"
+    fill="#ffffff"
+    filter="url(#glow)"
+    class="blink2"/>
+
+  <text
+    x="390"
+    y="311"
+    class="mono"
+    font-size="15"
+    fill="#777777">
+
+    MEDIA CORE
+
   </text>
 
-  <!-- Status line -->
-  <circle cx="78" cy="246" r="5" fill="#ffffff" filter="url(#glow)" class="pulse"/>
-  <text x="96" y="251" class="mono" font-size="15" fill="#cfcfcf">
-    BOOT SEQUENCE COMPLETE
+  <text
+    x="390"
+    y="333"
+    class="mono"
+    font-size="15"
+    fill="#ffffff">
+
+    ONLINE
+
   </text>
 
-  <text x="1122" y="251" text-anchor="end"
-    class="mono" font-size="15" fill="#ffffff">
-    SYSTEM ONLINE
+  <rect
+    x="390"
+    y="346"
+    width="180"
+    height="3"
+    fill="#252525"/>
+
+  <rect
+    x="390"
+    y="346"
+    width="180"
+    height="3"
+    fill="#ffffff"
+    class="load2"/>
+
+  <text
+    x="574"
+    y="349"
+    class="mono"
+    font-size="10"
+    fill="#888888">
+
+    100%
+
   </text>
 
-  <line x1="78" y1="270" x2="1122" y2="270"
-    stroke="url(#line)" stroke-width="2"/>
+</g>
 
-  <!-- Core modules -->
-  <g class="mono" font-size="15">
-    <g>
-      <circle cx="100" cy="315" r="5" fill="#ffffff" class="blink"/>
-      <text x="120" y="311" fill="#777777">AI CORE</text>
-      <text x="120" y="333" fill="#ffffff">ONLINE</text>
-      <rect x="120" y="346" width="180" height="3" fill="#292929"/>
-      <rect x="120" y="346" width="180" height="3" fill="#ffffff" class="load"/>
-    </g>
 
-    <g>
-      <circle cx="370" cy="315" r="5" fill="#ffffff" class="blink-delay"/>
-      <text x="390" y="311" fill="#777777">MEDIA CORE</text>
-      <text x="390" y="333" fill="#ffffff">ONLINE</text>
-      <rect x="390" y="346" width="180" height="3" fill="#292929"/>
-      <rect x="390" y="346" width="180" height="3" fill="#ffffff" class="load"
-        style="animation-delay:.35s"/>
-    </g>
+<!-- RPG -->
 
-    <g>
-      <circle cx="640" cy="315" r="5" fill="#ffffff" class="blink"/>
-      <text x="660" y="311" fill="#777777">RPG CORE</text>
-      <text x="660" y="333" fill="#ffffff">ONLINE</text>
-      <rect x="660" y="346" width="180" height="3" fill="#292929"/>
-      <rect x="660" y="346" width="180" height="3" fill="#ffffff" class="load"
-        style="animation-delay:.7s"/>
-    </g>
+<g>
 
-    <g>
-      <circle cx="910" cy="315" r="5" fill="#ffffff" class="blink-delay"/>
-      <text x="930" y="311" fill="#777777">GROUP CORE</text>
-      <text x="930" y="333" fill="#ffffff">ONLINE</text>
-      <rect x="930" y="346" width="180" height="3" fill="#292929"/>
-      <rect x="930" y="346" width="180" height="3" fill="#ffffff" class="load"
-        style="animation-delay:1.05s"/>
-    </g>
-  </g>
+  <circle
+    cx="640"
+    cy="315"
+    r="5"
+    fill="#ffffff"
+    filter="url(#glow)"
+    class="blink"/>
 
-  <!-- Database -->
-  <g class="mono">
-    <circle cx="100" cy="382" r="4" fill="#ffffff" class="pulse"/>
-    <text x="120" y="387" font-size="14" fill="#777777">DATABASE</text>
-    <text x="270" y="387" font-size="14" fill="#ffffff">READY</text>
+  <text
+    x="660"
+    y="311"
+    class="mono"
+    font-size="15"
+    fill="#777777">
 
-    <circle cx="1010" cy="382" r="4" fill="#ffffff" class="pulse"/>
-    <text x="1030" y="387" font-size="14" fill="#ffffff">SECURITY ACTIVE</text>
-  </g>
+    RPG CORE
 
-  <!-- Moving scanline -->
-  <rect x="40" y="120" width="1120" height="2"
-    fill="#ffffff" opacity=".25" class="scan"/>
-
-  <!-- Footer -->
-  <line x1="78" y1="423" x2="1122" y2="423"
-    stroke="url(#line)" stroke-width="2"/>
-
-  <text x="600" y="459" text-anchor="middle"
-    class="mono" font-size="18" letter-spacing="5" fill="#dddddd">
-    KYARA HIGH-TECH
   </text>
 
-  <text x="600" y="484" text-anchor="middle"
-    class="mono" font-size="12" letter-spacing="3" fill="#666666">
-    SYSTEM ARCHITECTURE / MODULAR ENGINE / v1
+  <text
+    x="660"
+    y="333"
+    class="mono"
+    font-size="15"
+    fill="#ffffff">
+
+    ONLINE
+
   </text>
+
+  <rect
+    x="660"
+    y="346"
+    width="180"
+    height="3"
+    fill="#252525"/>
+
+  <rect
+    x="660"
+    y="346"
+    width="180"
+    height="3"
+    fill="#ffffff"
+    class="load3"/>
+
+  <text
+    x="844"
+    y="349"
+    class="mono"
+    font-size="10"
+    fill="#888888">
+
+    100%
+
+  </text>
+
+</g>
+
+
+<!-- GROUP -->
+
+<g>
+
+  <circle
+    cx="910"
+    cy="315"
+    r="5"
+    fill="#ffffff"
+    filter="url(#glow)"
+    class="blink2"/>
+
+  <text
+    x="930"
+    y="311"
+    class="mono"
+    font-size="15"
+    fill="#777777">
+
+    GROUP CORE
+
+  </text>
+
+  <text
+    x="930"
+    y="333"
+    class="mono"
+    font-size="15"
+    fill="#ffffff">
+
+    ONLINE
+
+  </text>
+
+  <rect
+    x="930"
+    y="346"
+    width="180"
+    height="3"
+    fill="#252525"/>
+
+  <rect
+    x="930"
+    y="346"
+    width="180"
+    height="3"
+    fill="#ffffff"
+    class="load4"/>
+
+  <text
+    x="1114"
+    y="349"
+    text-anchor="end"
+    class="mono"
+    font-size="10"
+    fill="#888888">
+
+    100%
+
+  </text>
+
+</g>
+
+
+<!-- ========================================================= -->
+<!-- DATABASE -->
+<!-- ========================================================= -->
+
+<circle
+  cx="100"
+  cy="382"
+  r="4"
+  fill="#ffffff"
+  filter="url(#glow)"
+  class="pulse"/>
+
+<text
+  x="120"
+  y="387"
+  class="mono"
+  font-size="14"
+  fill="#777777">
+
+  DATABASE
+
+</text>
+
+<text
+  x="270"
+  y="387"
+  class="mono"
+  font-size="14"
+  fill="#ffffff">
+
+  READY
+
+</text>
+
+
+<!-- SECURITY -->
+
+<circle
+  cx="1010"
+  cy="382"
+  r="4"
+  fill="#ffffff"
+  filter="url(#glow)"
+  class="pulse"/>
+
+<text
+  x="1030"
+  y="387"
+  class="mono"
+  font-size="14"
+  fill="#ffffff">
+
+  SECURITY ACTIVE
+
+</text>
+
+
+<!-- ========================================================= -->
+<!-- SCANLINE -->
+<!-- ========================================================= -->
+
+<rect
+  x="40"
+  y="120"
+  width="1120"
+  height="2"
+  fill="#ffffff"
+  opacity=".22"
+  class="scan"/>
+
+
+<!-- ========================================================= -->
+<!-- FOOTER -->
+<!-- ========================================================= -->
+
+<line
+  x1="78"
+  y1="423"
+  x2="1122"
+  y2="423"
+  stroke="url(#line)"
+  stroke-width="2"/>
+
+
+<text
+  x="600"
+  y="459"
+  text-anchor="middle"
+  class="mono"
+  font-size="18"
+  letter-spacing="5"
+  fill="#dddddd">
+
+  KYARA HIGH-TECH
+
+</text>
+
+
+<text
+  x="600"
+  y="484"
+  text-anchor="middle"
+  class="mono"
+  font-size="12"
+  letter-spacing="3"
+  fill="#666666">
+
+  SYSTEM ARCHITECTURE / MODULAR ENGINE / v1
+
+</text>
+
+
+<text
+  x="64"
+  y="477"
+  class="mono"
+  font-size="10"
+  fill="#777777">
+
+  DEVELOPED BY BAKI
+
+</text>
+
+
+<text
+  x="1136"
+  y="477"
+  text-anchor="end"
+  class="mono"
+  font-size="10"
+  fill="#777777">
+
+  KYARA © 2026
+
+</text>
+
 </svg>

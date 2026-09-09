@@ -1,280 +1,201 @@
-⚡ KYARA HIGH-TECH
+<svg width="1200" height="520" viewBox="0 0 1200 520"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="title desc">
 
-<p align="center">
-  <img src="./dados/midias/menu.jpg" width="100%" alt="KYARA High-Tech">
-</p><p align="center">
-  <strong>Um ecossistema modular de automação para WhatsApp.</strong><br>
-  Desenvolvido em Node.js • Arquitetura modular • Engine multifuncional
-</p><p align="center">
-  <img src="https://img.shields.io/badge/KYARA-HIGH--TECH-111111?style=for-the-badge&logo=robot&logoColor=white">
-  <img src="https://img.shields.io/badge/VERSION-V1-111111?style=for-the-badge">
-  <img src="https://img.shields.io/badge/NODE.JS-LTS-111111?style=for-the-badge&logo=nodedotjs&logoColor=white">
-  <img src="https://img.shields.io/badge/WHATSAPP-BAILEYS-111111?style=for-the-badge&logo=whatsapp&logoColor=white">
-</p><p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=18&duration=2800&pause=900&color=FFFFFF&center=true&vCenter=true&width=700&height=45&lines=KYARA+HIGH-TECH;MODULAR+WHATSAPP+ECOSYSTEM;AI+%7C+MEDIA+%7C+RPG+%7C+GROUPS+%7C+ECONOMY;ENGINE+ONLINE+%E2%80%A2+SYSTEM+READY" alt="KYARA Animation">
-</p>---
+  <title id="title">KYARA HIGH-TECH v1 — System Online</title>
+  <desc id="desc">Animated system status panel for the Kyara WhatsApp ecosystem.</desc>
 
-◈ SOBRE A KYARA
+  <defs>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#ffffff" stroke-opacity=".08"/>
+    </pattern>
 
-KYARA High-Tech é um ecossistema multifuncional desenvolvido para automação avançada no WhatsApp.
+    <linearGradient id="line" x1="0" x2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
 
-Sua arquitetura foi projetada para reunir diferentes sistemas dentro de uma única Engine modular, permitindo que cada núcleo opere de maneira independente sem comprometer a estrutura geral do projeto.
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#9b9b9b"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
 
-«Uma Engine. Vários sistemas. Uma única identidade.»
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
 
-O projeto utiliza Node.js como base de execução e Baileys como camada de comunicação com o WhatsApp.
+    <style>
+      .mono {
+        font-family: "Courier New", Courier, monospace;
+      }
 
----
+      .title {
+        font-family: "Courier New", Courier, monospace;
+        font-weight: 700;
+        letter-spacing: 8px;
+      }
 
-◈ SYSTEM STATUS
+      .blink {
+        animation: blink 1.8s ease-in-out infinite;
+      }
 
-┌─────────────────────────────────────────────────────────────┐
-│                    KYARA HIGH-TECH                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ENGINE             ████████████████████  ONLINE            │
-│  MODULE SYSTEM      ████████████████████  ACTIVE            │
-│  DATABASE           ████████████████████  READY             │
-│  MEDIA ENGINE       ████████████████████  READY             │
-│  RPG ENGINE         ████████████████████  READY             │
-│  GROUP SYSTEM       ████████████████████  ACTIVE            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+      .blink-delay {
+        animation: blink 1.8s ease-in-out .6s infinite;
+      }
 
----
+      .pulse {
+        animation: pulse 2.4s ease-in-out infinite;
+      }
 
-◈ CORE SYSTEMS
+      .scan {
+        animation: scan 4s linear infinite;
+      }
 
-CORE| SISTEMAS| FUNÇÃO
-AI| Assistente • Contexto • Memória • Personas| Inteligência e interação
-RPG| XP • Níveis • Pets • Progressão| Gamificação
-MEDIA| Áudio • Vídeo • Downloads| Processamento de mídia
-GROUP| Moderação • Administração • Antiflood| Gerenciamento de grupos
-ECONOMY| Banco • Loja • Recursos| Economia virtual
-SOCIAL| Perfis • Rankings • Conquistas| Interação e comunidade
+      .load {
+        animation: load 2.8s ease-in-out infinite;
+        transform-origin: left center;
+      }
 
----
+      @keyframes blink {
+        0%, 100% { opacity: .35; }
+        50% { opacity: 1; }
+      }
 
-◈ ARCHITECTURE
+      @keyframes pulse {
+        0%, 100% { opacity: .45; }
+        50% { opacity: 1; }
+      }
 
-                         ┌──────────────────┐
-                         │     WHATSAPP     │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   BAILEYS API   │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                     ┌────────────────────────┐
-                     │     KYARA ENGINE       │
-                     └───────────┬────────────┘
-                                 │
-              ┌──────────────────┼──────────────────┐
-              │                  │                  │
-              ▼                  ▼                  ▼
-        ┌──────────┐       ┌──────────┐       ┌──────────┐
-        │ AI CORE  │       │MEDIA CORE │       │ RPG CORE │
-        └────┬─────┘       └────┬─────┘       └────┬─────┘
-             │                  │                  │
-             └──────────────────┼──────────────────┘
-                                │
-                    ┌───────────▼───────────┐
-                    │    INTERNAL MODULES   │
-                    └───────────┬───────────┘
-                                │
-                    ┌───────────▼───────────┐
-                    │       DATABASE        │
-                    └────────────────────────┘
+      @keyframes scan {
+        0% { transform: translateY(-160px); opacity: 0; }
+        15% { opacity: .8; }
+        75% { opacity: .8; }
+        100% { transform: translateY(500px); opacity: 0; }
+      }
 
----
+      @keyframes load {
+        0% { transform: scaleX(.35); opacity: .4; }
+        50% { transform: scaleX(1); opacity: 1; }
+        100% { transform: scaleX(.35); opacity: .4; }
+      }
+    </style>
+  </defs>
 
-◈ TECHNOLOGY STACK
+  <rect width="1200" height="520" rx="22" fill="#070707"/>
+  <rect x="1" y="1" width="1198" height="518" rx="21"
+    fill="url(#grid)" stroke="#424242" stroke-width="2"/>
 
-<p align="center">
-  <img src="https://skillicons.dev/icons?i=nodejs,js,npm,git,github,linux" alt="Technology Stack">
-</p>COMPONENT| TECHNOLOGY
-Runtime| Node.js LTS
-Language| JavaScript
-WhatsApp Layer| Baileys API
-Package Manager| npm
-Environment| Linux / Termux / Server
-Version Control| Git / GitHub
+  <!-- Technical frame -->
+  <path d="M34 92V34H92M1108 34H1166V92M34 428V486H92M1108 486H1166V428"
+    fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="2"/>
 
----
+  <path d="M34 118H1166M34 402H1166"
+    stroke="#ffffff" stroke-opacity=".12"/>
 
-◈ EXECUTION
+  <!-- Header -->
+  <text x="64" y="72" class="mono" font-size="13" fill="#8c8c8c">
+    KYARA / ENGINE MONITOR / BUILD 001
+  </text>
 
-01 — Instalar dependências
+  <text x="1136" y="72" class="mono" text-anchor="end"
+    font-size="13" fill="#8c8c8c">
+    NODE-LTS // SECURE
+  </text>
 
-npm install
+  <text x="600" y="166" text-anchor="middle"
+    class="title" font-size="58" fill="url(#metal)">
+    KYARA
+  </text>
 
-02 — Iniciar a Engine
+  <text x="600" y="201" text-anchor="middle"
+    class="mono" font-size="16" letter-spacing="6" fill="#999999">
+    HIGH-TECH v1 / MODULAR WHATSAPP ECOSYSTEM
+  </text>
 
-npm start
+  <!-- Status line -->
+  <circle cx="78" cy="246" r="5" fill="#ffffff" filter="url(#glow)" class="pulse"/>
+  <text x="96" y="251" class="mono" font-size="15" fill="#cfcfcf">
+    BOOT SEQUENCE COMPLETE
+  </text>
 
-ou:
+  <text x="1122" y="251" text-anchor="end"
+    class="mono" font-size="15" fill="#ffffff">
+    SYSTEM ONLINE
+  </text>
 
-node .
+  <line x1="78" y1="270" x2="1122" y2="270"
+    stroke="url(#line)" stroke-width="2"/>
 
-Após iniciar, a KYARA Engine poderá estabelecer a conexão com o WhatsApp conforme a configuração do projeto.
+  <!-- Core modules -->
+  <g class="mono" font-size="15">
+    <g>
+      <circle cx="100" cy="315" r="5" fill="#ffffff" class="blink"/>
+      <text x="120" y="311" fill="#777777">AI CORE</text>
+      <text x="120" y="333" fill="#ffffff">ONLINE</text>
+      <rect x="120" y="346" width="180" height="3" fill="#292929"/>
+      <rect x="120" y="346" width="180" height="3" fill="#ffffff" class="load"/>
+    </g>
 
----
+    <g>
+      <circle cx="370" cy="315" r="5" fill="#ffffff" class="blink-delay"/>
+      <text x="390" y="311" fill="#777777">MEDIA CORE</text>
+      <text x="390" y="333" fill="#ffffff">ONLINE</text>
+      <rect x="390" y="346" width="180" height="3" fill="#292929"/>
+      <rect x="390" y="346" width="180" height="3" fill="#ffffff" class="load"
+        style="animation-delay:.35s"/>
+    </g>
 
-◈ CONFIGURATION
+    <g>
+      <circle cx="640" cy="315" r="5" fill="#ffffff" class="blink"/>
+      <text x="660" y="311" fill="#777777">RPG CORE</text>
+      <text x="660" y="333" fill="#ffffff">ONLINE</text>
+      <rect x="660" y="346" width="180" height="3" fill="#292929"/>
+      <rect x="660" y="346" width="180" height="3" fill="#ffffff" class="load"
+        style="animation-delay:.7s"/>
+    </g>
 
-As configurações globais podem ser definidas através das variáveis de ambiente utilizadas pelo projeto.
+    <g>
+      <circle cx="910" cy="315" r="5" fill="#ffffff" class="blink-delay"/>
+      <text x="930" y="311" fill="#777777">GROUP CORE</text>
+      <text x="930" y="333" fill="#ffffff">ONLINE</text>
+      <rect x="930" y="346" width="180" height="3" fill="#292929"/>
+      <rect x="930" y="346" width="180" height="3" fill="#ffffff" class="load"
+        style="animation-delay:1.05s"/>
+    </g>
+  </g>
 
-PREFIX=.
-OWNER_NUMBER=55...
-AUTO_READ=true
-MODE=public
+  <!-- Database -->
+  <g class="mono">
+    <circle cx="100" cy="382" r="4" fill="#ffffff" class="pulse"/>
+    <text x="120" y="387" font-size="14" fill="#777777">DATABASE</text>
+    <text x="270" y="387" font-size="14" fill="#ffffff">READY</text>
 
-Estrutura conceitual
+    <circle cx="1010" cy="382" r="4" fill="#ffffff" class="pulse"/>
+    <text x="1030" y="387" font-size="14" fill="#ffffff">SECURITY ACTIVE</text>
+  </g>
 
-CONFIG
- │
- ├── PREFIX
- ├── OWNER
- ├── MODE
- ├── AUTO_READ
- └── API KEYS
+  <!-- Moving scanline -->
+  <rect x="40" y="120" width="1120" height="2"
+    fill="#ffffff" opacity=".25" class="scan"/>
 
-«Importante: nunca publique tokens, chaves de API ou credenciais reais no repositório.»
+  <!-- Footer -->
+  <line x1="78" y1="423" x2="1122" y2="423"
+    stroke="url(#line)" stroke-width="2"/>
 
----
+  <text x="600" y="459" text-anchor="middle"
+    class="mono" font-size="18" letter-spacing="5" fill="#dddddd">
+    KYARA HIGH-TECH
+  </text>
 
-◈ PROJECT FLOW
-
-MESSAGE
-   │
-   ▼
-WHATSAPP
-   │
-   ▼
-BAILEYS
-   │
-   ▼
-KYARA ENGINE
-   │
-   ├──────────────► COMMAND SYSTEM
-   │
-   ├──────────────► AI CORE
-   │
-   ├──────────────► MEDIA CORE
-   │
-   ├──────────────► RPG CORE
-   │
-   ├──────────────► GROUP CORE
-   │
-   ├──────────────► ECONOMY CORE
-   │
-   └──────────────► SOCIAL CORE
-                         │
-                         ▼
-                      DATABASE
-
----
-
-◈ MODULAR DESIGN
-
-A KYARA foi estruturada para que novos sistemas possam ser adicionados sem transformar o projeto em um único bloco de código.
-
-KYARA
-│
-├── CORE
-│
-├── COMMANDS
-│
-├── SYSTEMS
-│   ├── AI
-│   ├── MEDIA
-│   ├── RPG
-│   ├── GROUP
-│   ├── ECONOMY
-│   └── SOCIAL
-│
-├── DATABASE
-│
-├── SERVICES
-│
-└── CONFIG
-
-Essa separação permite manutenção mais simples, evolução independente dos módulos e expansão contínua da Engine.
-
----
-
-◈ SECURITY
-
-A segurança da estrutura deve ser tratada como parte do próprio projeto.
-
-✓ Credenciais fora do código
-✓ Tokens protegidos
-✓ Diretórios de autenticação ignorados
-✓ Logs sensíveis fora do repositório
-✓ Variáveis de ambiente para configurações privadas
-
-Nunca envie para o GitHub:
-
-.env
-auth/
-tokens/
-session/
-credenciais/
-API_KEYS
-
----
-
-◈ ROADMAP
-
-[✓] Arquitetura modular
-[✓] Core Engine
-[✓] Integração WhatsApp
-[✓] Sistemas independentes
-[✓] Banco de dados
-[✓] Media Core
-[✓] RPG Core
-
-[ ] Expansão da AI Engine
-[ ] Novos sistemas sociais
-[ ] Otimização de performance
-[ ] Sistema avançado de plugins
-[ ] Novas ferramentas administrativas
-
----
-
-◈ KYARA PHILOSOPHY
-
-              BUILD
-                │
-                ▼
-             EXPAND
-                │
-                ▼
-             IMPROVE
-                │
-                ▼
-             EVOLVE
-                │
-                ▼
-              KYARA
-
-«Não é apenas um bot.
-
-É uma plataforma construída para evoluir.»
-
----
-
-◈ DEVELOPER
-
-<p align="center">
-  <strong>KYARA HIGH-TECH</strong><br>
-  Designed & Developed by <strong>Baki</strong>
-</p><p align="center">
-  <sub>KYARA High-Tech © 2026</sub>
-</p>---
-
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&height=120&section=footer&animation=twinkling">
-</p>
+  <text x="600" y="484" text-anchor="middle"
+    class="mono" font-size="12" letter-spacing="3" fill="#666666">
+    SYSTEM ARCHITECTURE / MODULAR ENGINE / v1
+  </text>
+</svg>

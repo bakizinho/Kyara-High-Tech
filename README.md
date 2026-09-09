@@ -1,323 +1,283 @@
-# ⚡ KYARA ❤️‍🔥
+<div align="center"><img src="assets/kyara-banner.png" width="100%" alt="KYARA HIGH-TECH"><br><img src="https://readme-typing-svg.demolab.com/?font=JetBrains+Mono&weight=800&size=32&duration=1800&pause=650&color=FF3131&background=09090900&center=true&vCenter=true&width=850&height=70&lines=%E2%9A%A1+KYARA+HIGH-TECH;%5BSYSTEM+ONLINE%5D;%5BAI+CORE+INITIALIZED%5D;%5BMEDIA+ENGINE+READY%5D;%5BRPG+ENGINE+READY%5D;%5BBAKI+%2F+DEVELOPER%5D" alt="KYARA HIGH-TECH"><br><img src="https://img.shields.io/badge/PROJECT-KYARA--HIGH--TECH-ff3131?style=for-the-badge&labelColor=090909">
+<img src="https://img.shields.io/badge/VERSION-V1-ff3131?style=for-the-badge&labelColor=090909">
+<img src="https://img.shields.io/badge/NODE.JS-LTS-ff3131?style=for-the-badge&logo=node.js&logoColor=ff3131&labelColor=090909">
+<img src="https://img.shields.io/badge/WHATSAPP-BAILEYS-ff3131?style=for-the-badge&logo=whatsapp&logoColor=ff3131&labelColor=090909"><br><br>
 
-<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:090909,50:ff3131,100:090909&height=3&section=header" width="85%" alt=""></div>---
 
-<img src="https://readme-typing-svg.herokuapp.com/?font=JetBrains+Mono&size=35&duration=2500&color=FF3131&center=true&vCenter=true&lines=⚡+KYARA+⚡;🤖+MULTI-FUNCTION+WHATSAPP+BOT;🚀+RPG+•+IA+•+DOWNLOADS;👑+BAKI">
+<div align="center">"KYARA"
 
-<br>
+Multifunctional WhatsApp System
 
-<img src="dono/menus/Foto-menu/img-menu.jpg" width="100%"/>
+AI · RPG · MEDIA · SOCIAL · AUTOMATION
+
+</div>A KYARA High-Tech é uma plataforma multifuncional para WhatsApp desenvolvida em Node.js e personalizada por Baki.
+
+A proposta é reunir diferentes sistemas em uma única experiência, mantendo a base organizada para que novos recursos possam ser adicionados sem reconstruir o projeto inteiro.
+
+---
+
+<div align="center">"CORE SYSTEMS"
+
+</div><table align="center">
+<tr>
+<td align="center">🤖 AI CORE
+
+Assistente
+Contexto
+Memória
+
+</td>
+<td align="center">🎮 RPG CORE
+
+XP
+Níveis
+Progressão
+
+</td>
+<td align="center">🎵 MEDIA CORE
+
+Áudio
+Vídeo
+Downloads
+
+</td>
+</tr><tr>
+<td align="center">👥 GROUP CORE
+
+Administração
+Moderação
+Automação
+
+</td>
+<td align="center">💰 ECONOMY CORE
+
+Banco
+Loja
+Recursos
+
+</td>
+<td align="center">🏆 SOCIAL CORE
+
+Perfil
+Ranking
+Conquistas
+
+</td>
+</tr>
+</table>---
+
+<div align="center">"SYSTEM MAP"
+
+                         ┌─────────────────┐
+                         │    WHATSAPP     │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │     BAILEYS     │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │  KYARA ENGINE   │
+                         └────────┬────────┘
+                                  │
+             ┌────────────────────┼────────────────────┐
+             │                    │                    │
+             ▼                    ▼                    ▼
+        ┌─────────┐         ┌──────────┐         ┌──────────┐
+        │ AI CORE │         │  MEDIA   │         │   RPG    │
+        └────┬────┘         └────┬─────┘         └────┬─────┘
+             │                   │                    │
+             └───────────────────┼────────────────────┘
+                                 │
+                                 ▼
+                         ┌─────────────────┐
+                         │     MODULES     │
+                         └────────┬────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │    DATABASE     │
+                         └─────────────────┘
+
+</div>---
+
+<div align="center">"FEATURES"
+
+</div>Sistema| Recursos
+🤖 IA| Assistente, contexto, memória e persona
+🎮 RPG| XP, níveis, pets e progressão
+💰 Economia| Banco, loja e sistemas econômicos
+🎵 Mídia| Áudio, vídeo e downloads
+🎭 Stickers| Criação e conversão
+👥 Grupos| Administração e automação
+🛡️ Segurança| Anti-spam, anti-flood e controles
+🏆 Social| Perfil, ranking e conquistas
+👑 Owner| Sistemas administrativos
+
+---
+
+<div align="center">"RPG ENGINE"
+
+PLAYER
+  │
+  ├── XP
+  ├── LEVEL
+  ├── MONEY
+  ├── BANK
+  ├── PET
+  ├── INVENTORY
+  ├── ACHIEVEMENTS
+  └── RANKING
+
+Pesca · Mineração · Caça · Pets · Batalhas · Eventos · Economia
+
+</div>---
+
+<div align="center">"MEDIA ENGINE"
+
+                    REQUEST
+                       │
+                       ▼
+                  IDENTIFIER
+                       │
+                       ▼
+                   PROCESSOR
+                       │
+              ┌────────┼────────┐
+              ▼        ▼        ▼
+            AUDIO    VIDEO     IMAGE
+              │        │        │
+              └────────┼────────┘
+                       ▼
+                    WHATSAPP
+
+</div>---
+
+"PROJECT STRUCTURE"
+
+kyara-high-tech-v1/
+│
+├── config/
+│
+├── dados/
+│   ├── api/
+│   ├── database/
+│   └── src/
+│       ├── core/
+│       ├── features/
+│       ├── funcs/
+│       ├── games/
+│       ├── menus/
+│       ├── modules/
+│       └── utils/
+│
+├── assets/
+│   ├── kyara-banner.png
+│   └── kyara-animation.gif
+│
+├── *.sh
+├── package.json
+├── README.md
+└── .gitignore
+
+---
+
+<div align="center">"INSTALLATION"
+
+</div>Termux
+
+pkg update -y
+pkg upgrade -y
+
+pkg install git nodejs-lts ffmpeg wget tesseract -y
+
+termux-setup-storage
+
+git clone https://github.com/bakizinho/kyara-high-tech-v1.git
+cd kyara-high-tech-v1
+
+npm install
+npm start
+
+Linux / VPS
+
+git clone https://github.com/bakizinho/kyara-high-tech-v1.git
+cd kyara-high-tech-v1
+
+npm install
+npm start
+
+---
+
+<div align="center">"CONNECTION"
+
+</div>KYARA
+  │
+  ▼
+WHATSAPP
+  │
+  ▼
+APARELHOS CONECTADOS
+  │
+  ▼
+CONECTAR APARELHO
+  │
+  ▼
+CÓDIGO DE PAREAMENTO
+  │
+  ▼
+SYSTEM ONLINE
+
+---
+
+<div align="center">"SECURITY"
+
+</div>Nunca publique no repositório:
+
+.env
+.env.*
+auth/
+tokens
+API Keys
+sessões WhatsApp
+credenciais
+dados privados
+logs sensíveis
+
+Antes de enviar alterações:
+
+git status
+
+Revise os arquivos modificados antes do "git push".
+
+---
+
+<div align="center">"TECH STACK"
+
+<img src="https://skillicons.dev/icons?i=nodejs,js,git,github"><br><br>
+
+<img src="https://img.shields.io/badge/JavaScript-090909?style=flat-square&logo=javascript&logoColor=F7DF1E">
+<img src="https://img.shields.io/badge/Node.js-090909?style=flat-square&logo=node.js&logoColor=339933">
+<img src="https://img.shields.io/badge/Git-090909?style=flat-square&logo=git&logoColor=F05032">
+<img src="https://img.shields.io/badge/GitHub-090909?style=flat-square&logo=github&logoColor=FFFFFF"></div>---
+
+<div align="center">"BAKI"
+
+<img src="https://img.shields.io/badge/👑_DEVELOPER-BAKI-FF3131?style=for-the-badge&labelColor=090909"><br><br>
+
+KYARA HIGH-TECH
+
+Personalizada, desenvolvida e mantida por Baki.
+
+</div>---
+
+<div align="center"><img src="https://capsule-render.vercel.app/api?type=waving&color=0:090909,50:ff3131,100:090909&height=130&section=footer" width="100%" alt="KYARA"><img src="https://readme-typing-svg.demolab.com/?font=JetBrains+Mono&weight=700&size=20&duration=2200&pause=800&color=FF3131&center=true&vCenter=true&width=650&height=50&lines=%E2%9A%A1+KYARA+HIGH-TECH;%5BSYSTEM+OFFLINE%5D;%5BSEE+YOU+NEXT+TIME%5D" alt="KYARA"><br>"AI"  •  "RPG"  •  "MEDIA"  •  "SOCIAL"  •  "AUTOMATION"
 
 <br><br>
 
-<img src="https://img.shields.io/badge/STATUS-PERSONALIZED-ff3131?style=for-the-badge&logo=whatsapp&logoColor=black">
-<img src="https://img.shields.io/badge/VERSION-1.0-ff3131?style=for-the-badge&logo=github&logoColor=black">
-<img src="https://img.shields.io/badge/NODE.JS-TERMUX-ff3131?style=for-the-badge&logo=node.js&logoColor=black">
-<img src="https://img.shields.io/badge/PLATFORM-ANDROID-ff3131?style=for-the-badge&logo=android&logoColor=black">
-
-</div>
-
----
-
-# ❤️‍🔥 SOBRE A KYARA
-
-A **KYARA** é um bot multifuncional para WhatsApp desenvolvido e personalizado por **Baki**.
-
-O projeto reúne diversos sistemas de entretenimento, RPG, economia, administração, downloads, inteligência artificial e ferramentas para grupos.
-
-### 🚀 Principais sistemas
-
-- 🤖 Inteligência Artificial
-- 🎮 Sistema RPG
-- 💰 Economia
-- 🏦 Banco
-- 🐾 Pets
-- 🎣 Pesca
-- ⛏️ Mineração
-- 🏹 Caça
-- 🚢 Batalha Naval
-- 🎰 Cassino
-- 🏦 Leilões
-- 🛒 Loja
-- 📥 Downloaders
-- 🛡️ Moderação
-- 🎨 Menus interativos
-- 📊 Sistema de XP e níveis
-- 👤 Perfil de usuários
-- 🏆 Conquistas
-- 🔧 Ferramentas diversas
-
----
-
-# 👑 BAKI
-
-A **KYARA** é uma versão personalizada e mantida por **Baki**.
-
-O projeto pode receber novas funcionalidades, correções, melhorias de comandos, alterações visuais e novos sistemas durante sua evolução.
-
----
-
-# 📱 REQUISITOS
-
-Antes de instalar, tenha:
-
-- 📱 Android
-- 💻 Termux
-- 🌐 Conexão com a internet
-- 💾 Espaço disponível no aparelho
-
----
-
-# 🚀 INSTALAÇÃO — COPIE E COLE
-
-## ⚙️ 1. Atualizar o Termux
-
-```bash
-apt update -y && apt upgrade -y && pkg update -y && pkg upgrade -y
-```
-
----
-
-## 📦 2. Instalar as dependências
-
-```bash
-pkg install nodejs -y && pkg install nodejs-lts -y && pkg install ffmpeg -y && pkg install git -y && pkg install wget -y && pkg install tesseract -y
-```
-
----
-
-## 📁 3. Permitir acesso ao armazenamento
-
-```bash
-termux-setup-storage
-```
-
-> Quando o Android solicitar permissão, permita o acesso.
-
----
-
-## 📥 4. Clonar a KYARA
-
-```bash
-cd ~ && git clone https://github.com/bakizinho/bot-kyara-.git && cd bot-kyara-
-```
-
----
-
-## 📦 5. Instalar os módulos
-
-```bash
-npm install --force --no-bin-links
-```
-
----
-
-## 🔗 6. Iniciar a KYARA
-
-```bash
-npm start
-```
-
----
-
-# 🔐 CONEXÃO COM O WHATSAPP
-
-Depois de iniciar o bot:
-
-1. Aguarde aparecer a opção de conexão.
-2. Informe o número solicitado.
-3. Aguarde o **Pairing Code**.
-4. Abra o WhatsApp.
-5. Entre em **Configurações**.
-6. Acesse **Aparelhos conectados**.
-7. Selecione **Conectar aparelho**.
-8. Escolha a opção de conectar usando código.
-9. Digite o código mostrado pelo bot.
-
-Após a autenticação, aguarde a conexão ser estabelecida.
-
----
-
-# ⚙️ CONFIGURAÇÃO
-
-As configurações utilizadas pela KYARA ficam nos arquivos do próprio projeto.
-
-Antes de alterar qualquer configuração, faça um backup.
-
-### 💾 Backup
-
-```bash
-cd ~/bot-kyara- && cp index.js index.js.backup && cp -r database database.backup
-```
-
----
-
-# 🎮 SISTEMAS
-
-## 🤖 Inteligência Artificial
-
-- Conversação
-- Respostas inteligentes
-- Sistema de memória
-- Assistência
-- Recursos de IA
-
-## 🎮 RPG
-
-- 💰 Economia
-- 🏦 Banco
-- 📈 XP
-- 🏅 Níveis
-- 🐾 Pets
-- 🎣 Pesca
-- ⛏️ Mineração
-- 🏹 Caça
-- 🚢 Batalha Naval
-- 🎰 Cassino
-- 🏦 Leilões
-- 🛒 Loja
-
-## 📥 Downloads
-
-- YouTube
-- TikTok
-- Instagram
-- Spotify
-- MediaFire
-- Pinterest
-
-## 🛡️ Administração
-
-- Antilink
-- Antilink Hard
-- Boas-vindas
-- Sistema ADM
-- Sistema Dono
-- Gerenciamento de grupos
-
-## 👤 Social
-
-- Perfil
-- Ranking
-- XP
-- Níveis
-- Conquistas
-
----
-
-# 🔄 ATUALIZAR A KYARA
-
-Quando houver uma nova atualização no GitHub:
-
-```bash
-cd ~/bot-kyara- && git pull origin main && npm install --force --no-bin-links && npm start
-```
-
-> ⚠️ Se você tiver alterações locais importantes, faça um backup antes de atualizar.
-
----
-
-# 🧹 REINSTALAÇÃO
-
-Se precisar baixar novamente o projeto:
-
-```bash
-cd ~ && rm -rf bot-kyara- && git clone https://github.com/bakizinho/bot-kyara-.git && cd bot-kyara- && npm install --force --no-bin-links
-```
-
-> ⚠️ Esse comando remove a pasta local `bot-kyara-`. Faça backup dos seus dados antes de utilizá-lo.
-
----
-
-# 🛠️ SOLUÇÃO DE PROBLEMAS
-
-## ❌ Erro ao instalar módulos
-
-Tente:
-
-```bash
-cd ~/bot-kyara- && npm install --force --no-bin-links
-```
-
-## ❌ Problemas com dependências
-
-```bash
-cd ~/bot-kyara- && npm install --force --no-bin-links
-```
-
-## ❌ Atualização do projeto
-
-```bash
-cd ~/bot-kyara- && git pull origin main
-```
-
-## ❌ Verificar o estado do Git
-
-```bash
-cd ~/bot-kyara- && git status
-```
-
----
-
-# 📊 RECURSOS
-
-| Recurso | Status |
-|---|---|
-| 🤖 IA | ✅ |
-| 🎮 RPG | ✅ |
-| 💰 Economia | ✅ |
-| 🏦 Banco | ✅ |
-| 🐾 Pets | ✅ |
-| 🎣 Pesca | ✅ |
-| ⛏️ Mineração | ✅ |
-| 🏹 Caça | ✅ |
-| 🚢 Batalha Naval | ✅ |
-| 🎰 Cassino | ✅ |
-| 🏦 Leilão | ✅ |
-| 🛒 Loja | ✅ |
-| 📥 Downloads | ✅ |
-| 🛡️ Moderação | ✅ |
-| 🎨 Menus | ✅ |
-| 🏆 Conquistas | ✅ |
-
----
-
-# ⚠️ AVISO
-
-A KYARA é destinada a estudos, desenvolvimento e automação.
-
-O uso do bot deve respeitar as regras e os termos das plataformas utilizadas.
-
-O usuário é responsável pela utilização do projeto e pelas configurações realizadas localmente.
-
----
-
-# 👑 DESENVOLVEDOR
-
-<div align="center">
-
-## 👑 BAKI
-
-**Desenvolvedor e responsável pela personalização da KYARA.**
-
-<br>
-
-<img src="https://img.shields.io/badge/DEVELOPER-BAKI-ff3131?style=for-the-badge&logo=github&logoColor=black">
-
-</div>
-
----
-
-# 🌐 PROJETO
-
-**KYARA ❤️‍🔥**
-
-Desenvolvido e personalizado por **BAKI**.
-
----
-
-<div align="center">
-
-<img src="https://readme-typing-svg.herokuapp.com/?font=JetBrains+Mono&size=25&duration=2500&color=FFD700&center=true&vCenter=true&lines=❤️‍🔥+KYARA;👑+BAKI;🚀+SEMPRE+EM+EVOLUÇÃO">
+<sub>© KYARA HIGH-TECH V1</sub>
 
 </div>

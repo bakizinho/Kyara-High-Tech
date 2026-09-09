@@ -1,150 +1,280 @@
-<div align="center"><img src="dados/midias/menu.jpg" width="260" alt="Kyara High-Tech">⚡ KYARA HIGH-TECH
+<div align="center"><img src="dono/menus/Foto-menu/img-menu.jpg" width="100%" alt="KYARA"><br><br>
 
-WhatsApp Automation & AI
+<img src="https://readme-typing-svg.herokuapp.com/?font=JetBrains+Mono&weight=800&size=42&duration=1800&pause=500&color=FF3131&center=true&vCenter=true&width=850&height=80&lines=%E2%9A%A1+KYARA+%E2%9D%A4%EF%B8%8F%E2%80%8D%F0%9F%94%A5;MULTI-FUNCTION+WHATSAPP+SYSTEM;AI+%E2%80%A2+RPG+%E2%80%A2+MEDIA+%E2%80%A2+TOOLS;ENGINEERED+BY+BAKI" alt="KYARA"><br><img src="https://img.shields.io/badge/KYARA-HIGH--TECH-FF3131?style=for-the-badge&labelColor=090909">
+<img src="https://img.shields.io/badge/STATUS-ACTIVE-FF3131?style=for-the-badge&labelColor=090909">
+<img src="https://img.shields.io/badge/NODE.JS-TERMUX-FF3131?style=for-the-badge&logo=node.js&logoColor=FF3131&labelColor=090909">
+<img src="https://img.shields.io/badge/WHATSAPP-BAILEYS-FF3131?style=for-the-badge&logo=whatsapp&logoColor=FF3131&labelColor=090909"><br><br>
 
-Automação • IA • Mídia • Jogos • Administração
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:090909,50:ff3131,100:090909&height=120&section=header" width="100%" alt="Kyara"></div>---
 
-<br><a href="https://github.com/bakizinho/Kyara-High-Tech">
-<img src="https://img.shields.io/badge/GitHub-Kyara%20High--Tech-181717?style=flat-square&logo=github">
-</a>
-<img src="https://img.shields.io/badge/Node.js-LTS-339933?style=flat-square&logo=node.js&logoColor=white">
-<img src="https://img.shields.io/badge/WhatsApp-Baileys-25D366?style=flat-square&logo=whatsapp&logoColor=white"></div>---
+<div align="center">"KYARA / CORE"
 
-✦ Sobre
+Uma base.
+Centenas de possibilidades.
 
-A Kyara High-Tech é um bot modular para WhatsApp desenvolvido em Node.js.
+</div>A KYARA é uma plataforma multifuncional para WhatsApp, desenvolvida e personalizada por Baki.
 
-Projetada para concentrar diferentes sistemas em uma única plataforma, mantendo os componentes organizados e independentes.
+O projeto combina sistemas de IA, RPG, economia, mídia, downloads, administração, interação social e ferramentas, mantendo os componentes organizados para permitir evolução contínua.
+
+---
+
+<div align="center">"SYSTEMS"
+
+</div><table align="center">
+<tr>
+<td align="center" width="180">🤖
 
 IA
-├── Assistente
-├── Contexto
-├── Persona
-└── Conhecimento
+
+Assistente
+Contexto
+Memória
+
+</td><td align="center" width="180">🎮
+
+RPG
+
+XP
+Níveis
+Progressão
+
+</td><td align="center" width="180">💰
+
+ECONOMIA
+
+Banco
+Loja
+Leilões
+
+</td><td align="center" width="180">📥
 
 MÍDIA
-├── Áudio
-├── Vídeo
-├── Música
-└── Stickers
 
-SISTEMAS
-├── Grupos
-├── Jogos
-├── Economia
-├── Leveling
-└── Administração
+Áudio
+Vídeo
+Downloads
+
+</td>
+</tr><tr>
+<td align="center">🐾
+
+PETS
+
+Pets
+Interação
+Progressão
+
+</td><td align="center">🎯
+
+JOGOS
+
+Minijogos
+Competição
+Eventos
+
+</td><td align="center">🛡️
+
+GRUPOS
+
+Moderação
+Antilink
+Administração
+
+</td><td align="center">🏆
+
+SOCIAL
+
+Perfil
+Ranking
+Conquistas
+
+</td>
+</tr>
+</table>---
+
+<div align="center">"FEATURE MATRIX"
+
+</div>╔══════════════════════════════════════════════════════╗
+║                       KYARA                           ║
+╠══════════════════════════════════════════════════════╣
+║                                                      ║
+║  AI ENGINE        RPG ENGINE        MEDIA ENGINE     ║
+║      │                │                  │           ║
+║      ├─ Contexto      ├─ XP              ├─ Audio    ║
+║      ├─ Memória       ├─ Níveis          ├─ Vídeo    ║
+║      ├─ Assistente    ├─ Economia        ├─ Música   ║
+║      └─ Persona       ├─ Pets            └─ Social   ║
+║                       ├─ Banco                       ║
+║                       └─ Progressão                   ║
+║                                                      ║
+║  GROUP SYSTEM     SOCIAL SYSTEM     ADMIN SYSTEM     ║
+║      │                │                  │           ║
+║      ├─ Antilink      ├─ Perfil          ├─ Owner    ║
+║      ├─ AntiSpam      ├─ Ranking         ├─ ADM      ║
+║      ├─ Welcome       └─ Conquistas      └─ Controle ║
+║      └─ Moderation                                  ║
+║                                                      ║
+╚══════════════════════════════════════════════════════╝
 
 ---
 
-✦ Recursos
+<div align="center">"MEDIA ENGINE"
 
-| Sistema| 
-🤖| IA| Assistente inteligente e contexto
-🎵| Mídia| Áudio, vídeo e música
-🎨| Imagens| Processamento e geração
-🎭| Stickers| Criação e conversão
-🎮| Jogos| Sistemas interativos
-👥| Grupos| Administração e automação
-🛡️| Segurança| Anti-spam e anti-flood
-💰| Economia| Sistema econômico
-📈| Leveling| XP, níveis e rankings
-👑| Owner| Controle administrativo
-
----
-
-✦ Visual
-
-<div align="center"><img src="dados/midias/kyara.gif" width="700" alt="Kyara High-Tech"></div>---
-
-✦ Estrutura
-
-Kyara-High-Tech/
-│
-├── config/
-│
-├── dados/
-│   ├── api/
-│   ├── database/
-│   └── src/
-│       ├── core/
-│       ├── features/
-│       ├── funcs/
-│       ├── games/
-│       ├── menus/
-│       ├── modules/
-│       └── utils/
-│
-├── *.sh
-├── package.json
-├── README.md
-└── .gitignore
-
-A organização separa o núcleo, as funcionalidades e os sistemas independentes, facilitando manutenção e expansão.
+</div>                         KYARA
+                           │
+                    ┌──────┴──────┐
+                    │   REQUEST   │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │  ANALYZER   │
+                    └──────┬──────┘
+                           │
+                ┌──────────┼──────────┐
+                ▼          ▼          ▼
+             AUDIO       VIDEO      IMAGE
+                │          │          │
+                └──────────┼──────────┘
+                           ▼
+                    ┌─────────────┐
+                    │  PROCESSOR  │
+                    └──────┬──────┘
+                           ▼
+                        WHATSAPP
 
 ---
 
-✦ Instalação
+<div align="center">"RPG ENGINE"
 
-Termux
+</div>PLAYER
+  │
+  ├── XP
+  ├── LEVEL
+  ├── MONEY
+  ├── BANK
+  ├── PET
+  ├── INVENTORY
+  ├── ACHIEVEMENTS
+  └── RANKING
+
+Sistemas de RPG disponíveis incluem:
+
+Pesca · Mineração · Caça · Pets · Batalha Naval · Cassino · Loja · Leilões · Economia · Progressão
+
+---
+
+<div align="center">"DOWNLOAD CENTER"
+
+</div>Plataforma| Suporte
+YouTube| ✓
+TikTok| ✓
+Instagram| ✓
+Spotify| ✓
+MediaFire| ✓
+Pinterest| ✓
+
+---
+
+<div align="center">"ARCHITECTURE"
+
+</div>KYARA
+│
+├── CORE
+│   ├── AI
+│   ├── Context
+│   ├── Memory
+│   └── Persona
+│
+├── FEATURES
+│   ├── Commands
+│   ├── Media
+│   ├── Stickers
+│   └── Leveling
+│
+├── MODULES
+│   ├── RPG
+│   ├── Economy
+│   ├── Games
+│   └── Groups
+│
+├── DATABASE
+│   ├── Users
+│   ├── Groups
+│   ├── Economy
+│   └── Systems
+│
+└── CONFIG
+
+---
+
+<div align="center">"INSTALL"
+
+</div>Termux
 
 pkg update -y
 pkg upgrade -y
-pkg install git nodejs-lts -y
+
+pkg install git nodejs-lts ffmpeg wget tesseract -y
+
+termux-setup-storage
 
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 cd Kyara-High-Tech
 
 npm install
-npm start
 
-Linux / VPS
-
-git clone https://github.com/bakizinho/Kyara-High-Tech.git
-cd Kyara-High-Tech
-
-npm install
 npm start
 
 ---
 
-✦ Configuração
+<div align="center">"CONNECTION"
 
-Configure as informações necessárias para o funcionamento do bot:
+</div>Após iniciar:
 
-Prefixo
-Proprietário
-APIs
-Banco de dados
-Recursos opcionais
+KYARA
+  ↓
+WhatsApp
+  ↓
+Aparelhos conectados
+  ↓
+Conectar aparelho
+  ↓
+Código de pareamento
+  ↓
+Conectado
 
-Segurança
+---
 
-Nunca envie para o Git:
+<div align="center">"SECURITY"
+
+</div>Nunca publique:
 
 .env
 .env.*
 auth/
-*.log
 tokens
 API Keys
 sessões WhatsApp
+credenciais
 dados privados
+logs sensíveis
+
+Antes de enviar alterações:
+
+git status
 
 ---
 
-✦ Tecnologia
+<div align="center">"DEVELOPER"
 
-<div align="center"><img src="https://skillicons.dev/icons?i=nodejs,js,git,github"></div><br><div align="center">Node.js · JavaScript · Baileys · Git
+<img src="https://img.shields.io/badge/👑%20BAKI-DEVELOPER-FF3131?style=for-the-badge&labelColor=090909"><br><br>
+
+KYARA
+Personalizada, desenvolvida e mantida por Baki.
 
 </div>---
 
-<div align="center">⚡ KYARA
-
-Uma plataforma. Vários sistemas.
-
-<br><img src="dados/midias/menu.jpg" width="120" alt="Kyara"><br><br>
-
-<sub>Kyara High-Tech · WhatsApp Automation & AI</sub>
+<div align="center"><img src="https://capsule-render.vercel.app/api?type=waving&color=0:090909,50:ff3131,100:090909&height=150&section=footer" width="100%" alt="Kyara"><img src="https://readme-typing-svg.herokuapp.com/?font=JetBrains+Mono&weight=700&size=22&duration=2200&pause=700&color=FF3131&center=true&vCenter=true&width=700&height=50&lines=⚡+KYARA+%E2%80%94+HIGH-TECH;%E2%9D%A4%EF%B8%8F%E2%80%8D%F0%9F%94%A5+BUILT+TO+EVOLVE" alt="KYARA"><br>"AI"  •  "RPG"  •  "MEDIA"  •  "SOCIAL"  •  "AUTOMATION"
 
 </div>

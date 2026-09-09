@@ -1,196 +1,251 @@
-<div align="center"><img src="dados/midias/menu.jpg" width="520" alt="Kyara High-Tech">⚡ KYARA HIGH-TECH
+<div align="center">⚡ KYARA HIGH-TECH
 
-🤖 WhatsApp Automation & AI Platform
+WhatsApp Automation & AI Platform
 
-Um bot modular para WhatsApp desenvolvido em Node.js, com IA, automação, mídia, jogos, administração e sistemas inteligentes.
-
-<br><img src="https://img.shields.io/badge/STATUS-ACTIVE-00c853?style=for-the-badge">
-<img src="https://img.shields.io/badge/NODE.JS-24.x-339933?style=for-the-badge&logo=node.js&logoColor=white">
-<img src="https://img.shields.io/badge/WHATSAPP-BAILEYS-25D366?style=for-the-badge&logo=whatsapp&logoColor=white">
-<img src="https://img.shields.io/github/stars/bakizinho/Kyara-High-Tech?style=for-the-badge&logo=github">
-<img src="https://img.shields.io/github/forks/bakizinho/Kyara-High-Tech?style=for-the-badge&logo=github"><br><br>
-
-""GitHub" (https://img.shields.io/badge/GitHub-Kyara--High--Tech-181717?style=for-the-badge&logo=github&logoColor=white)" (https://github.com/bakizinho/Kyara-High-Tech)
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&pause=900&center=true&vCenter=true&width=650&lines=Automação+inteligente;Arquitetura+modular;IA+e+processamento;Mídia+e+entretenimento;KYARA+HIGH-TECH" alt="Kyara High-Tech"><br>""GitHub" (https://img.shields.io/badge/GitHub-Kyara--High--Tech-181717?style=for-the-badge&logo=github&logoColor=white)" (https://github.com/bakizinho/Kyara-High-Tech)
+""Node.js" (https://img.shields.io/badge/Node.js-LTS-339933?style=for-the-badge&logo=node.js&logoColor=white)" (https://nodejs.org/)
+""Baileys" (https://img.shields.io/badge/WhatsApp-Baileys-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)" (https://github.com/WhiskeySockets/Baileys)
 
 </div>---
 
-🧠 Sobre o projeto
+Sobre
 
-A Kyara High-Tech é uma plataforma de automação para WhatsApp construída para ser modular, expansível e fácil de manter.
+A Kyara High-Tech é uma plataforma de automação para WhatsApp desenvolvida em Node.js.
 
-O projeto reúne diferentes sistemas em uma única arquitetura:
+Sua arquitetura foi projetada para reunir automação, inteligência artificial, mídia, administração, entretenimento e sistemas persistentes em uma estrutura modular.
 
-                     ┌──────────────────────┐
-                     │       WHATSAPP       │
-                     └──────────┬───────────┘
-                                │
-                                ▼
-                     ┌──────────────────────┐
-                     │   CAMADA DE CONEXÃO  │
-                     │       BAILEYS        │
-                     └──────────┬───────────┘
-                                │
-                                ▼
-                  ┌─────────────────────────────┐
-                  │      MESSAGE ROUTER         │
-                  │     COMMAND PROCESSOR       │
-                  └──────────────┬──────────────┘
-                                 │
-              ┌──────────────────┼──────────────────┐
-              │                  │                  │
-              ▼                  ▼                  ▼
-       ┌────────────┐     ┌────────────┐     ┌────────────┐
-       │    CORE    │     │  FEATURES  │     │   MODULES  │
-       │            │     │            │     │            │
-       │    IA      │     │   Mídia    │     │   Jogos    │
-       │  Persona   │     │  Downloads │     │   Grupo    │
-       │ Contexto   │     │  Stickers  │     │  Economia  │
-       └─────┬──────┘     └─────┬──────┘     └─────┬──────┘
-             │                  │                  │
-             └──────────────────┼──────────────────┘
-                                ▼
-                     ┌──────────────────────┐
-                     │       DATABASE       │
-                     │ JSON / PERSISTÊNCIA  │
-                     └──────────────────────┘
+O objetivo é simples:
+
+«crescer sem transformar o projeto em um sistema difícil de manter.»
 
 ---
 
-✨ Recursos
+Sistemas
 
-<div align="center">Sistema| Recursos
-🤖 IA| Assistente, contexto, persona e processamento inteligente
-🎵 Mídia| Áudio, vídeo, música e processamento multimídia
-📱 Social| Ferramentas para plataformas sociais
-🎨 Imagens| Canvas, edição e processamento de imagens
-🎭 Stickers| Criação, conversão e gerenciamento
-🎮 Jogos| Jogos interativos e sistemas multiplayer
-👥 Grupos| Administração, automação e personalização
-🛡️ Segurança| Antispam, antiflood e controles
-📊 Leveling| XP, níveis, rankings e recompensas
-💰 Economia| Sistema econômico e recursos virtuais
-💎 VIP| Sistemas de acesso e recursos especiais
-👑 Owner| Gerenciamento administrativo
-🔧 Utilidades| Ferramentas diversas para usuários e grupos
-
-</div>---
-
-🏗️ Arquitetura
-
-A Kyara foi organizada em módulos para reduzir dependências entre funcionalidades.
-
-dados/
-│
-├── api/
-│   └── Serviços e integrações
-│
-├── database/
-│   ├── Configurações
-│   ├── Usuários
-│   ├── Grupos
-│   ├── Economia
-│   └── Sistemas persistentes
-│
-└── src/
-    │
-    ├── core/
-    │   ├── contexto.js
-    │   ├── kyara.js
-    │   ├── kyaraKnowledge.js
-    │   ├── orquestrador.js
-    │   └── persona.js
-    │
-    ├── features/
-    │   ├── comandos
-    │   ├── mídia
-    │   ├── leveling
-    │   └── stickers
-    │
-    ├── funcs/
-    │   ├── downloads/
-    │   ├── private/
-    │   ├── utils/
-    │   ├── tts/
-    │   └── ferramentas/
-    │
-    ├── games/
-    │
-    ├── menus/
-    │
-    ├── modules/
-    │
-    └── utils/
+Sistema| Descrição
+IA| Assistente, contexto, persona e processamento inteligente
+Mídia| Áudio, vídeo, música e processamento multimídia
+Stickers| Criação, conversão e gerenciamento
+Imagens| Processamento e geração
+Grupos| Administração e automação
+Segurança| Anti-spam, anti-flood e controles
+Leveling| XP, níveis, rankings e recompensas
+Economia| Sistemas e recursos virtuais
+Jogos| Jogos e sistemas interativos
+Owner| Administração e controle
+Utilidades| Ferramentas gerais
 
 ---
 
-🚀 Instalação
+Arquitetura
 
-📱 Termux
+                         WHATSAPP
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │    BAILEYS    │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ MESSAGE ROUTER│
+                    └───────┬───────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+       CORE             FEATURES           MODULES
+          │                 │                 │
+      ┌───┴───┐       ┌─────┴─────┐     ┌────┴────┐
+      │  IA   │       │   Mídia   │     │  Jogos  │
+      │Contexto│      │ Stickers  │     │  Grupo  │
+      │Persona │      │ Leveling  │     │Economia │
+      └───┬───┘       └─────┬─────┘     └────┬────┘
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            ▼
+                    ┌───────────────┐
+                    │   DATABASE    │
+                    │ JSON / DATA   │
+                    └───────────────┘
 
-1. Atualizar o ambiente
+---
+
+Estrutura
+
+Kyara-High-Tech/
+│
+├── config/
+│
+├── dados/
+│   ├── api/
+│   ├── database/
+│   └── src/
+│       ├── core/
+│       ├── features/
+│       ├── funcs/
+│       ├── games/
+│       ├── menus/
+│       ├── modules/
+│       └── utils/
+│
+├── *.sh
+├── package.json
+├── README.md
+└── .gitignore
+
+Core
+
+Responsável pela lógica central da Kyara.
+
+core/
+├── contexto
+├── kyara
+├── conhecimento
+├── orquestrador
+└── persona
+
+Features
+
+Funcionalidades utilizadas pelo bot.
+
+features/
+├── comandos
+├── mídia
+├── stickers
+└── leveling
+
+Modules
+
+Sistemas independentes que podem evoluir separadamente.
+
+modules/
+├── grupos
+├── economia
+├── sistemas
+└── integrações
+
+---
+
+Inteligência Artificial
+
+O processamento da IA segue uma cadeia modular:
+
+Mensagem
+    │
+    ▼
+Contexto
+    │
+    ▼
+Persona
+    │
+    ▼
+Conhecimento
+    │
+    ▼
+Processamento
+    │
+    ▼
+Resposta
+
+Essa separação permite evoluir a IA sem acoplar seu funcionamento aos comandos tradicionais do bot.
+
+---
+
+Sistema de mídia
+
+Pesquisa / URL
+      │
+      ▼
+Identificação
+      │
+      ▼
+Processamento
+      │
+   ┌──┴──┐
+   ▼     ▼
+ÁUDIO  VÍDEO
+   │     │
+   └──┬──┘
+      ▼
+   WHATSAPP
+
+Os recursos multimídia podem utilizar APIs e serviços externos conforme a funcionalidade.
+
+---
+
+Segurança
+
+A Kyara possui sistemas destinados à estabilidade e ao controle da automação:
+
+- Anti-spam
+- Anti-flood
+- Limitação de comandos
+- Controle administrativo
+- Controle de usuários
+- Tratamento de erros
+- Limpeza de arquivos temporários
+- Monitoramento
+- Gerenciamento de processos
+
+«Nenhum sistema automatizado garante proteção absoluta. Configuração e manutenção continuam sendo essenciais.»
+
+---
+
+Instalação
+
+Termux
 
 pkg update -y
 pkg upgrade -y
 
-2. Instalar dependências do sistema
-
 pkg install git nodejs-lts -y
 
-3. Clonar
-
-git clone https://github.com/bakizinho/Kyara-High-Tech.git
-
-4. Entrar no projeto
-
-cd Kyara-High-Tech
-
-5. Instalar dependências
-
-npm install
-
-6. Iniciar
-
-npm start
-
----
-
-🖥️ Linux / VPS
-
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 cd Kyara-High-Tech
+
 npm install
 npm start
 
-Para produção, recomenda-se utilizar um gerenciador de processos como PM2.
+Linux / VPS
+
+git clone https://github.com/bakizinho/Kyara-High-Tech.git
+cd Kyara-High-Tech
+
+npm install
+npm start
+
+Para ambientes de produção, pode ser utilizado um gerenciador de processos como PM2:
 
 npm install -g pm2
+
 pm2 start npm --name kyara -- start
 pm2 save
 
 ---
 
-⚙️ Configuração
+Configuração
 
-Antes de colocar a Kyara em produção, revise:
+Antes de executar a Kyara em produção, revise:
 
-├── Proprietário
-├── Prefixo
-├── APIs
-├── Banco de dados
-├── Sistemas de grupo
-├── Recursos opcionais
-└── Variáveis de ambiente
+Prefixo
+Proprietário
+APIs
+Banco de dados
+Configurações de grupo
+Recursos opcionais
+Variáveis de ambiente
 
-🔐 Credenciais
+Credenciais
 
-Nunca coloque credenciais diretamente no código.
+Nunca coloque tokens ou chaves diretamente no código.
 
-Utilize variáveis de ambiente sempre que possível:
+Exemplo:
 
 API_KEY=sua_chave
 OWNER_ID=seu_id
 
-E mantenha arquivos sensíveis fora do Git:
+Mantenha arquivos sensíveis fora do Git:
 
 .env
 .env.*
@@ -199,284 +254,88 @@ auth/
 
 ---
 
-🧩 Sistema modular
+Desenvolvimento
 
-Uma das características principais da Kyara é a possibilidade de adicionar funcionalidades sem reconstruir todo o projeto.
+Crie uma branch para cada nova funcionalidade:
 
-                    KYARA CORE
-                        │
-          ┌─────────────┼─────────────┐
-          │             │             │
-          ▼             ▼             ▼
-       FEATURES       MODULES       FUNCS
-          │             │             │
-          ├── IA        ├── Jogos     ├── YouTube
-          ├── Mídia     ├── Grupo     ├── TikTok
-          ├── Stickers  ├── Economia  ├── Instagram
-          └── Leveling  └── Sistemas  └── Utilidades
+git checkout -b feature/minha-funcionalidade
 
-Isso permite desenvolver novos recursos de maneira independente.
+Depois de testar:
 
----
+git add .
+git commit -m "feat: adiciona nova funcionalidade"
+git push origin feature/minha-funcionalidade
 
-🎮 Entretenimento
+Antes de publicar:
 
-A plataforma possui diversos sistemas voltados para interação:
+git status
 
-🎮 Jogos
-🧠 Quiz
-🎲 Sistemas aleatórios
-💰 Economia
-📈 Leveling
-🏆 Rankings
-🎯 Minijogos
-
-Os módulos podem ser expandidos sem alterar o núcleo principal.
+Revise os arquivos modificados e confirme que nenhum dado sensível será enviado.
 
 ---
 
-🤖 Inteligência Artificial
+Roadmap
 
-A arquitetura de IA foi separada do restante do sistema para permitir evolução independente.
-
-Mensagem
-   │
-   ▼
-Contexto
-   │
-   ▼
-Persona
-   │
-   ▼
-Conhecimento
-   │
-   ▼
-Processamento
-   │
-   ▼
-Resposta
-
-Isso permite que a Kyara mantenha contexto e comportamento configurável sem acoplar a IA aos comandos tradicionais.
-
----
-
-🎵 Sistema de mídia
-
-O sistema multimídia suporta diferentes tipos de processamento:
-
-URL / Pesquisa
-      │
-      ▼
-Identificação
-      │
-      ▼
-Processamento
-      │
- ┌────┴─────┐
- ▼          ▼
-ÁUDIO      VÍDEO
- │          │
- └────┬─────┘
-      ▼
-   WhatsApp
-
-Dependendo da funcionalidade, determinados serviços externos podem ser necessários.
-
----
-
-🛡️ Segurança e estabilidade
-
-A Kyara possui sistemas destinados a proteger grupos e controlar o funcionamento do bot:
-
-- Anti-flood
-- Anti-spam
-- Limitação de comandos
-- Controle de usuários
-- Controle administrativo
-- Monitoramento
-- Gerenciamento de processos
-- Limpeza de arquivos temporários
-- Tratamento de erros
-
-«Nenhum sistema automatizado garante proteção absoluta. A configuração correta continua sendo essencial.»
-
----
-
-📂 Organização do projeto
-
-Core
- └── Lógica principal
-
-Features
- └── Funcionalidades
-
-Funcs
- └── Funções reutilizáveis
-
-Games
- └── Jogos
-
-Menus
- └── Interfaces e menus
-
-Modules
- └── Sistemas independentes
-
-Utils
- └── Utilidades
-
-Database
- └── Persistência
-
----
-
-🔌 Integrações
-
-A Kyara pode utilizar serviços externos para determinados recursos.
-
-Exemplos:
-
-- APIs de IA
-- APIs de mídia
-- Serviços de geração de imagens
-- Serviços de transcrição
-- Serviços de processamento de áudio
-- Serviços de download
-
-A disponibilidade e os limites dessas integrações dependem de cada fornecedor.
-
----
-
-📈 Roadmap
-
-✅ Implementado
+Implementado
 
 - [x] Arquitetura modular
 - [x] Sistema de comandos
 - [x] Integração WhatsApp
 - [x] Menus
-- [x] Sistema de grupos
+- [x] Sistemas de grupo
 - [x] Leveling
 - [x] Economia
 - [x] Jogos
-- [x] Ferramentas de mídia
+- [x] Recursos multimídia
 - [x] Sistemas administrativos
 - [x] Assistente de IA
 
-🔄 Em evolução
+Em evolução
 
 - [ ] Otimização de desempenho
 - [ ] Melhor gerenciamento de memória
-- [ ] Melhor tratamento de falhas
+- [ ] Tratamento avançado de falhas
 - [ ] Expansão dos sistemas de IA
 - [ ] Novos módulos
-- [ ] Melhorias na experiência do usuário
+- [ ] Melhorias de experiência
+- [ ] Maior estabilidade
 
 ---
 
-🧪 Desenvolvimento
-
-Para criar uma nova funcionalidade:
-
-git checkout -b feature/minha-funcionalidade
-
-Faça as alterações e teste localmente.
-
-Depois:
-
-git add .
-git commit -m "feat: adiciona minha funcionalidade"
-git push origin feature/minha-funcionalidade
-
-Abra um Pull Request descrevendo:
-
-• O que foi alterado
-• Por que foi alterado
-• Arquivos modificados
-• Como testar
-• Possíveis impactos
-
----
-
-📊 Filosofia do projeto
-
-A Kyara segue alguns princípios:
-
-MODULARIDADE
-     ↓
-MANUTENÇÃO
-     ↓
-ESTABILIDADE
-     ↓
-ESCALABILIDADE
-     ↓
-EVOLUÇÃO
-
-O objetivo não é apenas adicionar comandos, mas construir uma base que possa continuar crescendo sem transformar o projeto em um sistema impossível de manter.
-
----
-
-🔐 Segurança do repositório
-
-Antes de cada publicação, verifique:
-
-git status
-
-E confirme que arquivos sensíveis não estão sendo enviados.
+Segurança do repositório
 
 Nunca publique:
 
-❌ Tokens
-❌ API Keys
-❌ Sessões WhatsApp
-❌ Credenciais
-❌ Dados pessoais
-❌ Bancos privados
-❌ Arquivos .env
+Tokens
+API Keys
+Sessões WhatsApp
+Credenciais
+Dados pessoais
+Bancos privados
+Arquivos .env
+Logs contendo informações sensíveis
+
+Sempre revise o estado do repositório antes de um "git push".
 
 ---
 
-⚠️ Aviso
+Aviso
 
 A Kyara High-Tech é fornecida para fins de desenvolvimento e automação.
 
-O usuário é responsável por utilizar o software de acordo com:
+O uso do projeto deve respeitar:
 
-- Termos de serviço do WhatsApp;
-- Legislação aplicável;
-- Termos das APIs utilizadas;
-- Direitos autorais;
-- Regras das plataformas integradas.
+- Termos de serviço do WhatsApp
+- Legislação aplicável
+- Termos das APIs utilizadas
+- Direitos autorais
+- Regras das plataformas integradas
 
-O projeto não garante disponibilidade permanente de serviços externos.
-
----
-
-🤝 Contribuição
-
-Contribuições são bem-vindas.
-
-Antes de enviar alterações:
-
-git pull
-
-Crie uma branch:
-
-git checkout -b feature/nova-feature
-
-Faça commits objetivos:
-
-git commit -m "feat: adiciona novo sistema"
-
-Envie:
-
-git push origin feature/nova-feature
-
-Depois abra um Pull Request.
+Serviços externos podem sofrer alterações, limitações ou indisponibilidade.
 
 ---
 
-📜 Licença
+Licença
 
 Consulte o arquivo "LICENSE" deste repositório para conhecer as condições de uso, modificação e distribuição do projeto.
 
@@ -484,11 +343,8 @@ Consulte o arquivo "LICENSE" deste repositório para conhecer as condições de 
 
 <div align="center">⚡ KYARA HIGH-TECH
 
-Automação • Inteligência • Entretenimento • Tecnologia
+Automação · Inteligência · Tecnologia
 
-<br><img src="https://img.shields.io/badge/MADE%20WITH-Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white">
-<img src="https://img.shields.io/badge/POWERED%20BY-Kyara-8A2BE2?style=for-the-badge"><br><br>
-
-🚀 Evoluindo continuamente.
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=16&pause=1200&center=true&vCenter=true&width=500&lines=Modular.;Inteligente.;Evolutiva." alt="Kyara"><br><sub>Construindo e evoluindo continuamente.</sub>
 
 </div>

@@ -1,0 +1,44 @@
+node_modules/
+auth/
+.env
+*.log
+*.session
+*.session.json
+dados/database/qr-code/
+
+# Temporários de mídia/download
+.tmp-youtube/
+
+# Dependências
+node_modules/
+
+# Sessão/autenticação
+auth/
+dados/auth/
+dados/database/qr-code/
+
+# Logs
+*.log
+
+# Backups temporários
+*.bak
+*.backup
+
+# Backup do Git antigo
+.git-pesado-backup/
+
+# Backups e cópias temporárias do projeto
+.backup-*/
+backup-*/
+backups/
+dados/backup-*/
+*.bak*
+*.backup*
+*.broken-*
+
+# Temporários gerados pelo bot
+dados/database/tmp/
+dados/midias/temp_*/
+
+# Arquivos de mídia temporários
+.tmp-youtube/

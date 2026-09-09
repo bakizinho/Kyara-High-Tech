@@ -1,0 +1,46 @@
+{
+  "nextId": 1,
+  "ideas": [],
+  "items": [
+    {
+      "id": 1,
+      "user": "34566635036894@lid",
+      "name": "☠Tile☠",
+      "idea": "<up livel",
+      "createdAt": "2026-09-08T00:22:23.520Z",
+      "status": "pendente"
+    },
+    {
+      "id": 2,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "jogo ppp usando um o canal para a votação",
+      "createdAt": "2026-09-08T01:10:02.497Z",
+      "status": "pendente"
+    },
+    {
+      "id": 3,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "slr",
+      "createdAt": "2026-09-08T01:16:53.605Z",
+      "status": "pendente"
+    },
+    {
+      "id": 4,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "slr",
+      "createdAt": "2026-09-08T01:16:58.259Z",
+      "status": "pendente"
+    },
+    {
+      "id": 5,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "testar",
+      "createdAt": "2026-09-08T23:39:28.454Z",
+      "status": "pendente"
+    }
+  ]
+}

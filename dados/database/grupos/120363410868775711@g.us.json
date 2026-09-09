@@ -1,0 +1,45 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-03T15:25:08.164Z",
+  "groupName": "SPAM FANTASMA",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "87244476010549@lid",
+      "msg": 2,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "firstSeen": "2026-09-03T15:25:08.238Z",
+      "lastActivity": "2026-09-03T15:59:46.880Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-03T16:09:41.186Z",
+      "lastActivity": "2026-09-03T16:09:41.192Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "_baki_bk",
+      "firstSeen": "2026-09-03T16:12:00.500Z",
+      "lastActivity": "2026-09-03T16:12:00.500Z"
+    }
+  ],
+  "bemvindo": true
+}

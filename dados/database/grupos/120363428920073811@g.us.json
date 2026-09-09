@@ -1,0 +1,127 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-07T16:57:20.559Z",
+  "groupName": "𓆩🖤𓆪 𝓕𝓪𝓶í𝓵𝓲𝓪 𝓙𝓾𝓳𝓾𝓽𝓼𝓾 𓆩🖤𓆪",
+  "modorpg": true,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "187072417673333@lid",
+      "msg": 312,
+      "cmd": 8,
+      "figu": 65,
+      "pushname": "Beatriz♡",
+      "firstSeen": "2026-09-07T16:57:20.575Z",
+      "lastActivity": "2026-09-09T00:19:40.693Z"
+    },
+    {
+      "id": "273821428899949@lid",
+      "msg": 243,
+      "cmd": 37,
+      "figu": 15,
+      "pushname": "Ryan Machado Pereira",
+      "firstSeen": "2026-09-07T16:57:22.310Z",
+      "lastActivity": "2026-09-09T04:07:43.253Z"
+    },
+    {
+      "id": "222638588874797@lid",
+      "msg": 246,
+      "cmd": 3,
+      "figu": 85,
+      "pushname": "Osmário",
+      "firstSeen": "2026-09-07T16:57:37.010Z",
+      "lastActivity": "2026-09-09T11:02:47.779Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 15,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "BOT-KYARA",
+      "firstSeen": "2026-09-07T16:58:09.052Z",
+      "lastActivity": "2026-09-08T23:01:42.575Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 46,
+      "cmd": 14,
+      "figu": 24,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-07T17:01:08.153Z",
+      "lastActivity": "2026-09-08T22:37:11.587Z"
+    },
+    {
+      "id": "21230593802469@lid",
+      "msg": 134,
+      "cmd": 0,
+      "figu": 16,
+      "pushname": "Daniel Bussinguer",
+      "firstSeen": "2026-09-07T17:09:20.642Z",
+      "lastActivity": "2026-09-09T01:18:24.054Z"
+    },
+    {
+      "id": "68256308195514@lid",
+      "msg": 301,
+      "cmd": 1,
+      "figu": 15,
+      "pushname": "maki🖤",
+      "firstSeen": "2026-09-07T17:41:32.871Z",
+      "lastActivity": "2026-09-09T10:59:34.738Z"
+    },
+    {
+      "id": "136262686081025@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "✮𝕂𝕒𝕜𝕒𝕦✮",
+      "firstSeen": "2026-09-07T18:05:24.554Z",
+      "lastActivity": "2026-09-07T18:23:08.256Z"
+    },
+    {
+      "id": "273207198273714@lid",
+      "msg": 26,
+      "cmd": 4,
+      "figu": 0,
+      "pushname": "Okarun",
+      "firstSeen": "2026-09-07T21:02:22.641Z",
+      "lastActivity": "2026-09-09T00:51:27.769Z"
+    },
+    {
+      "id": "171442595479627@lid",
+      "msg": 49,
+      "cmd": 0,
+      "figu": 25,
+      "pushname": "Nathi",
+      "firstSeen": "2026-09-07T21:50:30.151Z",
+      "lastActivity": "2026-09-08T22:16:49.951Z"
+    },
+    {
+      "id": "200987390271608@lid",
+      "msg": 116,
+      "cmd": 0,
+      "figu": 40,
+      "pushname": "Samuel Carvalho",
+      "firstSeen": "2026-09-07T23:49:59.058Z",
+      "lastActivity": "2026-09-09T11:15:13.595Z"
+    },
+    {
+      "id": "30434524180592@lid",
+      "msg": 114,
+      "cmd": 0,
+      "figu": 16,
+      "pushname": "Jorlanzinnn",
+      "firstSeen": "2026-09-07T23:53:47.770Z",
+      "lastActivity": "2026-09-09T11:15:22.299Z"
+    }
+  ],
+  "levelingConfigured": true,
+  "modobrincadeira": true
+}

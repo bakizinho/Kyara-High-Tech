@@ -1,0 +1,47 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-09T02:48:36.092Z",
+  "groupName": "𓆩✌︎𝘊𝘦𝘯𝘵𝘳𝘢𝘭 𝘯𝘢𝘯𝘬𝘪𝘮✌︎𓆪",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 1,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-09T02:48:36.132Z",
+      "lastActivity": "2026-09-09T02:48:40.070Z"
+    },
+    {
+      "id": "226057382842605@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Matheus Souza Machado",
+      "firstSeen": "2026-09-09T02:48:36.877Z",
+      "lastActivity": "2026-09-09T02:48:36.877Z"
+    },
+    {
+      "id": "270428455100568@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Raniaaa",
+      "firstSeen": "2026-09-09T02:48:38.290Z",
+      "lastActivity": "2026-09-09T02:48:38.930Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true
+}

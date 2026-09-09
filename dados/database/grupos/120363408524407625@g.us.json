@@ -1,0 +1,129 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-02T20:41:00.295Z",
+  "groupName": "Os melhores amigos",
+  "modorpg": true,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "96752929644567@lid",
+      "msg": 28,
+      "cmd": 0,
+      "figu": 55,
+      "pushname": "FÁBIO WILLIANS",
+      "firstSeen": "2026-09-02T20:41:00.324Z",
+      "lastActivity": "2026-09-09T02:43:54.261Z"
+    },
+    {
+      "id": "168561075040376@lid",
+      "msg": 113,
+      "cmd": 9,
+      "figu": 11,
+      "pushname": "Kirito",
+      "firstSeen": "2026-09-02T20:42:41.962Z",
+      "lastActivity": "2026-09-08T20:31:27.531Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 13,
+      "cmd": 1,
+      "figu": 2,
+      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "firstSeen": "2026-09-02T21:09:28.319Z",
+      "lastActivity": "2026-09-08T00:51:34.909Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 170,
+      "cmd": 41,
+      "figu": 33,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-02T21:14:01.750Z",
+      "lastActivity": "2026-09-09T02:13:22.749Z"
+    },
+    {
+      "id": "158815391604861@lid",
+      "msg": 251,
+      "cmd": 22,
+      "figu": 12,
+      "pushname": "𝑨𝒍𝒑𝒉𝒂_𝙂𝙪𝙨𝙩𝙖𝙫𝙤👑",
+      "firstSeen": "2026-09-02T21:36:33.831Z",
+      "lastActivity": "2026-09-09T01:51:20.774Z"
+    },
+    {
+      "id": "245500381012123@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Son Joyka Kakarot 🧧",
+      "firstSeen": "2026-09-02T23:36:19.955Z",
+      "lastActivity": "2026-09-04T01:06:56.987Z"
+    },
+    {
+      "id": "56629949104184@lid",
+      "msg": 21,
+      "cmd": 1,
+      "figu": 5,
+      "pushname": "príncipe vegeta",
+      "firstSeen": "2026-09-02T23:43:18.013Z",
+      "lastActivity": "2026-09-09T01:47:17.219Z"
+    },
+    {
+      "id": "203864968060938@lid",
+      "msg": 115,
+      "cmd": 4,
+      "figu": 158,
+      "pushname": "HEITOR",
+      "firstSeen": "2026-09-03T20:41:38.977Z",
+      "lastActivity": "2026-09-09T01:51:10.469Z"
+    },
+    {
+      "id": "104192316325932@lid",
+      "msg": 29,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "Riquelme",
+      "firstSeen": "2026-09-03T20:47:47.603Z",
+      "lastActivity": "2026-09-08T20:34:44.546Z"
+    },
+    {
+      "id": "34566635036894@lid",
+      "msg": 42,
+      "cmd": 21,
+      "figu": 0,
+      "pushname": "☠Tile☠",
+      "firstSeen": "2026-09-08T00:13:22.478Z",
+      "lastActivity": "2026-09-08T04:19:45.710Z"
+    },
+    {
+      "id": "235485121245285@lid",
+      "msg": 13,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Josafá",
+      "firstSeen": "2026-09-08T00:16:37.762Z",
+      "lastActivity": "2026-09-08T00:25:57.489Z"
+    },
+    {
+      "id": "250062072459383@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "𓅓𝗦𝗢𝗟𝗔𝗡𝗢𓅓",
+      "firstSeen": "2026-09-08T00:56:16.315Z",
+      "lastActivity": "2026-09-08T01:04:37.297Z"
+    }
+  ],
+  "levelingConfigured": true,
+  "autodl": true,
+  "afkUsers": {},
+  "autodlMode": "video"
+}

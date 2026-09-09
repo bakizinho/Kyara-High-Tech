@@ -1,0 +1,85 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-02T18:19:30.181Z",
+  "groupName": "Teste-de-bot",
+  "modorpg": true,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 505,
+      "cmd": 322,
+      "figu": 111,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-02T18:19:30.216Z",
+      "lastActivity": "2026-09-09T04:17:22.461Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 76,
+      "cmd": 12,
+      "figu": 3,
+      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "firstSeen": "2026-09-02T19:43:36.507Z",
+      "lastActivity": "2026-09-08T22:51:07.311Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 309,
+      "cmd": 39,
+      "figu": 132,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-03T15:28:57.678Z",
+      "lastActivity": "2026-09-09T01:31:53.268Z"
+    },
+    {
+      "id": "16845667094736@lid",
+      "msg": 285,
+      "cmd": 14,
+      "figu": 94,
+      "pushname": ".....",
+      "firstSeen": "2026-09-07T17:05:33.491Z",
+      "lastActivity": "2026-09-09T04:12:57.206Z"
+    }
+  ],
+  "bemvindo": true,
+  "bemvindo2": false,
+  "x9": true,
+  "warnings": {
+    "4836821061781@lid": [
+      {
+        "reason": "Motivo não informado",
+        "timestamp": 1788461631911,
+        "issuer": "28145558278209@lid"
+      },
+      {
+        "reason": "muito fresco",
+        "timestamp": 1788461653455,
+        "issuer": "28145558278209@lid"
+      }
+    ],
+    "16845667094736@lid": {
+      "count": 1,
+      "lastWarned": "2026-09-08T04:19:10.553Z"
+    }
+  },
+  "modobrincadeira": true,
+  "levelingConfigured": true,
+  "modolite": true,
+  "antifig": {
+    "enabled": true
+  },
+  "afkUsers": {},
+  "assistente": true,
+  "assistentePersonality": "humana",
+  "autodlMode": "video",
+  "autodl": true
+}

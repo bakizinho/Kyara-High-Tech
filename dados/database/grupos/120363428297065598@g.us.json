@@ -1,0 +1,72 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-03T21:14:10.878Z",
+  "groupName": "Geral",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "71949829058681@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "༺✧𝐍𝐞𝐠𝐚✧༻",
+      "firstSeen": "2026-09-03T21:14:10.921Z",
+      "lastActivity": "2026-09-03T21:46:02.754Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "_baki_bk",
+      "firstSeen": "2026-09-03T21:21:30.215Z",
+      "lastActivity": "2026-09-03T21:21:30.216Z"
+    },
+    {
+      "id": "29502767915146@lid",
+      "msg": 9,
+      "cmd": 0,
+      "figu": 9,
+      "pushname": "Akatsuki Pain",
+      "firstSeen": "2026-09-04T11:54:34.849Z",
+      "lastActivity": "2026-09-08T17:50:43.735Z"
+    },
+    {
+      "id": "154056282607744@lid",
+      "msg": 11,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "Logan",
+      "firstSeen": "2026-09-04T11:55:14.535Z",
+      "lastActivity": "2026-09-04T15:04:22.683Z"
+    },
+    {
+      "id": "273821428899949@lid",
+      "msg": 7,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Ryan Machado Pereira",
+      "firstSeen": "2026-09-04T13:22:06.357Z",
+      "lastActivity": "2026-09-04T19:59:34.535Z"
+    },
+    {
+      "id": "86440964784343@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "João p.",
+      "firstSeen": "2026-09-04T16:14:00.383Z",
+      "lastActivity": "2026-09-08T17:45:16.070Z"
+    }
+  ],
+  "levelingConfigured": true
+}

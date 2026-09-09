@@ -1,0 +1,26 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-03T12:13:23.283Z",
+  "groupName": "𝐃𝐢𝐯𝐮𝐥𝐠𝐚𝐜̧𝐚̃𝐨 𝟐𝟒 𝐇𝐨𝐫𝐚𝐬",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "159399859454166@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Igor",
+      "firstSeen": "2026-09-03T12:13:23.303Z",
+      "lastActivity": "2026-09-04T17:38:34.370Z"
+    }
+  ]
+}

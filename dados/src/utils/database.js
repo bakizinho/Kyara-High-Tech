@@ -2353,12 +2353,77 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
     userData.level = typeof userData.level === 'number' && !isNaN(userData.level) ? Math.max(1, Math.floor(userData.level)) : 1;
     userData.xp = typeof userData.xp === 'number' && !isNaN(userData.xp) ? Math.max(0, Math.floor(userData.xp)) : 0;
 
-    const nextLevelXp = calculateNextLevelXp(userData.level);
+    let nextLevelXp = calculateNextLevelXp(userData.level);
 
-    if (userData.xp >= nextLevelXp) {
+    while (userData.xp >= nextLevelXp) {
       userData.level++;
       userData.xp -= nextLevelXp;
       userData.patent = getPatent(userData.level, levelingData.patents || DEFAULT_PATENTS);
+
+      /*
+       * ==================================================
+       * RECOMPENSA DE DINHEIRO DO RPG
+       * ==================================================
+       *
+       * Nível 2  = 100
+       * Nível 3  = 200
+       * Nível 4  = 400
+       * Nível 5  = 800
+       * ...
+       *
+       * A recompensa dobra a cada novo nível.
+       */
+
+      try {
+        const econ =
+          loadEconomy();
+
+        const ecoUser =
+          getEcoUser(
+            econ,
+            userId
+          );
+
+        const rewardLevel =
+          Math.max(
+            0,
+            Number(userData.level) - 2
+          );
+
+        const levelReward =
+          100 *
+          Math.pow(
+            2,
+            rewardLevel
+          );
+
+        ecoUser.wallet =
+          Math.max(
+            0,
+            Number(ecoUser.wallet) || 0
+          ) + levelReward;
+
+        saveEconomy(econ);
+
+        console.log(
+          `[LEVEL REWARD] ${userId} recebeu ${levelReward} moedas pelo nível ${userData.level}`
+        );
+
+        userData.lastLevelReward =
+          levelReward;
+
+      } catch (rewardError) {
+        /*
+         * A recompensa nunca pode quebrar
+         * o sistema de XP.
+         */
+        console.error(
+          '[LEVEL REWARD] Erro:',
+          rewardError.message
+        );
+
+        userData.lastLevelReward = 0;
+      }
 
       // Usa salvamento seguro
       saveLevelingSafe(levelingData);
@@ -2370,6 +2435,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
       levelUpText += `│ 📊 *Nível Atual:* ${userData.level}\n`;
       levelUpText += `│ ✨ *XP:* ${userData.xp}/${calculateNextLevelXp(userData.level)}\n`;
       levelUpText += `│ 🎖️ *Patente:* ${userData.patent}\n`;
+      levelUpText += `│ 💰 *Recompensa:* +${userData.lastLevelReward || 0} moedas\n`;
       levelUpText += `│\n`;
       levelUpText += `╰━━━━━━━━━━━━━━━━━━━━━━╯\n`;
       levelUpText += `\n🎊 *Parabéns pelo progresso!* 🎊`;
@@ -2490,6 +2556,15 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
           });
         }
       }
+
+      /*
+       * Recalcula o XP necessário para o próximo nível.
+       * Isso permite subir vários níveis numa única operação.
+       */
+      nextLevelXp =
+        calculateNextLevelXp(
+          userData.level
+        );
     }
   } catch (error) {
     console.error('❌ Erro em checkLevelUp:', error.message);

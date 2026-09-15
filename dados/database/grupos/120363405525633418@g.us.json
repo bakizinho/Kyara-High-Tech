@@ -1,0 +1,45 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-12T13:15:00.630Z",
+  "groupName": "Adms👨🏻‍💻",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "65292143169648@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "[ 珍妮 ]",
+      "firstSeen": "2026-09-12T13:15:00.649Z",
+      "lastActivity": "2026-09-12T13:17:29.264Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-12T13:16:59.693Z",
+      "lastActivity": "2026-09-12T13:18:02.338Z"
+    },
+    {
+      "id": "79164954693740@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Nina",
+      "firstSeen": "2026-09-12T13:17:12.896Z",
+      "lastActivity": "2026-09-12T13:17:12.901Z"
+    }
+  ]
+}

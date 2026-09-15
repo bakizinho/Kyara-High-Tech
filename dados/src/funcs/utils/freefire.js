@@ -6,7 +6,7 @@
 import axios from 'axios';
 
 const BASE_URL = 'https://hubsteam.com.br';
-const EXTERNAL_KEY = 'c95b81d2-8ebc-4af7-9ae8-8de9dd48fe6d';
+const EXTERNAL_KEY = process.env.FREEFIRE_API_KEY || '';
 
 /**
  * Enviar likes para um jogador de Free Fire

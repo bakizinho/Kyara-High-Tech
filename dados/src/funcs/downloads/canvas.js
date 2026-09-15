@@ -1,10 +1,4 @@
-import https from 'https';
-import fs from 'fs';
 import verificarAPI from '../API.js';
-
-const CONFIG_FILE = JSON.parse(
-    fs.readFileSync(new URL('../../config.json', import.meta.url), 'utf8')
-);
 
 const cache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
@@ -85,21 +79,27 @@ async function gerarbratvid(query, bg, text_color, bpm, blur) {
         const cached = getCached(cacheKey);
         if (cached) return { ok: true, ...cached, cached: true };
 
-        const { apikey_vex, site_vex } = CONFIG_FILE;
+        // =====================================================
+        // BRATVID LOCAL — NÃO DEPENDE DA VEX API
+        // =====================================================
 
+        const params = new URLSearchParams({
+            query,
+            bg: bg || 'white',
+            text_color: text_color || 'black',
+            bpm: bpm || '120',
+            blur: blur || '0'
+        });
 
-        let url = `${site_vex}/api/canvas/bratvideo?apikey=${apikey_vex}&query=${encodeURIComponent(query)}`;
-        if (bg) url += `&bg=${encodeURIComponent(bg)}`;
-        if (text_color) url += `&text_color=${encodeURIComponent(text_color)}`;
-        if (bpm) url += `&bpm=${encodeURIComponent(bpm)}`;
-        if (blur) url += `&blur=${encodeURIComponent(blur)}`;
+        const url =
+            `http://127.0.0.1:3000/api/canvas/bratvideo?${params.toString()}`;
 
         const result = {
-            criador: 'Tokyo',
+            criador: 'Kyara',
             type: 'video',
-            mime: 'image/webp',
+            mime: 'video/mp4',
             query,
-            url: url
+            url
         };
 
         setCache(cacheKey, result);
@@ -111,44 +111,52 @@ async function gerarbratvid(query, bg, text_color, bpm, blur) {
 }
 
 
-async function gerarwelcomecard(avatar, nome, texto, fundo, corMoldura, corLinhas, glow) {
-    const checkAPI = await verificarAPI();
-    if (checkAPI !== true) return { ok: false, msg: checkAPI };
-
+async function gerarwelcomecard(
+    avatar,
+    nome,
+    texto,
+    fundo,
+    corMoldura,
+    corLinhas,
+    glow
+) {
     try {
-
         if (!avatar || !nome) {
-            return { ok: false, msg: 'Avatar e Nome são obrigatórios para o Welcome Card' };
+            return {
+                ok: false,
+                msg: 'Avatar e Nome são obrigatórios para o Welcome Card'
+            };
         }
 
-        const { apikey_vex, site_vex } = CONFIG_FILE;
+        const params = new URLSearchParams({
+            avatar: String(avatar),
+            nome: String(nome),
+            texto: String(texto || ''),
+            fundo: String(fundo || ''),
+            corMoldura: String(corMoldura || ''),
+            corLinhas: String(corLinhas || ''),
+            glow: String(glow || 'false')
+        });
 
+        const url =
+            `http://127.0.0.1:3000/api/canvas/welcome2?${params.toString()}`;
 
-        let url = `${site_vex}/api/canvas/welcome2?apikey=${apikey_vex}` +
-            `&avatar=${encodeURIComponent(avatar)}` +
-            `&nome=${encodeURIComponent(nome)}` +
-            `&texto=${encodeURIComponent(texto || '')}` +
-            `&fundo=${encodeURIComponent(fundo || '')}` +
-            `&corMoldura=${encodeURIComponent(corMoldura || '')}` +
-            `&corLinhas=${encodeURIComponent(corLinhas || '')}` +
-            `&glow=${glow || 'false'}`;
-
-        const result = {
-            criador: 'Tokyo',
+        return {
+            ok: true,
+            criador: 'Kyara',
             type: 'image',
             mime: 'image/png',
             nome,
-            url: url
+            url
         };
 
-
-        return { ok: true, ...result };
-
     } catch (err) {
-        return { ok: false, msg: err.message };
+        return {
+            ok: false,
+            msg: err.message
+        };
     }
 }
-
 
 
 

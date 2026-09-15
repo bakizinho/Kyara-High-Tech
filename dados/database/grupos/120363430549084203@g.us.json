@@ -1,0 +1,27 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-12T21:25:35.782Z",
+  "groupName": "Patolino bambo",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "209757881253914@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Lucas",
+      "firstSeen": "2026-09-12T21:25:35.820Z",
+      "lastActivity": "2026-09-12T21:25:42.351Z"
+    }
+  ]
+}

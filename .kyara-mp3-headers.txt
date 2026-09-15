@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Content-Type: audio/mpeg
+Content-Length: 56449485
+Content-Disposition: attachment; filename="audio.mp3"
+Cache-Control: no-store
+Access-Control-Allow-Origin: *
+Date: Fri, 11 Sep 2026 19:53:17 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

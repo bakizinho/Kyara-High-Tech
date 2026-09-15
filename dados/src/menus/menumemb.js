@@ -80,8 +80,6 @@ ${bottomBorder}
 
 ${menuTopBorder}${separatorIcon} *${gamingMenuTitle}*
 ${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}likeff
-${middleBorder}${menuItemIcon}${prefix}infoff
 ${bottomBorder}
 `;
 }

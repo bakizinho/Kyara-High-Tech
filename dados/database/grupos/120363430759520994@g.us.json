@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:03:17.239Z",
+  "groupName": "Todo mundo loko🫢🤣😋🔥",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "82030184378484@lid",
+      "msg": 1,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "꧁༒☬WS CORINGA☬༒꧂",
+      "firstSeen": "2026-09-15T21:03:17.262Z",
+      "lastActivity": "2026-09-15T21:03:21.294Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 1,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T21:04:13.659Z",
+      "lastActivity": "2026-09-15T21:04:25.473Z"
+    }
+  ]
+}

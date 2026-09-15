@@ -1,0 +1,118 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:36:55.495Z",
+  "groupName": "THE PRIME",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "246617760395499@lid",
+      "msg": 28,
+      "cmd": 2,
+      "figu": 0,
+      "pushname": "Leandro",
+      "firstSeen": "2026-09-15T20:36:55.538Z",
+      "lastActivity": "2026-09-15T21:21:05.606Z"
+    },
+    {
+      "id": "52459468787850@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝒥𝒶𝓂𝒾𝓁𝓎_𝓎♡☆",
+      "firstSeen": "2026-09-15T20:37:01.617Z",
+      "lastActivity": "2026-09-15T20:37:01.617Z"
+    },
+    {
+      "id": "42937425649778@lid",
+      "msg": 11,
+      "cmd": 1,
+      "figu": 4,
+      "pushname": "Ultron",
+      "firstSeen": "2026-09-15T20:38:05.026Z",
+      "lastActivity": "2026-09-15T21:13:10.315Z"
+    },
+    {
+      "id": "26513571365034@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "愛 GB 愛",
+      "firstSeen": "2026-09-15T20:38:06.952Z",
+      "lastActivity": "2026-09-15T20:38:06.952Z"
+    },
+    {
+      "id": "265004213383203@lid",
+      "msg": 66,
+      "cmd": 1,
+      "figu": 5,
+      "pushname": "~V🇵🇹",
+      "firstSeen": "2026-09-15T20:39:06.519Z",
+      "lastActivity": "2026-09-15T21:21:01.171Z"
+    },
+    {
+      "id": "240630122987712@lid",
+      "msg": 22,
+      "cmd": 2,
+      "figu": 0,
+      "pushname": "Adrian",
+      "firstSeen": "2026-09-15T20:51:21.027Z",
+      "lastActivity": "2026-09-15T21:20:59.656Z"
+    },
+    {
+      "id": "262491925958897@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Elayne",
+      "firstSeen": "2026-09-15T20:51:54.552Z",
+      "lastActivity": "2026-09-15T20:53:23.260Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 55,
+      "cmd": 12,
+      "figu": 31,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T21:03:26.831Z",
+      "lastActivity": "2026-09-15T21:42:14.104Z"
+    },
+    {
+      "id": "79393074462801@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 8,
+      "pushname": "LZ CAMPOS🇵🇹🇧🇷",
+      "firstSeen": "2026-09-15T21:04:26.687Z",
+      "lastActivity": "2026-09-15T21:12:28.971Z"
+    },
+    {
+      "id": "139956576075801@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mr Michael Efremova",
+      "firstSeen": "2026-09-15T21:16:41.005Z",
+      "lastActivity": "2026-09-15T21:16:50.670Z"
+    },
+    {
+      "id": "207717654368316@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "KAGEYA",
+      "firstSeen": "2026-09-15T21:18:52.822Z",
+      "lastActivity": "2026-09-15T21:18:52.822Z"
+    }
+  ],
+  "modobrincadeira": true
+}

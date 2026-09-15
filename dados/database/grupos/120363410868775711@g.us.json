@@ -8,7 +8,7 @@
   "allowedModCommands": [],
   "mutedUsers": {},
   "mutedUsers2": {},
-  "levelingEnabled": false,
+  "levelingEnabled": true,
   "adminWhitelist": {},
   "roles": {},
   "roleMessages": {},
@@ -24,12 +24,12 @@
     },
     {
       "id": "4836821061781@lid",
-      "msg": 1,
+      "msg": 4,
       "cmd": 0,
-      "figu": 0,
+      "figu": 1,
       "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
       "firstSeen": "2026-09-03T16:09:41.186Z",
-      "lastActivity": "2026-09-03T16:09:41.192Z"
+      "lastActivity": "2026-09-10T21:35:36.994Z"
     },
     {
       "id": "28145558278209@lid",
@@ -41,5 +41,6 @@
       "lastActivity": "2026-09-03T16:12:00.500Z"
     }
   ],
-  "bemvindo": true
+  "bemvindo": true,
+  "levelingConfigured": true
 }

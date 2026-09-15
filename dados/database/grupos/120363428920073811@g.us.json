@@ -15,66 +15,66 @@
   "contador": [
     {
       "id": "187072417673333@lid",
-      "msg": 312,
-      "cmd": 8,
-      "figu": 65,
+      "msg": 2592,
+      "cmd": 88,
+      "figu": 846,
       "pushname": "Beatriz♡",
       "firstSeen": "2026-09-07T16:57:20.575Z",
-      "lastActivity": "2026-09-09T00:19:40.693Z"
+      "lastActivity": "2026-09-15T21:40:58.282Z"
     },
     {
       "id": "273821428899949@lid",
-      "msg": 243,
-      "cmd": 37,
-      "figu": 15,
+      "msg": 698,
+      "cmd": 124,
+      "figu": 73,
       "pushname": "Ryan Machado Pereira",
       "firstSeen": "2026-09-07T16:57:22.310Z",
-      "lastActivity": "2026-09-09T04:07:43.253Z"
+      "lastActivity": "2026-09-15T20:22:17.989Z"
     },
     {
       "id": "222638588874797@lid",
-      "msg": 246,
-      "cmd": 3,
-      "figu": 85,
+      "msg": 1281,
+      "cmd": 15,
+      "figu": 655,
       "pushname": "Osmário",
       "firstSeen": "2026-09-07T16:57:37.010Z",
-      "lastActivity": "2026-09-09T11:02:47.779Z"
+      "lastActivity": "2026-09-15T20:18:28.929Z"
     },
     {
       "id": "87244476010549@lid",
-      "msg": 15,
-      "cmd": 0,
-      "figu": 4,
+      "msg": 28,
+      "cmd": 4,
+      "figu": 8,
       "pushname": "BOT-KYARA",
       "firstSeen": "2026-09-07T16:58:09.052Z",
-      "lastActivity": "2026-09-08T23:01:42.575Z"
+      "lastActivity": "2026-09-15T03:21:03.184Z"
     },
     {
       "id": "28145558278209@lid",
-      "msg": 46,
-      "cmd": 14,
-      "figu": 24,
+      "msg": 115,
+      "cmd": 22,
+      "figu": 51,
       "pushname": "᳀",
       "firstSeen": "2026-09-07T17:01:08.153Z",
-      "lastActivity": "2026-09-08T22:37:11.587Z"
+      "lastActivity": "2026-09-15T21:39:02.943Z"
     },
     {
       "id": "21230593802469@lid",
-      "msg": 134,
-      "cmd": 0,
-      "figu": 16,
+      "msg": 608,
+      "cmd": 3,
+      "figu": 72,
       "pushname": "Daniel Bussinguer",
       "firstSeen": "2026-09-07T17:09:20.642Z",
-      "lastActivity": "2026-09-09T01:18:24.054Z"
+      "lastActivity": "2026-09-15T17:08:40.171Z"
     },
     {
       "id": "68256308195514@lid",
-      "msg": 301,
+      "msg": 1423,
       "cmd": 1,
-      "figu": 15,
+      "figu": 451,
       "pushname": "maki🖤",
       "firstSeen": "2026-09-07T17:41:32.871Z",
-      "lastActivity": "2026-09-09T10:59:34.738Z"
+      "lastActivity": "2026-09-15T20:24:08.149Z"
     },
     {
       "id": "136262686081025@lid",
@@ -96,32 +96,79 @@
     },
     {
       "id": "171442595479627@lid",
-      "msg": 49,
+      "msg": 199,
       "cmd": 0,
-      "figu": 25,
+      "figu": 37,
       "pushname": "Nathi",
       "firstSeen": "2026-09-07T21:50:30.151Z",
-      "lastActivity": "2026-09-08T22:16:49.951Z"
+      "lastActivity": "2026-09-13T12:28:26.840Z"
     },
     {
       "id": "200987390271608@lid",
-      "msg": 116,
-      "cmd": 0,
-      "figu": 40,
+      "msg": 1202,
+      "cmd": 4,
+      "figu": 444,
       "pushname": "Samuel Carvalho",
       "firstSeen": "2026-09-07T23:49:59.058Z",
-      "lastActivity": "2026-09-09T11:15:13.595Z"
+      "lastActivity": "2026-09-15T20:16:19.129Z"
     },
     {
       "id": "30434524180592@lid",
-      "msg": 114,
-      "cmd": 0,
-      "figu": 16,
+      "msg": 759,
+      "cmd": 64,
+      "figu": 171,
       "pushname": "Jorlanzinnn",
       "firstSeen": "2026-09-07T23:53:47.770Z",
-      "lastActivity": "2026-09-09T11:15:22.299Z"
+      "lastActivity": "2026-09-15T20:18:29.872Z"
+    },
+    {
+      "id": "109835349717040@lid",
+      "msg": 1412,
+      "cmd": 12,
+      "figu": 375,
+      "pushname": "Ingrid",
+      "firstSeen": "2026-09-09T15:13:35.954Z",
+      "lastActivity": "2026-09-15T14:38:45.145Z"
+    },
+    {
+      "id": "154056282607744@lid",
+      "msg": 1505,
+      "cmd": 117,
+      "figu": 494,
+      "pushname": "Logan",
+      "firstSeen": "2026-09-10T02:25:54.638Z",
+      "lastActivity": "2026-09-15T20:00:47.772Z"
+    },
+    {
+      "id": "198350833987748@lid",
+      "msg": 338,
+      "cmd": 0,
+      "figu": 210,
+      "pushname": "Gabriel",
+      "firstSeen": "2026-09-11T13:13:28.739Z",
+      "lastActivity": "2026-09-12T16:03:26.231Z"
+    },
+    {
+      "id": "251303468990632@lid",
+      "msg": 23,
+      "cmd": 2,
+      "figu": 3,
+      "pushname": "Eloar",
+      "firstSeen": "2026-09-14T15:26:59.833Z",
+      "lastActivity": "2026-09-15T17:18:15.059Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T21:39:21.367Z",
+      "lastActivity": "2026-09-15T21:39:21.367Z"
     }
   ],
   "levelingConfigured": true,
-  "modobrincadeira": true
+  "modobrincadeira": true,
+  "autodlMode": "video",
+  "autodl": true
 }

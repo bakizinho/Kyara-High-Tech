@@ -2,39 +2,33 @@ async function menuSticker(prefix, botName = "MeuBot", userName = "Usuário", {
     header = `╭┈⊰ 🌸 『 *${botName}* 』\n┊Olá, #user#!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
     menuTopBorder = "╭┈",
     bottomBorder = "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
-    menuTitleIcon = "🍧ฺꕸ▸",
     menuItemIcon = "•.̇𖥨֗💜⭟",
     separatorIcon = "❁",
-    middleBorder = "┊",
-    createStickerMenuTitle = "🎨 CRIAÇÃO DE FIGURINHAS",
-    managementMenuTitle = "⚙️ GERENCIAMENTO DE FIGURINHAS"
+    middleBorder = "┊"
 } = {}) {
-    const formattedHeader = header.replace(/#user#/g, userName);
-    return `${formattedHeader}
 
-${menuTopBorder}${separatorIcon} *${createStickerMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}emojimix
-${middleBorder}${menuItemIcon}${prefix}ttp
-${middleBorder}${menuItemIcon}${prefix}attp
-${middleBorder}${menuItemIcon}${prefix}sticker
-${middleBorder}${menuItemIcon}${prefix}sticker2
-${middleBorder}${menuItemIcon}${prefix}sbg
-${middleBorder}${menuItemIcon}${prefix}sfundo
-${middleBorder}${menuItemIcon}${prefix}qc
-${bottomBorder}
+    const formattedHeader =
+        header.replace(/#user#/g, userName);
 
-${menuTopBorder}${separatorIcon} *${managementMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}figualeatoria
-${middleBorder}${menuItemIcon}${prefix}figurinhas
-${middleBorder}${menuItemIcon}${prefix}rename
-${middleBorder}${menuItemIcon}${prefix}rgtake
-${middleBorder}${menuItemIcon}${prefix}take
-${middleBorder}${menuItemIcon}${prefix}toimg
-${middleBorder}${menuItemIcon}${prefix}brat
-${middleBorder}${menuItemIcon}${prefix}bratvid
-${bottomBorder}
-`;
+    return [
+        formattedHeader,
+        "",
+        menuTopBorder + separatorIcon + " *📦 PACOTE DE FIGURINHAS*",
+        middleBorder,
+        middleBorder + menuItemIcon + prefix + "pacote Goku",
+        middleBorder + menuItemIcon + prefix + "pacote Naruto",
+        middleBorder + menuItemIcon + prefix + "pacote gatos",
+        bottomBorder,
+        "",
+        menuTopBorder + separatorIcon + " *ℹ️ COMO FUNCIONA*",
+        middleBorder,
+        middleBorder + menuItemIcon + "40 figurinhas por pacote",
+        middleBorder + menuItemIcon + "Tema livre",
+        middleBorder + menuItemIcon + "Busca automática de imagens",
+        middleBorder + menuItemIcon + "Histórico evita repetições recentes",
+        middleBorder + menuItemIcon + "Em grupo: envio no privado",
+        bottomBorder
+    ].join("\n");
 }
+
 export default menuSticker;

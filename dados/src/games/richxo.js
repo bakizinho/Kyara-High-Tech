@@ -1,7 +1,7 @@
 /**
  * @author Dev Gui
  */
-import { PREFIX } from "../../../config.js";
+const PREFIX = globalThis.__KYARA_PREFIX__ || "/";
 import { ARCADE_BASE_CSS, createHtmlGameCommand } from "./_htmlGameCommand.js";
 
 export const RICH_XO_HTML = `<style>

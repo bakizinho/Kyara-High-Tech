@@ -8,7 +8,7 @@
   "allowedModCommands": [],
   "mutedUsers": {},
   "mutedUsers2": {},
-  "levelingEnabled": false,
+  "levelingEnabled": true,
   "adminWhitelist": {},
   "roles": {},
   "roleMessages": {},
@@ -21,6 +21,52 @@
       "pushname": "Igor",
       "firstSeen": "2026-09-03T12:13:23.303Z",
       "lastActivity": "2026-09-04T17:38:34.370Z"
+    },
+    {
+      "id": "252106778894409@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Fasul Ead",
+      "firstSeen": "2026-09-10T13:19:32.715Z",
+      "lastActivity": "2026-09-10T13:19:32.715Z"
+    },
+    {
+      "id": "57415374532683@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "G7",
+      "firstSeen": "2026-09-10T17:37:10.916Z",
+      "lastActivity": "2026-09-10T17:37:11.794Z"
+    },
+    {
+      "id": "72160483758271@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Teste",
+      "firstSeen": "2026-09-12T02:32:55.427Z",
+      "lastActivity": "2026-09-12T02:32:55.436Z"
+    },
+    {
+      "id": "70949286215712@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Dudaah Moraes ",
+      "firstSeen": "2026-09-12T10:12:59.772Z",
+      "lastActivity": "2026-09-12T10:12:59.777Z"
+    },
+    {
+      "id": "208924926017590@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "SHIELD CORE™",
+      "firstSeen": "2026-09-13T00:50:57.449Z",
+      "lastActivity": "2026-09-13T00:50:58.223Z"
     }
-  ]
+  ],
+  "levelingConfigured": true
 }

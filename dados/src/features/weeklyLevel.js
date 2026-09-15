@@ -432,7 +432,8 @@ export function finalizeWeeklyVIP(
 export function listIdeas({
   file = path.join(DATABASE_DIR, 'dono', 'caixa-ideias.json'),
   status = null,
-  limit = 30
+  limit = 30,
+  sort = 'recent'
 } = {}) {
   try {
     fs.mkdirSync(
@@ -444,22 +445,16 @@ export function listIdeas({
       return [];
     }
 
-    const raw =
-      fs.readFileSync(
-        file,
-        'utf8'
+    let data;
+
+    try {
+      data = JSON.parse(
+        fs.readFileSync(file, 'utf8')
       );
+    } catch {
+      return [];
+    }
 
-    const data =
-      JSON.parse(raw);
-
-    /*
-     * Compatibilidade com os dois formatos
-     * que foram usados durante a integração:
-     *
-     * { items: [] }
-     * { ideas: [] }
-     */
     let ideas = [];
 
     if (Array.isArray(data?.ideas)) {
@@ -468,35 +463,113 @@ export function listIdeas({
       ideas = data.items;
     }
 
+    /*
+     * Migração/normalização:
+     *
+     * Algumas versões antigas usavam:
+     * idea
+     *
+     * Outras partes do bot esperavam:
+     * text
+     *
+     * Agora os dois ficam disponíveis.
+     */
+    ideas = ideas.map(item => {
+      const normalized = {
+        ...item
+      };
+
+      if (
+        !normalized.text &&
+        normalized.idea
+      ) {
+        normalized.text =
+          String(normalized.idea);
+      }
+
+      if (
+        !normalized.idea &&
+        normalized.text
+      ) {
+        normalized.idea =
+          String(normalized.text);
+      }
+
+      if (
+        !normalized.votes ||
+        typeof normalized.votes !== 'object' ||
+        Array.isArray(normalized.votes)
+      ) {
+        normalized.votes = {
+          up: [],
+          down: []
+        };
+      }
+
+      normalized.votes.up =
+        Array.isArray(normalized.votes.up)
+          ? normalized.votes.up
+          : [];
+
+      normalized.votes.down =
+        Array.isArray(normalized.votes.down)
+          ? normalized.votes.down
+          : [];
+
+      normalized.score =
+        normalized.votes.up.length -
+        normalized.votes.down.length;
+
+      normalized.status =
+        normalized.status ||
+        'pendente';
+
+      return normalized;
+    });
+
     if (status) {
       ideas =
         ideas.filter(
           item =>
-            item?.status === status
+            String(item?.status || '')
+              .toLowerCase() ===
+            String(status)
+              .toLowerCase()
         );
     }
 
-    return ideas
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(
-            b?.createdAt || 0
-          ).getTime() -
-          new Date(
-            a?.createdAt || 0
-          ).getTime()
-      )
-      .slice(
-        0,
-        Math.max(
-          1,
-          Number(limit) || 30
-        )
+    ideas.sort((a, b) => {
+      if (sort === 'votes') {
+        const scoreA =
+          Number(a?.score) || 0;
+
+        const scoreB =
+          Number(b?.score) || 0;
+
+        if (scoreB !== scoreA) {
+          return scoreB - scoreA;
+        }
+      }
+
+      return (
+        new Date(
+          b?.createdAt || 0
+        ).getTime() -
+        new Date(
+          a?.createdAt || 0
+        ).getTime()
       );
+    });
+
+    return ideas.slice(
+      0,
+      Math.max(
+        1,
+        Number(limit) || 30
+      )
+    );
 
   } catch (error) {
-
     console.error(
       '[IDEIAS] Erro ao listar ideias:',
       error.message
@@ -517,35 +590,72 @@ export function submitIdea({
   userId = '',
   name = '',
   idea = '',
-  file = path.join(DATABASE_DIR, 'dono', 'caixa-ideias.json')
+  file = path.join(
+    DATABASE_DIR,
+    'dono',
+    'caixa-ideias.json'
+  )
 } = {}) {
   try {
-    if (!userId || !String(idea).trim()) {
+    const text =
+      String(idea || '').trim();
+
+    if (
+      !userId ||
+      !text
+    ) {
       return {
         success: false,
-        error: 'Usuário ou ideia não informado.'
+        error:
+          'Usuário ou ideia não informado.'
       };
     }
 
-    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.mkdirSync(
+      path.dirname(file),
+      {
+        recursive: true
+      }
+    );
 
     let box = {};
 
     if (fs.existsSync(file)) {
       try {
-        box = JSON.parse(fs.readFileSync(file, 'utf8'));
+        box =
+          JSON.parse(
+            fs.readFileSync(
+              file,
+              'utf8'
+            )
+          );
       } catch {
         box = {};
       }
     }
 
     /*
-     * O formato oficial usado pelo bot é:
-     * { items: [] }
+     * O formato principal continua sendo:
+     *
+     * {
+     *   items: []
+     * }
+     *
+     * Se uma versão antiga possuir "ideas",
+     * fazemos a migração sem apagar dados.
      */
-    box.items = Array.isArray(box.items)
-      ? box.items
-      : [];
+    if (
+      !Array.isArray(box.items)
+    ) {
+      if (
+        Array.isArray(box.ideas)
+      ) {
+        box.items =
+          box.ideas;
+      } else {
+        box.items = [];
+      }
+    }
 
     const nextId =
       box.items.reduce(
@@ -559,18 +669,52 @@ export function submitIdea({
 
     const item = {
       id: nextId,
-      user: userId,
-      name: name || '',
-      idea: String(idea).trim(),
-      createdAt: new Date().toISOString(),
-      status: 'pendente'
+
+      user:
+        String(userId),
+
+      name:
+        String(name || ''),
+
+      text,
+
+      /*
+       * Compatibilidade com código antigo.
+       */
+      idea: text,
+
+      createdAt:
+        new Date().toISOString(),
+
+      status:
+        'pendente',
+
+      votes: {
+        up: [],
+        down: []
+      },
+
+      score: 0
     };
 
     box.items.push(item);
 
+    /*
+     * Mantém "ideas" sincronizado se
+     * o arquivo antigo já usava esse campo.
+     */
+    if (Array.isArray(box.ideas)) {
+      box.ideas =
+        box.items;
+    }
+
     fs.writeFileSync(
       file,
-      JSON.stringify(box, null, 2),
+      JSON.stringify(
+        box,
+        null,
+        2
+      ),
       'utf8'
     );
 
@@ -583,6 +727,277 @@ export function submitIdea({
   } catch (error) {
     console.error(
       '[IDEIAS] Erro ao salvar ideia:',
+      error.message
+    );
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/*
+ * ======================================================
+ * VOTAÇÃO DAS IDEIAS
+ * ======================================================
+ */
+
+export function getIdea({
+  id,
+  file = path.join(
+    DATABASE_DIR,
+    'dono',
+    'caixa-ideias.json'
+  )
+} = {}) {
+  try {
+    const numericId =
+      Number(id);
+
+    if (
+      !Number.isInteger(numericId) ||
+      numericId <= 0
+    ) {
+      return null;
+    }
+
+    const ideas =
+      listIdeas({
+        file,
+        limit: 100000,
+        sort: 'recent'
+      });
+
+    return (
+      ideas.find(
+        item =>
+          Number(item?.id) ===
+          numericId
+      ) || null
+    );
+
+  } catch (error) {
+    console.error(
+      '[IDEIAS] Erro ao buscar ideia:',
+      error.message
+    );
+
+    return null;
+  }
+}
+
+export function voteIdea({
+  id,
+  userId,
+  type = 'up',
+  file = path.join(
+    DATABASE_DIR,
+    'dono',
+    'caixa-ideias.json'
+  )
+} = {}) {
+  try {
+    const numericId =
+      Number(id);
+
+    if (
+      !Number.isInteger(numericId) ||
+      numericId <= 0
+    ) {
+      return {
+        success: false,
+        error: 'ID da ideia inválido.'
+      };
+    }
+
+    if (!userId) {
+      return {
+        success: false,
+        error: 'Usuário não identificado.'
+      };
+    }
+
+    const voteType =
+      String(type)
+        .toLowerCase() === 'down'
+        ? 'down'
+        : 'up';
+
+    if (
+      !fs.existsSync(file)
+    ) {
+      return {
+        success: false,
+        error:
+          'A caixa de ideias ainda não existe.'
+      };
+    }
+
+    let box;
+
+    try {
+      box =
+        JSON.parse(
+          fs.readFileSync(
+            file,
+            'utf8'
+          )
+        );
+    } catch {
+      return {
+        success: false,
+        error:
+          'Não foi possível ler a caixa de ideias.'
+      };
+    }
+
+    if (
+      !Array.isArray(box.items)
+    ) {
+      if (
+        Array.isArray(box.ideas)
+      ) {
+        box.items =
+          box.ideas;
+      } else {
+        box.items = [];
+      }
+    }
+
+    const item =
+      box.items.find(
+        idea =>
+          Number(idea?.id) ===
+          numericId
+      );
+
+    if (!item) {
+      return {
+        success: false,
+        error:
+          `A ideia #${numericId} não existe.`
+      };
+    }
+
+    if (
+      !item.votes ||
+      typeof item.votes !== 'object' ||
+      Array.isArray(item.votes)
+    ) {
+      item.votes = {
+        up: [],
+        down: []
+      };
+    }
+
+    item.votes.up =
+      Array.isArray(item.votes.up)
+        ? item.votes.up
+        : [];
+
+    item.votes.down =
+      Array.isArray(item.votes.down)
+        ? item.votes.down
+        : [];
+
+    const uid =
+      String(userId);
+
+    const wasUp =
+      item.votes.up.includes(uid);
+
+    const wasDown =
+      item.votes.down.includes(uid);
+
+    /*
+     * Voto repetido no mesmo sentido:
+     * remove o voto.
+     *
+     * Assim:
+     * /votarideia 5
+     * novamente
+     * desfaz o voto.
+     */
+    if (
+      voteType === 'up'
+    ) {
+      if (wasUp) {
+        item.votes.up =
+          item.votes.up.filter(
+            id => id !== uid
+          );
+      } else {
+        item.votes.up =
+          item.votes.up.filter(
+            id => id !== uid
+          );
+
+        item.votes.down =
+          item.votes.down.filter(
+            id => id !== uid
+          );
+
+        item.votes.up.push(uid);
+      }
+    } else {
+      if (wasDown) {
+        item.votes.down =
+          item.votes.down.filter(
+            id => id !== uid
+          );
+      } else {
+        item.votes.up =
+          item.votes.up.filter(
+            id => id !== uid
+          );
+
+        item.votes.down =
+          item.votes.down.filter(
+            id => id !== uid
+          );
+
+        item.votes.down.push(uid);
+      }
+    }
+
+    item.score =
+      item.votes.up.length -
+      item.votes.down.length;
+
+    item.text =
+      item.text ||
+      item.idea ||
+      '';
+
+    item.idea =
+      item.idea ||
+      item.text;
+
+    fs.writeFileSync(
+      file,
+      JSON.stringify(
+        box,
+        null,
+        2
+      ),
+      'utf8'
+    );
+
+    return {
+      success: true,
+      item,
+      type: voteType,
+      score: item.score,
+      removed:
+        voteType === 'up'
+          ? wasUp
+          : wasDown
+    };
+
+  } catch (error) {
+    console.error(
+      '[IDEIAS] Erro ao votar:',
       error.message
     );
 

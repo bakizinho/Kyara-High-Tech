@@ -1,6 +1,61 @@
 {
   "nextId": 1,
-  "ideas": [],
+  "ideas": [
+    {
+      "id": 1,
+      "user": "34566635036894@lid",
+      "name": "☠Tile☠",
+      "idea": "<up livel",
+      "createdAt": "2026-09-08T00:22:23.520Z",
+      "status": "pendente"
+    },
+    {
+      "id": 2,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "jogo ppp usando um o canal para a votação",
+      "createdAt": "2026-09-08T01:10:02.497Z",
+      "status": "pendente"
+    },
+    {
+      "id": 3,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "slr",
+      "createdAt": "2026-09-08T01:16:53.605Z",
+      "status": "pendente"
+    },
+    {
+      "id": 4,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "slr",
+      "createdAt": "2026-09-08T01:16:58.259Z",
+      "status": "pendente"
+    },
+    {
+      "id": 5,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "idea": "testar",
+      "createdAt": "2026-09-08T23:39:28.454Z",
+      "status": "pendente"
+    },
+    {
+      "id": 6,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "text": "criar sistema de votação para o grupo\n ↓\n💡 IDEIA #1 registrada\n\n/caixadeideias\n ↓\nlista das ideias\n\n/verideia 1\n ↓\ndetalhes da ideia\n\n/votarideia 1\n ↓\n👍 +1\n\n/votarideia 1 contra\n ↓\n👎 +1\n\n/melhoresideias\n ↓\n🏆 ranking das melhores ideias",
+      "idea": "criar sistema de votação para o grupo\n ↓\n💡 IDEIA #1 registrada\n\n/caixadeideias\n ↓\nlista das ideias\n\n/verideia 1\n ↓\ndetalhes da ideia\n\n/votarideia 1\n ↓\n👍 +1\n\n/votarideia 1 contra\n ↓\n👎 +1\n\n/melhoresideias\n ↓\n🏆 ranking das melhores ideias",
+      "createdAt": "2026-09-10T22:59:29.053Z",
+      "status": "pendente",
+      "votes": {
+        "up": [],
+        "down": []
+      },
+      "score": 0
+    }
+  ],
   "items": [
     {
       "id": 1,
@@ -41,6 +96,20 @@
       "idea": "testar",
       "createdAt": "2026-09-08T23:39:28.454Z",
       "status": "pendente"
+    },
+    {
+      "id": 6,
+      "user": "28145558278209@lid",
+      "name": "᳀",
+      "text": "criar sistema de votação para o grupo\n ↓\n💡 IDEIA #1 registrada\n\n/caixadeideias\n ↓\nlista das ideias\n\n/verideia 1\n ↓\ndetalhes da ideia\n\n/votarideia 1\n ↓\n👍 +1\n\n/votarideia 1 contra\n ↓\n👎 +1\n\n/melhoresideias\n ↓\n🏆 ranking das melhores ideias",
+      "idea": "criar sistema de votação para o grupo\n ↓\n💡 IDEIA #1 registrada\n\n/caixadeideias\n ↓\nlista das ideias\n\n/verideia 1\n ↓\ndetalhes da ideia\n\n/votarideia 1\n ↓\n👍 +1\n\n/votarideia 1 contra\n ↓\n👎 +1\n\n/melhoresideias\n ↓\n🏆 ranking das melhores ideias",
+      "createdAt": "2026-09-10T22:59:29.053Z",
+      "status": "pendente",
+      "votes": {
+        "up": [],
+        "down": []
+      },
+      "score": 0
     }
   ]
 }

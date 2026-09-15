@@ -1,3 +1,6 @@
+import {
+    waitForActiveSocket
+} from './utils/activeSocket.js';
 import { gerarAudioLer } from './funcs/tts/ler.js';
 import {
   addWeeklyXP,
@@ -16,6 +19,8 @@ import { handleKyaraSpecialCommand } from './features/kyaraSpecialCommands.js';
 import { isLevelingDisabled } from './features/levelingControl.js';
 import { log, boot, core, wa, data, cmd, msg, bot, sync, info, ok, warn, error, command as logCommand, message as logMessage, status, check, header, footer, online } from './utils/logger.js';
 import fs from 'fs';
+import { handleFigban } from './features/figbanSystem.js';
+
 import path from 'path';
 import { kyaraCore } from './core/kyara.js';
 import { getMenuMode, isInteractiveMenu, isNormalMenu } from './menus/menu-mode.js';
@@ -91,6 +96,103 @@ function patchBaileysNewsletterFollow() {
   } catch (error) {
     console.error('[PATCH] Erro ao corrigir newsletterFollow:', error.message);
     return false;
+  }
+}
+
+
+async function kyaraPrepararGif(videoUrl) {
+  const fsLocal = await import('fs');
+  const pathLocal = await import('path');
+  const osLocal = await import('os');
+  const childLocal = await import('child_process');
+  const utilLocal = await import('util');
+
+  const execFileLocal = utilLocal.promisify(childLocal.execFile);
+
+  if (!videoUrl) {
+    throw new Error('URL do GIF não encontrada');
+  }
+
+  const tempDir = fsLocal.mkdtempSync(
+    pathLocal.join(osLocal.tmpdir(), 'kyara-gif-')
+  );
+
+  const inputFile = pathLocal.join(tempDir, 'entrada.mp4');
+  const outputFile = pathLocal.join(tempDir, 'saida.mp4');
+
+  try {
+    const response = await fetch(videoUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        'Falha ao baixar GIF: HTTP ' + response.status
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+
+    fsLocal.writeFileSync(
+      inputFile,
+      Buffer.from(arrayBuffer)
+    );
+
+    await execFileLocal('ffmpeg', [
+      '-hide_banner',
+      '-loglevel', 'error',
+      '-y',
+      '-i', inputFile,
+
+      // Remove qualquer áudio.
+      '-an',
+
+      // Codec amplamente compatível com WhatsApp.
+      '-c:v', 'libx264',
+      '-profile:v', 'baseline',
+      '-level', '3.0',
+
+      // Formato de pixel compatível.
+      '-pix_fmt', 'yuv420p',
+
+      // Mantém animação suave sem exagerar no tamanho.
+      '-vf',
+      'fps=15,scale=trunc(iw/2)*2:trunc(ih/2)*2',
+
+      // Otimiza o MP4 para reprodução.
+      '-movflags', '+faststart',
+
+      outputFile
+    ], {
+      timeout: 120000
+    });
+
+    if (!fsLocal.existsSync(outputFile)) {
+      throw new Error(
+        'FFmpeg não gerou o arquivo final'
+      );
+    }
+
+    const finalBuffer =
+      fsLocal.readFileSync(outputFile);
+
+    if (!finalBuffer.length) {
+      throw new Error(
+        'Arquivo GIF convertido está vazio'
+      );
+    }
+
+    return finalBuffer;
+
+  } finally {
+    try {
+      fsLocal.rmSync(tempDir, {
+        recursive: true,
+        force: true
+      });
+    } catch {}
   }
 }
 
@@ -349,6 +451,190 @@ async function enviarResultadoPlayKyara({
 // ================================================================
 // FIM — PLAY KYARA
 // ================================================================
+
+
+// ==================== CONTROLE ASSISTENTE KYARA ====================
+
+async function enviarControleAssistenteKyara(
+  nazu,
+  jid,
+  quoted,
+  prefix = '/',
+  ativo = false,
+  personalidade = 'kyara'
+) {
+  try {
+    const status = ativo ? '🟢 LIGADA' : '🔴 DESLIGADA';
+
+    const personalidadeNome = {
+      kyara: '🌙 Kyara',
+      humana: '👤 Humana',
+      ia: '🤖 IA Normal',
+      pro: '⚡ Pro'
+    }[personalidade] || `🎭 ${personalidade}`;
+
+    const buttons = ativo
+      ? [
+          {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+              display_text: '🔴 Desligar IA',
+              id: `${prefix}assistente desligar`
+            })
+          },
+          {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+              display_text: '🎭 Personalidade',
+              id: `${prefix}assistente kyara`
+            })
+          }
+        ]
+      : [
+          {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+              display_text: '🟢 Ligar IA',
+              id: `${prefix}assistente ligar`
+            })
+          },
+          {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+              display_text: '🌙 Ligar Kyara',
+              id: `${prefix}assistente kyara`
+            })
+          }
+        ];
+
+    const caption =
+      `🤖 *ASSISTENTE KYARA*\n\n` +
+      `📡 *Status:* ${status}\n` +
+      `🎭 *Personalidade:* ${personalidadeNome}\n\n` +
+      (
+        ativo
+          ? `🧠 A assistente está pronta para conversar.\n` +
+            `💬 Marque a Kyara ou chame pelo nome para ela responder.`
+          : `💤 A assistente está desligada neste grupo.\n` +
+            `Toque em *Ligar IA* para ativá-la.`
+      );
+
+    const msg = generateWAMessageFromContent(
+      jid,
+      {
+        viewOnceMessage: {
+          message: {
+            messageContextInfo: {
+              deviceListMetadata: {},
+              deviceListMetadataVersion: 2
+            },
+
+            interactiveMessage: {
+              body: {
+                text: caption
+              },
+
+              footer: {
+                text: '🌸 Kyara • Assistente Inteligente'
+              },
+
+              nativeFlowMessage: {
+                buttons,
+                messageParamsJson: '{}',
+                messageVersion: 1
+              }
+            }
+          }
+        }
+      },
+      {
+        quoted,
+        userJid: nazu?.user?.id
+      }
+    );
+
+    const bizNode = {
+      tag: 'biz',
+
+      attrs: {
+        actual_actors: '2',
+        host_storage: '2',
+        privacy_mode_ts: String(
+          Math.floor(Date.now() / 1000) - 77980457
+        )
+      },
+
+      content: [
+        {
+          tag: 'interactive',
+
+          attrs: {
+            type: 'native_flow',
+            v: '1'
+          },
+
+          content: [
+            {
+              tag: 'native_flow',
+
+              attrs: {
+                v: '9',
+                name: 'mixed'
+              }
+            }
+          ]
+        },
+
+        {
+          tag: 'quality_control',
+
+          attrs: {
+            source_type: 'third_party'
+          }
+        }
+      ]
+    };
+
+    const additionalNodes = jid.endsWith('@g.us')
+      ? [bizNode]
+      : [
+          {
+            tag: 'bot',
+            attrs: {
+              biz_bot: '1'
+            }
+          },
+          bizNode
+        ];
+
+    await nazu.relayMessage(
+      jid,
+      msg.message,
+      {
+        messageId: msg.key.id,
+        additionalNodes
+      }
+    );
+
+    console.log(
+      `[ASSISTENTE] Painel enviado | status=${ativo ? 'ON' : 'OFF'}`
+    );
+
+    return true;
+
+  } catch (err) {
+    console.error(
+      '[ASSISTENTE] Erro ao enviar painel:',
+      err.message
+    );
+
+    return false;
+  }
+}
+
+// ============================================================
+// FIM — CONTROLE ASSISTENTE KYARA
+// ============================================================
 
 // ==================== BOTÕES CLICÁVEIS KYARA ====================
 async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null, pushname = '') {
@@ -833,6 +1119,16 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = pathz.dirname(__filename);
+import {
+  buildMaintenanceMenu,
+  buildMaintenanceList,
+  buildCaseSearch,
+  addMaintenanceCommand,
+  removeMaintenanceCommand,
+  clearMaintenanceCommands,
+  getMaintenanceCommands
+} from './features/commandMaintenance.js';
+
 const OWNER_ONLY_MESSAGE = '🚫 Este comando é apenas para o dono do bot!';
 
 // Função para formatar respostas de IA para WhatsApp (converte ** para *)
@@ -2760,10 +3056,45 @@ const body = getMessageText(info.message) || info?.text || '';
       return removed;
     };
     const groupPrefix = groupData.customPrefix || prefixo;
-    var isCmd = body.trim().startsWith(groupPrefix);
 
-    // Suporte para "! comando" (com espaço após o prefixo)
-    const bodyWithoutPrefix = body.trim().slice(groupPrefix.length).trimStart();
+// Prefixo atual da conversa/grupo para os módulos locais.
+// Atualizado a cada mensagem para acompanhar alterações de prefixo.
+globalThis.__KYARA_PREFIX__ = groupPrefix;
+    const kyaraInteractiveIds = new Set([
+  'menudown',
+  'menulogos',
+  'menuedits',
+  'menuadm',
+  'menubn',
+  'menudono',
+  'menumemb',
+  'ferramentas',
+  'menufig',
+  'alteradores',
+  'menurpg',
+  'menuvip'
+]);
+
+const rawBody = body.trim();
+
+const hasPrefix =
+  rawBody.startsWith(groupPrefix);
+
+const interactiveId =
+  normalizar(rawBody)
+    .replace(/\\s+/g, '');
+
+const isKyaraInteractive =
+  kyaraInteractiveIds.has(interactiveId);
+
+var isCmd =
+  hasPrefix ||
+  isKyaraInteractive;
+
+const bodyWithoutPrefix =
+  hasPrefix
+    ? rawBody.slice(groupPrefix.length).trimStart()
+    : rawBody;
 
     const aliases = loadCommandAliases();
     const matchedAlias = aliases.find(item => normalizar(bodyWithoutPrefix.split(/ +/).shift().trim()) === item.alias);
@@ -2787,7 +3118,235 @@ const body = getMessageText(info.message) || info?.text || '';
       q = newArgs.join(' ');
     }
 
-    const isPremium = premiumListaZinha[sender] || premiumListaZinha[from] || isOwner;
+
+      
+/*
+ * ============================================================
+ * 🌸 KYARA TUBE — DISPATCH ROBUSTO
+ * ============================================================
+ *
+ * Objetivos:
+ * - garantir resposta visual mesmo se Native Flow não renderizar;
+ * - reaproveitar o servidor KYARA TUBE existente;
+ * - descobrir IP local quando possível;
+ * - manter KYARA_TUBE_URL configurável;
+ * - não criar servidor duplicado.
+ */
+
+if (
+  isCmd &&
+  [
+    'kytube',
+    'kyaratube',
+    'kytubeweb',
+    'ytube'
+  ].includes(
+    String(command || '')
+      .trim()
+      .toLowerCase()
+  )
+) {
+  const pesquisaTube = String(q || '').trim();
+
+  const configuradaTube = String(
+    process.env.KYARA_TUBE_URL || ''
+  ).trim().replace(/\/+$/, '');
+
+  const portaTube = String(
+    process.env.KYARA_API_PORT ||
+    process.env.PORT ||
+    '3000'
+  ).trim();
+
+  /*
+   * Se o usuário configurou explicitamente a URL,
+   * ela sempre tem prioridade.
+   */
+  let tubeUrl = configuradaTube;
+
+  /*
+   * Sem URL configurada, usamos localhost.
+   * O servidor já deve estar escutando em 0.0.0.0.
+   */
+  if (!tubeUrl) {
+    tubeUrl = `http://127.0.0.1:${portaTube}/kyara-tube`;
+  }
+
+  /*
+   * Evita gerar links quebrados.
+   */
+  if (!/^https?:\/\//i.test(tubeUrl)) {
+    await reply(
+      '❌ *KYARA TUBE*\n\n' +
+      'A URL configurada é inválida.\n\n' +
+      'Configure `KYARA_TUBE_URL` com uma URL http:// ou https://.'
+    );
+
+    return;
+  }
+
+  /*
+   * Adiciona a pesquisa ao endereço.
+   */
+  let urlPesquisaTube = tubeUrl;
+
+  if (pesquisaTube) {
+    urlPesquisaTube +=
+      (urlPesquisaTube.includes('?') ? '&' : '?') +
+      'q=' +
+      encodeURIComponent(pesquisaTube);
+  }
+
+  const textoTube = pesquisaTube
+    ? (
+      '🌸 *KYARA TUBE*\n\n' +
+      `🔎 Pesquisa: *${pesquisaTube}*\n\n` +
+      'Seu centro de vídeos da Kyara está pronto.\n\n' +
+      '▶️ Abra o KYARA TUBE para ver os resultados.'
+    )
+    : (
+      '🌸 *KYARA TUBE*\n\n' +
+      'Seu centro de vídeos da Kyara está pronto.\n\n' +
+      '🔎 Pesquise vídeos\n' +
+      '▶️ Assista online\n' +
+      '📺 Explore o conteúdo'
+    );
+
+  console.log(
+    '[KYARA TUBE] 🚀 DISPATCH ROBUSTO'
+  );
+
+  console.log(
+    '[KYARA TUBE] comando:',
+    command
+  );
+
+  console.log(
+    '[KYARA TUBE] pesquisa:',
+    pesquisaTube || '(vazia)'
+  );
+
+  console.log(
+    '[KYARA TUBE] URL:',
+    urlPesquisaTube
+  );
+
+  /*
+   * ==========================================================
+   * 1. PRIMEIRO: MENSAGEM NORMAL
+   * ==========================================================
+   *
+   * Isso garante que o usuário veja alguma resposta mesmo
+   * quando o cliente WhatsApp não renderiza Native Flow.
+   */
+  try {
+    await reply(
+      textoTube +
+      '\n\n🔗 *Abrir KYARA TUBE:*\n' +
+      urlPesquisaTube
+    );
+
+    console.log(
+      '[KYARA TUBE] ✅ Mensagem normal enviada.'
+    );
+  } catch (textoError) {
+    console.error(
+      '[KYARA TUBE] ❌ Falha na mensagem normal:',
+      textoError?.stack ||
+      textoError?.message ||
+      textoError
+    );
+  }
+
+  /*
+   * ==========================================================
+   * 2. DEPOIS: NATIVE FLOW
+   * ==========================================================
+   *
+   * É complementar. Se o cliente não renderizar, a mensagem
+   * normal acima continua disponível.
+   */
+  try {
+    const msg =
+      generateWAMessageFromContent(
+        from,
+        {
+          viewOnceMessage: {
+            message: {
+              interactiveMessage: {
+                body: {
+                  text: textoTube
+                },
+
+                footer: {
+                  text: 'KYARA • KYARA TUBE'
+                },
+
+                nativeFlowMessage: {
+                  buttons: [
+                    {
+                      name: 'cta_url',
+
+                      buttonParamsJson:
+                        JSON.stringify({
+                          display_text:
+                            '🚀 ABRIR KYARA TUBE',
+
+                          url: urlPesquisaTube
+                        })
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          quoted: info
+        }
+      );
+
+    await Promise.race([
+      nazu.relayMessage(
+        from,
+        msg.message,
+        {
+          messageId: msg.key.id
+        }
+      ),
+
+      new Promise((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                'Timeout ao enviar Native Flow.'
+              )
+            ),
+          8000
+        );
+      })
+    ]);
+
+    console.log(
+      '[KYARA TUBE] ✅ Native Flow transmitido.'
+    );
+
+  } catch (flowError) {
+
+    console.error(
+      '[KYARA TUBE] ⚠️ Native Flow não renderizado/transmitido:',
+      flowError?.stack ||
+      flowError?.message ||
+      flowError
+    );
+  }
+
+  return;
+}
+
+
+            const isPremium = premiumListaZinha[sender] || premiumListaZinha[from] || isOwner;
 
     // Verificação de captcha para solicitações de entrada em grupos (DEVE vir ANTES de antipv)
     // Otimizado: usa índice de captcha em vez de varrer todos os arquivos
@@ -4855,6 +5414,31 @@ Código: *${roleCode}*`,
       }
     }
 
+
+    // ==================== FIGBAN ====================
+    try {
+      const figbanHandled = await handleFigban({
+        nazu,
+        info,
+        from,
+        isGroup,
+        isOwner,
+        isGroupAdmin,
+        sender,
+        botNumberLid,
+        botId,
+        groupAdmins,
+        command,
+        args,
+        reply
+      });
+
+      if (figbanHandled) return;
+    } catch (figbanError) {
+      console.error('[FIGBAN] Falha protegida:', figbanError?.stack || figbanError);
+    }
+    // ================== FIM FIGBAN ==================
+
     let quotedMessageContent = null;
     if (type === 'extendedTextMessage' && info.message?.extendedTextMessage?.contextInfo?.quotedMessage) {
       quotedMessageContent = info.message.extendedTextMessage.contextInfo.quotedMessage;
@@ -5674,10 +6258,126 @@ Código: *${roleCode}*`,
 
 
 
-    const _botShort = (nazu && nazu.user && (nazu.user.id || nazu.user.lid)) ? String((nazu.user.id || nazu.user.lid).split(':')[0]) : '';
-    // Não processar pela assistente se a mensagem veio do PRO (evita loop infinito)
-    if (!info.key.fromMe && isAssistente && !isCmd && !info._fromPro && ((_botShort && budy2.includes(_botShort)) || (menc_os2 && menc_os2 == botNumber))) {
-      if (budy2.replaceAll('@' + _botShort, '').length > 2) {
+    // ========================================================
+    // KYARA IA — GATILHO DE CONVERSA
+    // ========================================================
+    // A IA responde somente quando:
+    //   • /assistente está ligada no grupo
+    //   • não é mensagem do próprio bot
+    //   • não é comando
+    //   • não veio do sistema PRO
+    //   • houve menção ao bot OU chamada pelo nome "Kyara"
+    // ========================================================
+
+    const _botShort =
+      (nazu && nazu.user && (nazu.user.id || nazu.user.lid))
+        ? String((nazu.user.id || nazu.user.lid).split(':')[0])
+        : '';
+
+    const botLid =
+      nazu?.user?.lid
+        ? String(nazu.user.lid).split(':')[0]
+        : '';
+
+    const botJid =
+      nazu?.user?.id
+        ? String(nazu.user.id).split(':')[0]
+        : '';
+
+    const botIdentifiers = [
+      _botShort,
+      botLid,
+      botJid,
+      botNumber
+    ].filter(Boolean);
+
+    // Todas as menções presentes na mensagem.
+    // IMPORTANTE: esta variável agora existe ANTES do if.
+    const mencoesNaMensagem =
+      info.message?.extendedTextMessage?.contextInfo?.mentionedJid ||
+      info.message?.imageMessage?.contextInfo?.mentionedJid ||
+      info.message?.videoMessage?.contextInfo?.mentionedJid ||
+      info.message?.documentMessage?.contextInfo?.mentionedJid ||
+      [];
+
+    const textoMensagemKyara = String(budy2 || '').trim();
+
+    // Exemplo:
+    // "oi kyara"
+    // "kyara tudo bem?"
+    // "Oi Kyara, me ajuda"
+    const chamouKyaraPorNome =
+      /\bkyara\b/i.test(textoMensagemKyara);
+
+    // Verifica a lista real de mentionedJid enviada pelo WhatsApp.
+    const mencionouKyara =
+      mencoesNaMensagem.some((m) => {
+        const numeroMencionado =
+          String(m)
+            .split('@')[0]
+            .split(':')[0];
+
+        return botIdentifiers.some((id) => {
+          const numeroBot =
+            String(id)
+              .split('@')[0]
+              .split(':')[0];
+
+          return (
+            numeroBot &&
+            numeroMencionado &&
+            numeroMencionado === numeroBot
+          );
+        });
+      });
+
+    // Alguns aparelhos/versões do WhatsApp colocam o número
+    // diretamente no texto, mesmo quando o mentionedJid varia.
+    const textoMencionouBot =
+      botIdentifiers.some((id) => {
+        const numeroBot =
+          String(id)
+            .split('@')[0]
+            .split(':')[0];
+
+        return (
+          numeroBot &&
+          textoMensagemKyara.includes('@' + numeroBot)
+        );
+      });
+
+    const kyaraFoiChamada =
+      chamouKyaraPorNome ||
+      mencionouKyara ||
+      textoMencionouBot;
+
+    // ========================================================
+    // ACIONAMENTO PRINCIPAL
+    // ========================================================
+
+    if (
+      !info.key.fromMe &&
+      isAssistente &&
+      !isCmd &&
+      !info._fromPro &&
+      kyaraFoiChamada
+    ) {
+
+      console.log('');
+      console.log('========== [KYARA IA] ==========');
+      console.log('[KYARA IA] Mensagem:', JSON.stringify(textoMensagemKyara));
+      console.log('[KYARA IA] Assistente:', isAssistente ? 'ATIVA' : 'INATIVA');
+      console.log('[KYARA IA] Nome Kyara:', chamouKyaraPorNome);
+      console.log('[KYARA IA] Menção JID:', mencionouKyara);
+      console.log('[KYARA IA] Menção texto:', textoMencionouBot);
+      console.log('[KYARA IA] Encaminhando para o núcleo...');
+      console.log('=================================');
+
+      const textoAssistente = String(budy2 || '')
+        .replaceAll('@' + _botShort, '')
+        .trim();
+
+      if (textoAssistente.length > 2) {
         // Detectar tipo de mídia da mensagem atual
         const tipoMidiaAtual = info.message?.imageMessage ? 'imagem' :
           info.message?.videoMessage ? 'video' :
@@ -5694,15 +6394,6 @@ Código: *${roleCode}*`,
                 quotedMessageContent?.stickerMessage ? 'sticker' :
                   quotedMessageContent?.documentMessage ? 'documento' : null;
 
-        // Detectar menções na mensagem
-        const mencoesNaMensagem = info.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
-
-        // Obter todos os possíveis identificadores do bot para filtrar
-        const botLid = nazu.user?.lid ? nazu.user.lid.split(':')[0] : null;
-        const botJid = nazu.user?.id ? nazu.user.id.split(':')[0] : null;
-        const botIdentifiers = [_botShort, botLid, botJid, botNumber].filter(Boolean);
-
-
         // Filtrar menção do bot das menções (usando todos os identificadores possíveis)
         const mencoesFiltradas = mencoesNaMensagem.filter(m => {
           const mNumber = m.split('@')[0].split(':')[0]; // Pega só o número
@@ -5715,7 +6406,7 @@ Código: *${roleCode}*`,
         const primeiraMencao = mencoesFiltradas.length > 0 ? mencoesFiltradas[0] : null;
 
         const jSoNzIn = {
-          texto: budy2.replaceAll('@' + _botShort, '').trim(),
+          texto: textoAssistente,
           id_enviou: sender,
           nome_enviou: pushname,
           id_grupo: isGroup ? from : false,
@@ -6608,7 +7299,58 @@ Entre em contato com o dono do bot:
         //
         const obterIALocal = async ({ pergunta, chatId, mensagem }) => {
 
-          // 1. Tenta usar iaExpanded, caso seja função
+          // ==================================================
+          // IA PRINCIPAL DA KYARA — MOTOR LOCAL
+          // ==================================================
+          if (
+            ia &&
+            typeof ia.makeAssistentRequest === 'function'
+          ) {
+            const resultado =
+              await ia.makeAssistentRequest(
+                {
+                  mensagens: [
+                    {
+                      texto: pergunta,
+                      id_enviou:
+                        mensagem?.sender ||
+                        chatId ||
+                        '',
+                      nome_enviou:
+                        mensagem?.pushName ||
+                        '',
+                      id_grupo:
+                        mensagem?.isGroup
+                          ? mensagem?.chat || chatId
+                          : '',
+                      nome_grupo: '',
+                      tem_midia: false,
+                      tipo_midia: null,
+                      marcou_mensagem: false,
+                      marcou_sua_mensagem: false,
+                      mensagem_marcada: null,
+                      id_enviou_marcada: null,
+                      tem_midia_marcada: false,
+                      tipo_midia_marcada: null,
+                      tem_mencao: false,
+                      primeira_mencao: null
+                    }
+                  ]
+                },
+                nazu,
+                null,
+                'humana',
+                null
+              );
+
+            return (
+              resultado?.resp?.[0]?.resp ||
+              resultado?.resp?.[0]?.text ||
+              ''
+            );
+          }
+
+          // 1. Fallback para iaExpanded, caso exista
           if (typeof iaExpanded === 'function') {
             return await iaExpanded({
               text: pergunta,
@@ -6663,9 +7405,173 @@ Entre em contato com o dono do bot:
           );
         };
 
+        // ============================================================
+        // CONTEXTO COMPATÍVEL DOS CASES LOCAIS
+        // ============================================================
+        // info é a mensagem bruta do Baileys e não possui m.reply().
+        // Os cases locais usam m.reply(), então fornecemos esse método
+        // através do reply() oficial da Kyara.
+        const localMessage = Object.create(info);
+
+        localMessage.reply = async (text, options = {}) => {
+          return await reply(text, options);
+        };
+
+        /*
+         * ============================================================
+         * KYARA_LOCAL_MEDIA_ADAPTER_V1
+         *
+         * Converte a mensagem respondida do Baileys para o formato
+         * utilizado pelos módulos locais.
+         *
+         * Não cria outro sistema de mídia.
+         * Apenas entrega ao cases-local a mídia que já existe.
+         * ============================================================
+         */
+
+        try {
+
+          const contextInfo =
+            info?.message?.extendedTextMessage?.contextInfo ||
+            info?.message?.imageMessage?.contextInfo ||
+            info?.message?.videoMessage?.contextInfo ||
+            info?.message?.documentMessage?.contextInfo ||
+            {};
+
+          const quotedMessage =
+            contextInfo?.quotedMessage ||
+            null;
+
+          if (quotedMessage) {
+
+            let quotedPayload =
+              quotedMessage;
+
+            /*
+             * Alguns formatos podem vir embrulhados.
+             */
+            if (
+              quotedMessage?.viewOnceMessage?.message
+            ) {
+              quotedPayload =
+                quotedMessage.viewOnceMessage.message;
+            }
+
+            if (
+              quotedMessage?.viewOnceMessageV2?.message
+            ) {
+              quotedPayload =
+                quotedMessage.viewOnceMessageV2.message;
+            }
+
+            if (
+              quotedMessage?.viewOnceMessageV2Extension?.message
+            ) {
+              quotedPayload =
+                quotedMessage.viewOnceMessageV2Extension.message;
+            }
+
+            /*
+             * Descobre qual tipo de mídia está respondido.
+             */
+            let mediaType = null;
+            let mediaMessage = null;
+
+            if (quotedPayload?.imageMessage) {
+              mediaType = "image";
+              mediaMessage =
+                quotedPayload.imageMessage;
+
+            } else if (quotedPayload?.videoMessage) {
+              mediaType = "video";
+              mediaMessage =
+                quotedPayload.videoMessage;
+
+            } else if (quotedPayload?.documentMessage) {
+              mediaType = "document";
+              mediaMessage =
+                quotedPayload.documentMessage;
+
+            } else if (
+              quotedPayload?.documentWithCaptionMessage?.message?.documentMessage
+            ) {
+              mediaType = "document";
+
+              mediaMessage =
+                quotedPayload
+                  .documentWithCaptionMessage
+                  .message
+                  .documentMessage;
+            }
+
+            if (
+              mediaMessage &&
+              mediaType
+            ) {
+
+              const quotedAdapter = {
+
+                msg: mediaMessage,
+
+                key: {
+                  remoteJid:
+                    info?.key?.remoteJid,
+
+                  fromMe:
+                    contextInfo?.participant ===
+                    nazu?.user?.id,
+
+                  id:
+                    contextInfo?.stanzaId,
+
+                  participant:
+                    contextInfo?.participant
+                },
+
+                download: async () => {
+
+                  const stream =
+                    await downloadContentFromMessage(
+                      mediaMessage,
+                      mediaType
+                    );
+
+                  const chunks = [];
+
+                  for await (
+                    const chunk of stream
+                  ) {
+                    chunks.push(
+                      Buffer.from(chunk)
+                    );
+                  }
+
+                  return Buffer.concat(chunks);
+                }
+
+              };
+
+              localMessage.quoted =
+                quotedAdapter;
+
+            }
+
+          }
+
+        } catch (mediaAdapterError) {
+
+          console.error(
+            "[KYARA LOCAL MEDIA ADAPTER]",
+            mediaAdapterError?.stack ||
+            mediaAdapterError?.message ||
+            mediaAdapterError
+          );
+
+        }
+
         const executadoLocal = await casesLocal.executarCaseLocal({
           command,
-          m: info,
+          m: localMessage,
           text: q,
           systemZR: nazu,
           obterIA: obterIALocal
@@ -6739,7 +7645,1279 @@ Entre em contato com o dono do bot:
       }
     }
 
-    switch (command) {
+
+
+    // ============================================================
+    // 🌐 KYARA SITE — HTML NATIVO DO WHATSAPP
+    // ============================================================
+
+    if (
+      command === 'kyarasite' ||
+      command === '/kyarasite' ||
+      command === '!kyarasite'
+    ) {
+
+      try {
+
+        const kyaraSiteHtml = `<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+>
+
+<title>KYARA SITE</title>
+
+<style>
+
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+html,
+body{
+  margin:0;
+  padding:0;
+  width:100%;
+  min-height:100%;
+}
+
+body{
+
+  margin:0;
+
+  padding:18px;
+
+  color:#fff;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  background:
+    radial-gradient(
+      circle at top,
+      #242947 0%,
+      #101321 45%,
+      #070910 100%
+    );
+
+}
+
+.app{
+
+  width:100%;
+
+  max-width:620px;
+
+  margin:auto;
+
+}
+
+.header{
+
+  padding:20px;
+
+  border-radius:25px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.11),
+      rgba(255,255,255,.035)
+    );
+
+  border:
+    1px solid
+    rgba(255,255,255,.10);
+
+  box-shadow:
+    0 20px 55px
+    rgba(0,0,0,.45);
+
+}
+
+.logo{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:13px;
+
+}
+
+.logoIcon{
+
+  width:50px;
+
+  height:50px;
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  border-radius:17px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7c5cff,
+      #497dff
+    );
+
+  font-size:25px;
+
+  box-shadow:
+    0 10px 30px
+    rgba(80,90,255,.35);
+
+}
+
+.title{
+
+  font-size:22px;
+
+  font-weight:800;
+
+}
+
+.subtitle{
+
+  margin-top:4px;
+
+  color:#969eb4;
+
+  font-size:12px;
+
+}
+
+.searchBox{
+
+  display:flex;
+
+  gap:8px;
+
+  margin-top:18px;
+
+  padding:7px;
+
+  border-radius:18px;
+
+  background:
+    rgba(0,0,0,.28);
+
+  border:
+    1px solid
+    rgba(255,255,255,.08);
+
+}
+
+input{
+
+  flex:1;
+
+  min-width:0;
+
+  border:0;
+
+  outline:0;
+
+  padding:14px;
+
+  border-radius:13px;
+
+  background:
+    rgba(255,255,255,.07);
+
+  color:#fff;
+
+  font-size:15px;
+
+}
+
+input::placeholder{
+
+  color:#7d8599;
+
+}
+
+.search{
+
+  border:0;
+
+  padding:0 17px;
+
+  border-radius:13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #7357ff,
+      #497dff
+    );
+
+  color:#fff;
+
+  font-size:14px;
+
+  font-weight:800;
+
+}
+
+.section{
+
+  margin-top:20px;
+
+}
+
+.sectionTitle{
+
+  margin:
+    0 0 10px 4px;
+
+  color:#9ca5ba;
+
+  font-size:11px;
+
+  font-weight:800;
+
+  text-transform:uppercase;
+
+  letter-spacing:1px;
+
+}
+
+.grid{
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,1fr);
+
+  gap:10px;
+
+}
+
+.card{
+
+  min-height:82px;
+
+  padding:15px;
+
+  border:1px solid
+    rgba(255,255,255,.08);
+
+  border-radius:18px;
+
+  background:
+    rgba(255,255,255,.055);
+
+  color:#fff;
+
+  text-align:left;
+
+  font-size:14px;
+
+  font-weight:800;
+
+}
+
+.card small{
+
+  display:block;
+
+  margin-top:6px;
+
+  color:#858da2;
+
+  font-size:11px;
+
+  font-weight:400;
+
+}
+
+.panel{
+
+  display:none;
+
+  margin-top:18px;
+
+  padding:16px;
+
+  border-radius:20px;
+
+  background:
+    rgba(255,255,255,.055);
+
+  border:
+    1px solid
+    rgba(255,255,255,.08);
+
+}
+
+.panelTitle{
+
+  font-size:14px;
+
+  font-weight:800;
+
+}
+
+.panelText{
+
+  margin-top:7px;
+
+  color:#929aae;
+
+  font-size:11px;
+
+  line-height:1.5;
+
+}
+
+.open{
+
+  display:block;
+
+}
+
+.result{
+
+  display:block;
+
+  margin-top:10px;
+
+  padding:13px;
+
+  border-radius:15px;
+
+  background:
+    rgba(255,255,255,.045);
+
+  border:
+    1px solid
+    rgba(255,255,255,.06);
+
+  color:#fff;
+
+  text-decoration:none;
+
+}
+
+.result strong{
+
+  display:block;
+
+  font-size:13px;
+
+}
+
+.result span{
+
+  display:block;
+
+  margin-top:5px;
+
+  color:#7784aa;
+
+  font-size:10px;
+
+  overflow:hidden;
+
+  text-overflow:ellipsis;
+
+  white-space:nowrap;
+
+}
+
+.status{
+
+  margin-top:16px;
+
+  text-align:center;
+
+  color:#697288;
+
+  font-size:10px;
+
+}
+
+.footer{
+
+  margin-top:20px;
+
+  text-align:center;
+
+  color:#555d72;
+
+  font-size:10px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="header">
+
+    <div class="logo">
+
+      <div class="logoIcon">
+        🌐
+      </div>
+
+      <div>
+
+        <div class="title">
+          KYARA SITE
+        </div>
+
+        <div class="subtitle">
+          Navegador Web integrado
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="searchBox">
+
+      <input
+        id="q"
+        type="text"
+        placeholder="Pesquisar na Web..."
+        autocomplete="off"
+      >
+
+      <button
+        class="search"
+        onclick="searchWeb()"
+      >
+        🔎
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="section">
+
+    <div class="sectionTitle">
+      Acesso rápido
+    </div>
+
+    <div class="grid">
+
+      <button
+        class="card"
+        onclick="youtube()"
+      >
+        ▶️ YouTube
+        <small>Pesquisar vídeos</small>
+      </button>
+
+      <button
+        class="card"
+        onclick="google()"
+      >
+        🔎 Google
+        <small>Pesquisar na Web</small>
+      </button>
+
+      <button
+        class="card"
+        onclick="news()"
+      >
+        📰 Notícias
+        <small>Pesquisar notícias</small>
+      </button>
+
+      <button
+        class="card"
+        onclick="music()"
+      >
+        🎵 Música
+        <small>Pesquisar músicas</small>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="panel"
+    class="panel"
+  >
+
+    <div
+      id="panelTitle"
+      class="panelTitle"
+    >
+      Pesquisa
+    </div>
+
+    <div
+      id="panelText"
+      class="panelText"
+    >
+      Escolha uma opção.
+    </div>
+
+    <div id="results"></div>
+
+  </div>
+
+
+  <div
+    id="status"
+    class="status"
+  >
+    KYARA SITE pronto.
+  </div>
+
+
+  <div class="footer">
+    Kyara • Baki
+  </div>
+
+</div>
+
+
+<script>
+
+(function(){
+
+'use strict';
+
+
+const input =
+  document.getElementById('q');
+
+const panel =
+  document.getElementById('panel');
+
+const panelTitle =
+  document.getElementById('panelTitle');
+
+const panelText =
+  document.getElementById('panelText');
+
+const results =
+  document.getElementById('results');
+
+const status =
+  document.getElementById('status');
+
+
+function showSearch(
+  title,
+  description,
+  googleUrl,
+  youtubeUrl
+){
+
+  panel.classList.add('open');
+
+  panelTitle.textContent =
+    title;
+
+  panelText.textContent =
+    description;
+
+  results.innerHTML =
+
+    '<a class="result" href="' +
+    googleUrl +
+    '">' +
+
+      '<strong>🔎 Abrir pesquisa Web</strong>' +
+
+      '<span>' +
+      googleUrl +
+      '</span>' +
+
+    '</a>' +
+
+    '<a class="result" href="' +
+    youtubeUrl +
+    '">' +
+
+      '<strong>▶️ Abrir pesquisa no YouTube</strong>' +
+
+      '<span>' +
+      youtubeUrl +
+      '</span>' +
+
+    '</a>';
+
+  status.textContent =
+    'Pesquisa preparada.';
+
+}
+
+
+window.searchWeb =
+  function(){
+
+    const query =
+      input.value.trim();
+
+    if(!query){
+
+      status.textContent =
+        'Digite algo para pesquisar.';
+
+      input.focus();
+
+      return;
+
+    }
+
+    const googleUrl =
+      'https://www.google.com/search?q=' +
+      encodeURIComponent(query);
+
+    const youtubeUrl =
+      'https://www.youtube.com/results?search_query=' +
+      encodeURIComponent(query);
+
+    showSearch(
+      '🔎 ' + query,
+      'Escolha onde deseja pesquisar.',
+      googleUrl,
+      youtubeUrl
+    );
+
+  };
+
+
+window.youtube =
+  function(){
+
+    const query =
+      input.value.trim();
+
+    if(!query){
+
+      input.focus();
+
+      status.textContent =
+        'Digite o vídeo que deseja encontrar.';
+
+      return;
+
+    }
+
+    const url =
+      'https://www.youtube.com/results?search_query=' +
+      encodeURIComponent(query);
+
+    showSearch(
+      '▶️ YouTube',
+      'Resultados do YouTube.',
+      url,
+      url
+    );
+
+  };
+
+
+window.google =
+  function(){
+
+    const query =
+      input.value.trim();
+
+    if(!query){
+
+      input.focus();
+
+      status.textContent =
+        'Digite o que deseja pesquisar.';
+
+      return;
+
+    }
+
+    const url =
+      'https://www.google.com/search?q=' +
+      encodeURIComponent(query);
+
+    showSearch(
+      '🔎 Google',
+      'Resultados da pesquisa Web.',
+      url,
+      'https://www.youtube.com/results?search_query=' +
+      encodeURIComponent(query)
+    );
+
+  };
+
+
+window.news =
+  function(){
+
+    input.value =
+      input.value.trim() || 'notícias';
+
+    searchWeb();
+
+  };
+
+
+window.music =
+  function(){
+
+    input.value =
+      input.value.trim() || 'músicas';
+
+    searchWeb();
+
+  };
+
+
+input.addEventListener(
+  'keydown',
+  function(e){
+
+    if(e.key === 'Enter'){
+
+      e.preventDefault();
+
+      searchWeb();
+
+    }
+
+  }
+);
+
+
+})();
+
+</script>
+
+</body>
+
+</html>`;
+
+
+        const unifiedData = {
+
+          response_id:
+            crypto.randomUUID(),
+
+          sections: [{
+
+            view_model: {
+
+              primitive: {
+
+                __typename:
+                  'GenAIaeacdsnwHtmlPrimitive',
+
+                payload:
+                  kyaraSiteHtml,
+
+                trusted_sources: [
+                  'zone.api.br'
+                ],
+
+              },
+
+              __typename:
+                'GenAISingleLayoutViewModel',
+
+            },
+
+          }],
+
+        };
+
+
+        const payload = {
+
+          messageContextInfo: {
+
+            deviceListMetadata: {},
+
+            deviceListMetadataVersion: 2,
+
+            botMetadata: {
+
+              messageDisclaimerText: '',
+
+              botResponseId:
+                crypto.randomUUID(),
+
+              verificationMetadata: {
+
+                proofs: [{
+
+                  version: 1,
+
+                  useCase: 1,
+
+                  signature:
+                    '...', 
+
+                  certificateChain: [
+                    '...',
+                    '...',
+                    '...'
+                  ],
+
+                }],
+
+              },
+
+            },
+
+          },
+
+
+          botForwardedMessage: {
+
+            message: {
+
+              richResponseMessage: {
+
+                messageType: 1,
+
+                submessages: [{
+
+                  messageType: 2,
+
+                  messageText:
+                    'KYARA SITE',
+
+                }],
+
+                unifiedResponse: {
+
+                  data:
+
+                    Buffer.from(
+                      JSON.stringify(
+                        unifiedData
+                      )
+                    ).toString('base64'),
+
+                },
+
+                contextInfo: {
+
+                  forwardingScore: 1,
+
+                  isForwarded: true,
+
+                  forwardedAiBotMessageInfo: {
+
+                    botJid:
+                      '867051314767696@bot',
+
+                  },
+
+                  forwardOrigin: 4,
+
+                },
+
+              },
+
+            },
+
+          },
+
+        };
+
+
+        const msg =
+          generateWAMessageFromContent(
+            info.key.remoteJid,
+            payload,
+            {
+              quoted: info
+            }
+          );
+
+
+        await nazu.relayMessage(
+          info.key.remoteJid,
+          msg.message,
+          {
+            messageId:
+              msg.key.id
+          }
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          '[KYARA SITE HTML]',
+          error
+        );
+
+        await reply(
+          '❌ Não foi possível abrir o KYARA SITE.\n\n' +
+          String(
+            error?.message ||
+            error
+          )
+        );
+
+      }
+
+      return;
+    }
+
+
+    
+
+
+
+/*
+ * ============================================================
+ * 👑 KYARA OWNER FLOW — DISPATCHER
+ * ============================================================
+ */
+
+if (
+  isOwner &&
+  typeof body === 'string' &&
+  body.startsWith('owner:')
+) {
+
+  const ownerPayload =
+    body.slice('owner:'.length).trim();
+
+  if (ownerPayload === 'back:main') {
+
+    try {
+      const flowModule =
+        await import('./core/nativeFlow/owner-flow.js');
+
+      await flowModule.sendOwnerMain(
+        nazu,
+        from,
+        {
+          botName: nomebot || 'KYARA',
+          userName:
+            pushname ||
+            info?.pushName ||
+            nomedono ||
+            'Dono',
+          prefix: prefix || '/'
+        }
+      );
+
+      return;
+    } catch (error) {
+      console.error(
+        '[OWNER FLOW] Falha ao voltar:',
+        error
+      );
+    }
+  }
+
+  if (ownerPayload.startsWith('open:')) {
+
+    const category =
+      ownerPayload
+        .slice('open:')
+        .trim();
+
+    try {
+      const flowModule =
+        await import('./core/nativeFlow/owner-flow.js');
+
+      await flowModule.sendOwnerCategory(
+        nazu,
+        from,
+        category
+      );
+
+      return;
+    } catch (error) {
+      console.error(
+        '[OWNER FLOW] Falha ao abrir categoria:',
+        error
+      );
+
+      await reply(
+        '❌ Não foi possível abrir esta categoria.'
+      );
+
+      return;
+    }
+  }
+
+  if (ownerPayload.startsWith('cmd:')) {
+
+    const ownerCommand =
+      ownerPayload
+        .slice('cmd:')
+        .trim();
+
+    if (!ownerCommand) {
+      return;
+    }
+
+    const parts =
+      ownerCommand.split(/\s+/);
+
+    command =
+      normalizar(parts.shift())
+        .replace(/\s+/g, '');
+
+    args.length = 0;
+    args.push(...parts);
+
+    q = parts.join(' ');
+
+    console.log(
+      '[OWNER FLOW] Comando:',
+      command,
+      args
+    );
+  }
+}
+
+
+switch (command) {
+
+      case 'fig':
+      case 'figban':
+        {
+          const action =
+            String(args[0] || 'lista')
+              .toLowerCase();
+
+          /*
+           * LISTA:
+           * ADM e dono podem consultar.
+           */
+          if (
+            action === 'lista' ||
+            action === 'list'
+          ) {
+            /*
+             * O sistema FIGBAN existente continua responsável
+             * pela resposta real.
+             *
+             * Não substituímos o handler existente.
+             */
+          }
+
+          /*
+           * PAINEL:
+           * somente dono.
+           */
+          if (
+            action === 'painel' ||
+            action === 'menu'
+          ) {
+            if (!isOwner) {
+              await reply(OWNER_ONLY_MESSAGE);
+              break;
+            }
+
+            await reply(
+              [
+                '╭━━━〔 🎴 FIGBAN • DONO 〕━━━╮',
+                '┃',
+                `┃ ${prefix}figban lista`,
+                '┃ Ver figurinhas cadastradas.',
+                '┃',
+                `┃ ${prefix}figban criar <nome>`,
+                '┃ Cadastrar uma nova figurinha.',
+                '┃',
+                `┃ ${prefix}figban renomear <antigo> <novo>`,
+                '┃ Renomear uma figurinha.',
+                '┃',
+                `┃ ${prefix}figban ativar <nome>`,
+                '┃ Ativar.',
+                '┃',
+                `┃ ${prefix}figban desativar <nome>`,
+                '┃ Desativar.',
+                '┃',
+                `┃ ${prefix}figban recriar <nome>`,
+                '┃ Substituir a figurinha.',
+                '┃',
+                `┃ ${prefix}figban destruir <nome>`,
+                '┃ Apagar definitivamente.',
+                '┃',
+                '╰━━━━━━━━━━━━━━━━━━━━━━╯'
+              ].join('\n')
+            );
+
+            break;
+          }
+        }
+        break;
+
+
+
+      case 'menuajustes':
+        if (!isOwner) {
+          await reply(OWNER_ONLY_MESSAGE);
+          break;
+        }
+
+        await reply(
+          buildMaintenanceMenu(prefix)
+        );
+        break;
+
+      case 'cmdajuste':
+        if (!isOwner) {
+          await reply(OWNER_ONLY_MESSAGE);
+          break;
+        }
+
+        {
+          const action =
+            String(args[0] || 'lista')
+              .toLowerCase();
+
+          const value =
+            args.slice(1).join(' ').trim();
+
+          if (action === 'lista' || action === 'list') {
+
+            await reply(
+              buildMaintenanceList(prefix)
+            );
+
+            break;
+          }
+
+          if (
+            action === 'marcar' ||
+            action === 'add'
+          ) {
+
+            if (!value) {
+              await reply(
+                `🧪 *MARCAR COMANDO PARA AJUSTE*\n\n` +
+                `Use:\n` +
+                `${prefix}cmdajuste marcar <comando>`
+              );
+
+              break;
+            }
+
+            const ok =
+              addMaintenanceCommand(value);
+
+            if (!ok) {
+              await reply(
+                `❌ O comando *${value}* não foi encontrado nos cases atuais.`
+              );
+
+              break;
+            }
+
+            await reply(
+              `🧪 *COMANDO MARCADO*\n\n` +
+              `🔧 ${prefix}${value.replace(/^[/!#.]+/, '')}\n\n` +
+              `Agora ele aparece no painel de comandos em ajuste.`
+            );
+
+            break;
+          }
+
+          if (
+            action === 'desmarcar' ||
+            action === 'del' ||
+            action === 'remove'
+          ) {
+
+            if (!value) {
+              await reply(
+                `🧪 *REMOVER DO AJUSTE*\n\n` +
+                `Use:\n` +
+                `${prefix}cmdajuste desmarcar <comando>`
+              );
+
+              break;
+            }
+
+            const ok =
+              removeMaintenanceCommand(value);
+
+            await reply(
+              ok
+                ? `✅ ${prefix}${value.replace(/^[/!#.]+/, '')} removido da lista de ajustes.`
+                : `ℹ️ ${prefix}${value.replace(/^[/!#.]+/, '')} não estava marcado.`
+            );
+
+            break;
+          }
+
+          if (
+            action === 'buscar' ||
+            action === 'search'
+          ) {
+
+            await reply(
+              buildCaseSearch(
+                value,
+                prefix
+              )
+            );
+
+            break;
+          }
+
+          if (
+            action === 'limpar' ||
+            action === 'clear'
+          ) {
+
+            clearMaintenanceCommands();
+
+            await reply(
+              '🧹 *LISTA DE AJUSTES LIMPA*\n\n' +
+              'Nenhum comando continua marcado para manutenção.'
+            );
+
+            break;
+          }
+
+          await reply(
+            [
+              '╭━━━〔 🧪 CMD AJUSTE 〕━━━╮',
+              '┃',
+              `┃ ${prefix}cmdajuste lista`,
+              `┃ ${prefix}cmdajuste marcar <cmd>`,
+              `┃ ${prefix}cmdajuste desmarcar <cmd>`,
+              `┃ ${prefix}cmdajuste buscar <termo>`,
+              `┃ ${prefix}cmdajuste limpar`,
+              '┃',
+              '╰━━━━━━━━━━━━━━━━━━━━━━╯'
+            ].join('\n')
+          );
+        }
+        break;
+
+
     case 'ler': {
       const textoLer = q?.trim();
 
@@ -21411,12 +23589,57 @@ Se não definir cores, a API usa padrão automaticamente.`
             return reply(datinha?.msg || 'Erro ao gerar o sticker animado Brat. 😕');
           }
 
-          await nazu.sendMessage(from, {
-            sticker: { url: datinha.url },
-            mimetype: 'image/webp'
-          }, { quoted: info });
+          // =====================================================
+          // BRATVID LOCAL -> BUFFER -> STICKER ANIMADO
+          // =====================================================
 
-          console.log(`[comando bratvid] ✅ Sticker enviado: "${texto}"`);
+          if (!datinha.url) {
+            throw new Error('O gerador Bratvid não retornou uma URL.');
+          }
+
+          console.log('[BRATVID LOCAL] 📥 Baixando vídeo gerado...');
+
+          const videoResponse = await fetch(datinha.url);
+
+          if (!videoResponse.ok) {
+            throw new Error(
+              `Falha ao baixar Bratvid: HTTP ${videoResponse.status}`
+            );
+          }
+
+          const videoBuffer = Buffer.from(
+            await videoResponse.arrayBuffer()
+          );
+
+          if (!videoBuffer || videoBuffer.length < 1000) {
+            throw new Error('Vídeo Bratvid vazio ou inválido.');
+          }
+
+          console.log(
+            `[BRATVID LOCAL] 📦 Vídeo recebido: ${videoBuffer.length} bytes`
+          );
+
+          console.log(
+            '[BRATVID LOCAL] 🎬 Convertendo para figurinha animada...'
+          );
+
+          await sendSticker(
+            nazu,
+            from,
+            {
+              sticker: videoBuffer,
+              type: 'video',
+              packname: `${nomebot}`,
+              author: `『${pushname}』`
+            },
+            {
+              quoted: info
+            }
+          );
+
+          console.log(
+            `[comando bratvid] ✅ Sticker animado enviado: "${texto}"`
+          );
 
         } catch (e) {
           console.error('Erro no comando bratvid:', e);
@@ -21636,596 +23859,50 @@ function kyaraMenuIsNativeFlowMessage(message) {
   }
 }
 
-      case 'menu':
-      case 'help':
-      case 'comandos':
-      case 'commands':
+      case 'menu': {
         try {
+          console.log(
+            '[MENU] 🌸 Enviando MENU ADAPTATIVO FINAL...'
+          );
 
-          /*
-           * ======================================================
-           * 🌸 BKkyara — MENU DUPLO
-           *
-           * NORMAL:
-           *   Envia o menu.js normalmente.
-           *
-           * INTERATIVO:
-           *   Envia os botões Native Flow.
-           *
-           * O modo é controlado por:
-           *
-           *   config/menu-mode.json
-           *
-           * Use os comandos criados pelo menu-mode.js para trocar.
-           * ======================================================
-           */
+          const {
+            menuKyaraAdaptativo
+          } = await import(
+            './core/menuAdaptativo/menu-adaptativo.js'
+          );
 
-          const menuMode = getMenuMode();
+          await menuKyaraAdaptativo(
+            nazu,
+            from,
+            pushname,
+            {
+              sender,
+              isGroup,
+              isAdmin: (typeof isAdmin !== 'undefined' ? !!isAdmin : false),
+              info
+            }
+          );
 
           console.log(
-            `[MENU] Modo atual: ${menuMode}`
-          );
-
-          let customBotName = nomebot;
-          let customMediaPath = null;
-
-          if (isGroup && isGroupCustomizationEnabled()) {
-            const groupCustom = getGroupCustomization(from);
-
-            if (groupCustom) {
-
-              if (groupCustom.customName) {
-                customBotName = groupCustom.customName;
-              }
-
-              if (
-                groupCustom.customPhoto &&
-                fs.existsSync(groupCustom.customPhoto)
-              ) {
-                customMediaPath = groupCustom.customPhoto;
-              }
-
-            }
-          }
-
-          /*
-           * ======================================================
-           * MENU NORMAL
-           * ======================================================
-           */
-
-          if (isNormalMenu()) {
-
-            console.log('[MENU] 📄 Enviando menu NORMAL...');
-
-            const customDesign =
-              getMenuDesignWithDefaults(
-                customBotName,
-                pushname
-              );
-
-            const menuText =
-              await menu(
-                prefix,
-                customBotName,
-                pushname,
-                customDesign
-              );
-
-            /*
-             * Mantém áudio do menu, caso esteja ativado.
-             */
-
-            if (isMenuAudioEnabled()) {
-
-              const audioPath =
-                getMenuAudioPath();
-
-              if (
-                audioPath &&
-                fs.existsSync(audioPath)
-              ) {
-
-                const audioBuffer =
-                  fs.readFileSync(audioPath);
-
-                await nazu.sendMessage(
-                  from,
-                  {
-                    audio: audioBuffer,
-                    mimetype: 'audio/mpeg',
-                    ptt: false
-                  },
-                  {
-                    quoted: info
-                  }
-                );
-
-              }
-            }
-
-            /*
-             * Mantém a foto personalizada do grupo
-             * quando existir.
-             */
-
-            if (
-              customMediaPath &&
-              fs.existsSync(customMediaPath)
-            ) {
-
-              const mediaBuffer =
-                fs.readFileSync(customMediaPath);
-
-              await nazu.sendMessage(
-                from,
-                {
-                  image: mediaBuffer,
-                  caption: menuText
-                },
-                {
-                  quoted: info
-                }
-              );
-
-            } else {
-
-              const menuImagePath =
-                __dirname + '/../midias/menu.jpg';
-
-              if (
-                fs.existsSync(menuImagePath)
-              ) {
-
-                const mediaBuffer =
-                  fs.readFileSync(menuImagePath);
-
-                await nazu.sendMessage(
-                  from,
-                  {
-                    image: mediaBuffer,
-                    caption: menuText
-                  },
-                  {
-                    quoted: info
-                  }
-                );
-
-              } else {
-
-                await reply(menuText);
-
-              }
-
-            }
-
-            console.log(
-              '[MENU] ✅ Menu NORMAL enviado!'
-            );
-
-            break;
-          }
-
-          /*
-           * ======================================================
-           * MENU INTERATIVO
-           * ======================================================
-           */
-
-          if (isInteractiveMenu()) {
-
-            console.log(
-              '[MENU] 🖱️ Enviando menu INTERATIVO...'
-            );
-
-            let mediaPath;
-            let useVideo;
-            let mediaBuffer;
-
-            if (customMediaPath) {
-
-              mediaPath =
-                customMediaPath;
-
-              useVideo = false;
-
-            } else {
-
-              const menuVideoPath =
-                __dirname + '/../midias/menu.mp4';
-
-              const menuImagePath =
-                __dirname + '/../midias/menu.jpg';
-
-              useVideo =
-                fs.existsSync(menuVideoPath);
-
-              mediaPath =
-                useVideo
-                  ? menuVideoPath
-                  : menuImagePath;
-
-            }
-
-            mediaBuffer =
-              fs.readFileSync(mediaPath);
-
-            let menuImageMessage = null;
-
-            if (!useVideo) {
-
-              try {
-
-                const preparedMenuMedia =
-                  await prepareWAMessageMedia(
-                    {
-                      image: mediaBuffer
-                    },
-                    {
-                      upload:
-                        nazu.waUploadToServer
-                    }
-                  );
-
-                menuImageMessage =
-                  preparedMenuMedia?.imageMessage ||
-                  null;
-
-              } catch (mediaError) {
-
-                console.error(
-                  '[MENU] Falha ao preparar imagem:',
-                  mediaError?.message ||
-                  mediaError
-                );
-
-              }
-
-            }
-
-            /*
-             * Texto do menu normal continua sendo usado
-             * para manter compatibilidade com o design.
-             */
-
-            const customDesign =
-              getMenuDesignWithDefaults(
-                customBotName,
-                pushname
-              );
-
-            const menuText =
-              await menu(
-                prefix,
-                customBotName,
-                pushname,
-                customDesign
-              );
-
-            /*
-             * Botões principais.
-             */
-
-            const buttons = [
-              {
-                name: 'quick_reply',
-                buttonParamsJson:
-                  JSON.stringify({
-                    display_text:
-                      '📥 DOWNLOADS',
-                    id:
-                      `${prefix}menudown`
-                  })
-              },
-
-              {
-                name: 'quick_reply',
-                buttonParamsJson:
-                  JSON.stringify({
-                    display_text:
-                      '🎨 LOGOS',
-                    id:
-                      `${prefix}menulogos`
-                  })
-              },
-
-              {
-                name: 'quick_reply',
-                buttonParamsJson:
-                  JSON.stringify({
-                    display_text:
-                      '🛠️ EDITS',
-                    id:
-                      `${prefix}menuedits`
-                  })
-              },
-
-              {
-                name: 'quick_reply',
-                buttonParamsJson:
-                  JSON.stringify({
-                    display_text:
-                      '🛡️ ADMIN',
-                    id:
-                      `${prefix}menuadm`
-                  })
-              },
-
-              {
-                name: 'quick_reply',
-                buttonParamsJson:
-                  JSON.stringify({
-                    display_text:
-                      '🎮 RPG',
-                    id:
-                      `${prefix}menurpg`
-                  })
-              }
-            ];
-
-            const msg =
-              generateWAMessageFromContent(
-                from,
-                {
-                  viewOnceMessage: {
-                    message: {
-
-                      messageContextInfo: {
-                        deviceListMetadata: {},
-                        deviceListMetadataVersion: 2
-                      },
-
-                      interactiveMessage: {
-
-                        ...(menuImageMessage
-                          ? {
-                              header: {
-                                hasMediaAttachment:
-                                  true,
-                                imageMessage:
-                                  menuImageMessage
-                              }
-                            }
-                          : {}),
-
-                        body: {
-                          text:
-                            'Escolha uma categoria abaixo.'
-                        },
-
-                        nativeFlowMessage: {
-                          buttons,
-
-                          messageParamsJson:
-                            '{}',
-
-                          messageVersion:
-                            1
-                        }
-
-                      }
-
-                    }
-                  }
-                },
-                {
-                  quoted: info,
-                  userJid:
-                    nazu?.user?.id
-                }
-              );
-
-            const bizNode = {
-
-              tag: 'biz',
-
-              attrs: {
-                actual_actors: '2',
-                host_storage: '2',
-
-                privacy_mode_ts:
-                  String(
-                    Math.floor(
-                      Date.now() / 1000
-                    ) - 77980457
-                  )
-              },
-
-              content: [
-
-                {
-                  tag: 'interactive',
-
-                  attrs: {
-                    type:
-                      'native_flow',
-                    v:
-                      '1'
-                  },
-
-                  content: [
-
-                    {
-                      tag: 'native_flow',
-
-                      attrs: {
-                        v:
-                          '9',
-                        name:
-                          'mixed'
-                      }
-
-                    }
-
-                  ]
-
-                },
-
-                {
-                  tag:
-                    'quality_control',
-
-                  attrs: {
-                    source_type:
-                      'third_party'
-                  }
-
-                }
-
-              ]
-
-            };
-
-            const isGroupChat =
-              from.endsWith('@g.us');
-
-            const additionalNodes =
-              isGroupChat
-
-                ? [bizNode]
-
-                : [
-                    {
-                      tag:
-                        'bot',
-
-                      attrs: {
-                        biz_bot:
-                          '1'
-                      }
-                    },
-
-                    bizNode
-                  ];
-
-            /*
-             * Áudio opcional.
-             */
-
-            if (isMenuAudioEnabled()) {
-
-              const audioPath =
-                getMenuAudioPath();
-
-              if (
-                audioPath &&
-                fs.existsSync(audioPath)
-              ) {
-
-                const audioBuffer =
-                  fs.readFileSync(
-                    audioPath
-                  );
-
-                await nazu.sendMessage(
-                  from,
-                  {
-                    audio:
-                      audioBuffer,
-
-                    mimetype:
-                      'audio/mpeg',
-
-                    ptt:
-                      false
-                  },
-                  {
-                    quoted:
-                      info
-                  }
-                );
-
-              }
-
-            }
-
-            await nazu.relayMessage(
-              from,
-              msg.message,
-              {
-                messageId:
-                  msg.key.id,
-
-                additionalNodes
-              }
-            );
-
-            console.log(
-              '[MENU] ✅ Menu INTERATIVO enviado!'
-            );
-
-            console.log(
-              '[MENU] Botões:',
-              buttons.map(
-                b =>
-                  JSON.parse(
-                    b.buttonParamsJson
-                  ).id
-              )
-            );
-
-            break;
-          }
-
-          /*
-           * Segurança: caso o modo esteja inválido.
-           */
-
-          console.warn(
-            `[MENU] ⚠️ Modo inválido: ${menuMode}`
-          );
-
-          await reply(
-            `${prefix}menu`
+            '[MENU] ✅ MENU ADAPTATIVO enviado!'
           );
 
         } catch (error) {
 
           console.error(
-            '[MENU] Erro:',
+            '[MENU] ❌ Erro no menu adaptativo:',
             error
           );
 
-          /*
-           * Fallback seguro:
-           * se o interativo falhar, manda o menu normal.
-           */
-
           try {
-
-            const customDesign =
-              getMenuDesignWithDefaults(
-                nomebot,
-                pushname
-              );
-
-            const menuText =
-              await menu(
-                prefix,
-                nomebot,
-                pushname,
-                customDesign
-              );
-
             await reply(
-              `${menuText}\n\n⚠️ O menu interativo apresentou um erro.`
+              '❌ Erro ao carregar o menu.'
             );
-
-          } catch (fallbackError) {
-
-            console.error(
-              '[MENU] Erro no fallback:',
-              fallbackError
-            );
-
-            await reply(
-              '❌ Não foi possível carregar o menu.'
-            );
-
-          }
-
+          } catch {}
         }
+
         break;
+      }
       case 'help':
       case 'comandos':
       case 'commands':
@@ -22295,11 +23972,18 @@ function kyaraMenuIsNativeFlowMessage(message) {
           );
 
           const menuText = await menu(
-            prefix,
-            customBotName,
-            pushname,
-            customDesign
-          );
+                prefix,
+                customBotName,
+                pushname,
+                {
+                  ...customDesign,
+                  cargo: isOwner
+                    ? 'dono'
+                    : isGroupAdmin
+                      ? 'adm'
+                      : 'membro'
+                }
+              );
 
           const lerMaisPrefix = getMenuLerMaisText();
 
@@ -22506,11 +24190,18 @@ function kyaraMenuIsNativeFlowMessage(message) {
           );
 
           const menuText = await menu(
-            prefix,
-            nomebot,
-            pushname,
-            customDesign
-          );
+                prefix,
+                nomebot,
+                pushname,
+                {
+                  ...customDesign,
+                  cargo: isOwner
+                    ? 'dono'
+                    : isGroupAdmin
+                      ? 'adm'
+                      : 'membro'
+                }
+              );
 
           await reply(
             `${menuText}\\n\\n⚠️ *Nota*: Ocorreu um erro ao carregar o menu interativo.`
@@ -23496,10 +25187,31 @@ Precisa de ajuda? Entre em contato:
             // --------------------------------------------------------
             // DEBUG TEMPORÁRIO — FOTO DO MENU
             // --------------------------------------------------------
-            console.log('[MENU DEBUG] menuType:', menuType);
-            console.log('[MENU DEBUG] mediaPath:', mediaPath);
+const kyaraMenuHeader = ({
+  isOwner = false,
+  pushName = "Usuário",
+  uptime = "0s",
+  ram = "0 MB",
+  level = null
+} = {}) => {
+  const nome = String(pushName || "Usuário").replace(/\n/g, " ").trim();
+  const cargo = isOwner ? "👑 DONO" : "👤 MEMBRO";
+
+  const nivel = level !== null && level !== undefined
+    ? `┃ ⭐ Nível: ${level}\n`
+    : "";
+
+  return [
+    `╭━━〔 🌸 *BOT-KYARA* 〕━━╮`,
+    `┃ ${cargo}: @${nome}`,
+    `┃ ⚡ Online: ${uptime}`,
+    `┃ 🧠 RAM: ${ram}`,
+    nivel ? nivel.trimEnd() : null,
+    `╰━━━━━━━━━━━━━━━━━━━━╯`
+  ].filter(Boolean).join("\n");
+};
+
             console.log(
-              '[MENU DEBUG] mediaBuffer:',
               mediaBuffer ? `${mediaBuffer.length} bytes` : 'NULL'
             );
 
@@ -23578,6 +25290,7 @@ Precisa de ajuda? Entre em contato:
               // ======================================================
 
               admin: [
+                ['🎴 FIGBAN • LISTA', 'figban lista'],
                 ['👥 MEMBROS', 'menumembros'],
                 ['🛡️ ANTI-LINK', 'antilink'],
                 ['🚫 ANTI-SPAM', 'antispam'],
@@ -23663,6 +25376,11 @@ Precisa de ajuda? Entre em contato:
               // ======================================================
 
               dono: [
+                ['🎴 FIGBAN • LISTA', 'figban lista'],
+                ['🎴 FIGBAN • PAINEL', 'figban painel'],
+                ['🧪 COMANDOS EM AJUSTE', 'menuajustes'],
+                ['💡 CAIXA DE IDEIAS', 'caixadeideias'],
+                ['📚 AJUDA', 'ajuda'],
                 ['⚙️ CONFIG', 'config'],
                 ['📝 NOME BOT', 'nomebot'],
                 ['🖼️ FOTO BOT', 'fotobot'],
@@ -23752,13 +25470,39 @@ Precisa de ajuda? Entre em contato:
                   );
 
                   // --------------------------------------------------------
-                  // ENVIO NORMAL COM FOTO
+                  // ENVIO NORMAL COM MÍDIA
                   // --------------------------------------------------------
-                  // Se o menu tiver imagem, envia imagem + texto.
-                  // Caso contrário, envia somente texto.
+                  // FOTO -> image
+                  // VÍDEO -> video + gifPlayback
+                  // SEM MÍDIA -> texto
+                  //
+                  // O menu.mp4 pode funcionar no estilo GIF,
+                  // iniciando automaticamente quando o WhatsApp
+                  // aceitar esse formato.
                   // --------------------------------------------------------
 
-                  if (mediaBuffer) {
+                  const normalIsVideo =
+                    !!mediaPath &&
+                    /\\.mp4$/i.test(mediaPath);
+
+                  if (mediaBuffer && normalIsVideo) {
+                    await nazu.sendMessage(
+                      from,
+                      {
+                        video: mediaBuffer,
+                        caption: normalText,
+                        gifPlayback: true
+                      },
+                      {
+                        quoted: info
+                      }
+                    );
+
+                    console.log(
+                      `[MENU] 🎬 ${menuType} NORMAL enviado como VÍDEO/GIF!`
+                    );
+
+                  } else if (mediaBuffer) {
                     await nazu.sendMessage(
                       from,
                       {
@@ -23769,6 +25513,7 @@ Precisa de ajuda? Entre em contato:
                         quoted: info
                       }
                     );
+
                   } else {
                     await nazu.sendMessage(
                       from,
@@ -25580,39 +27325,83 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       case 'verdesign':
       case 'configmenu':
         try {
-          if (!isOwner) return reply("Este comando é apenas para o meu dono");
+          if (!isOwner) return reply("⛔ Este comando é exclusivo do dono da Kyara.");
 
           const currentDesign = loadMenuDesign();
-          const designText = `╭─⊰ 🎨 *CONFIGURAÇÕES DO DESIGN* 🎨 ⊱─╮
-┊
-┊ 🔸 *Cabeçalho:*
-┊ ${currentDesign.header.replace(/{botName}/g, nomebot).replace(/{userName}/g, pushname)}
-┊
-┊ 🔸 *Borda Superior:* ${currentDesign.menuTopBorder}
-┊ 🔸 *Borda Inferior:* ${currentDesign.bottomBorder}
-┊ 🔸 *Borda do Meio:* ${currentDesign.middleBorder}
-┊ 🔸 *Ícone do Item:* ${currentDesign.menuItemIcon}
-┊ 🔸 *Ícone Separador:* ${currentDesign.separatorIcon}
-┊ 🔸 *Ícone do Título:* ${currentDesign.menuTitleIcon}
-┊
-┊ 📝 *Comandos disponíveis:*
-┊ ${prefix}setborda - Alterar borda superior
-┊ ${prefix}setbordafim - Alterar borda inferior  
-┊ ${prefix}setbordameio - Alterar borda do meio
-┊ ${prefix}setitem - Alterar ícone dos itens
-┊ ${prefix}setseparador - Alterar ícone separador
-┊ ${prefix}settitulo - Alterar ícone do título
-┊ ${prefix}setheader - Alterar cabeçalho
-┊ ${prefix}resetdesign - Resetar para padrão
-┊
-╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`;
+
+          const headerPreview = String(currentDesign.header || "")
+            .replace(/{botName}/g, nomebot)
+            .replace(/{userName}/g, pushname);
+
+          const designText = `╭━━━〔 🎨 *KYARA DESIGN SYSTEM* 〕━━━╮
+┃
+┃  ◈ *IDENTIDADE VISUAL*
+┃  ├─ 🌸 Cabeçalho
+┃  │  ${headerPreview}
+┃  │
+┃  ├─ ╭┈ Borda superior
+┃  ├─ ${currentDesign.menuTopBorder || "—"}
+┃  │
+┃  ├─ ╰┈ Borda inferior
+┃  ├─ ${currentDesign.bottomBorder || "—"}
+┃  │
+┃  └─ ${currentDesign.middleBorder || "┊"} Borda interna
+┃
+┣━━━〔 ✦ *ELEMENTOS* 〕━━━━━━━━━━━━
+┃
+┃  ${currentDesign.menuTitleIcon || "✦"}  *Título*
+┃  └─ ${currentDesign.menuTitleIcon || "—"}
+┃
+┃  ${currentDesign.menuItemIcon || "•"}  *Item*
+┃  └─ ${currentDesign.menuItemIcon || "—"}
+┃
+┃  ${currentDesign.separatorIcon || "❖"}  *Separador*
+┃  └─ ${currentDesign.separatorIcon || "—"}
+┃
+┣━━━〔 🛠️ *PERSONALIZAÇÃO* 〕━━━━━━
+┃
+┃  ${prefix}setborda
+┃  └─ Alterar a borda superior
+┃
+┃  ${prefix}setbordafim
+┃  └─ Alterar a borda inferior
+┃
+┃  ${prefix}setbordameio
+┃  └─ Alterar a borda interna
+┃
+┃  ${prefix}setitem
+┃  └─ Alterar ícone dos itens
+┃
+┃  ${prefix}setseparador
+┃  └─ Alterar separador visual
+┃
+┃  ${prefix}settitulo
+┃  └─ Alterar ícone dos títulos
+┃
+┃  ${prefix}setheader
+┃  └─ Alterar cabeçalho
+┃
+┣━━━〔 ♻️ *CONTROLE* 〕━━━━━━━━━━━━
+┃
+┃  ${prefix}resetdesign
+┃  └─ Restaurar o design padrão
+┃
+╰━━━〔 👑 *BKkyara • Design Engine* 〕━━━╯`;
 
           await reply(designText);
+
         } catch (e) {
-          console.error(e);
-          await reply("🐝 Ops! Ocorreu um erro inesperado. Tente novamente em alguns instantes! 🥺");
+          console.error("[KYARA DESIGN]", e);
+          await reply(
+            "╭━━〔 ⚠️ *KYARA DESIGN* 〕━━╮\n" +
+            "│ Não foi possível carregar as configurações.\n" +
+            "│ Tente novamente em alguns instantes.\n" +
+            "╰━━━━━━━━━━━━━━━━━━━━━━━━╯"
+          );
         }
         break;
+
+
 
       case 'listagp':
       case 'listgp':
@@ -26476,47 +28265,98 @@ ${prefix}togglecmdvip premium_ia off`);
       //COMANDOS GERAIS
       case 'rvisu':
       case 'open':
-      case 'revelar':
-        try {
-          var RSMM = info.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-          var boij22 = RSMM?.imageMessage || info.message?.imageMessage || RSMM?.viewOnceMessageV2?.message?.imageMessage || info.message?.viewOnceMessageV2?.message?.imageMessage || info.message?.viewOnceMessage?.message?.imageMessage || RSMM?.viewOnceMessage?.message?.imageMessage;
-          var boijj = RSMM?.videoMessage || info.message?.videoMessage || RSMM?.viewOnceMessageV2?.message?.videoMessage || info.message?.viewOnceMessageV2?.message?.videoMessage || info.message?.viewOnceMessage?.message?.videoMessage || RSMM?.viewOnceMessage?.message?.videoMessage;
-          var boij33 = RSMM?.audioMessage || info.message?.audioMessage || RSMM?.viewOnceMessageV2?.message?.audioMessage || info.message?.viewOnceMessageV2?.message?.audioMessage || info.message?.viewOnceMessage?.message?.audioMessage || RSMM?.viewOnceMessage?.message?.audioMessage;
-          if (boijj) {
-            var px = boijj;
-            px.viewOnce = false;
-            px.video = {
-              url: px.url
-            };
-            await nazu.sendMessage(from, px, {
-              quoted: info
+      case 'revelar': {
+    try {
+        const quoted = msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+        const quotedKey = msg?.message?.extendedTextMessage?.contextInfo?.stanzaId;
+
+        if (!quoted || !quotedKey) {
+            await nazu.sendMessage(from, {
+                text: '🌸 Responda uma mensagem com /revelar para tentar recuperar a mídia disponível.'
             });
-          } else if (boij22) {
-            var px = boij22;
-            px.viewOnce = false;
-            px.image = {
-              url: px.url
-            };
-            await nazu.sendMessage(from, px, {
-              quoted: info
-            });
-          } else if (boij33) {
-            var px = boij33;
-            px.viewOnce = false;
-            px.audio = {
-              url: px.url
-            };
-            await nazu.sendMessage(from, px, {
-              quoted: info
-            });
-          } else {
-            return reply('Por favor, *mencione uma imagem, video ou áudio em visualização única* para executar o comando.');
-          }
-        } catch (e) {
-          console.error(e);
-          await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
+            break;
         }
-        break;
+
+        const mediaTypes = [
+            'imageMessage',
+            'videoMessage',
+            'audioMessage',
+            'documentMessage'
+        ];
+
+        const type = mediaTypes.find(t => quoted[t]);
+
+        if (!type) {
+            await sock.sendMessage(from, {
+                text: '⚠️ A mensagem respondida não contém uma mídia disponível para reenvio.'
+            });
+            break;
+        }
+
+        const media = quoted[type];
+
+        if (media.viewOnce === true) {
+            await sock.sendMessage(from, {
+                text: '⚠️ Essa mídia é de visualização única e não pode ser recuperada por este comando.'
+            });
+            break;
+        }
+
+        if (!media.url && !media.directPath) {
+            await sock.sendMessage(from, {
+                text: '⚠️ A mídia não está mais disponível para download nesta mensagem.'
+            });
+            break;
+        }
+
+        const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+
+        const stream = await downloadContentFromMessage(
+            media,
+            type.replace('Message', '')
+        );
+
+        const chunks = [];
+
+        for await (const chunk of stream) {
+            chunks.push(chunk);
+        }
+
+        const buffer = Buffer.concat(chunks);
+
+        if (!buffer.length) {
+            throw new Error('Mídia vazia');
+        }
+
+        const options = {};
+
+        if (type === 'imageMessage') {
+            options.image = buffer;
+        } else if (type === 'videoMessage') {
+            options.video = buffer;
+        } else if (type === 'audioMessage') {
+            options.audio = buffer;
+            options.mimetype = media.mimetype || 'audio/ogg; codecs=opus';
+        } else {
+            options.document = buffer;
+            options.fileName = media.fileName || 'revelado';
+            options.mimetype = media.mimetype || 'application/octet-stream';
+        }
+
+        await sock.sendMessage(from, options);
+
+        console.log('[REVELAR] Mídia reenviada com sucesso.');
+
+    } catch (err) {
+        console.error('[REVELAR] Erro:', err);
+
+        await sock.sendMessage(from, {
+            text: '❌ Não consegui recuperar essa mídia. Ela pode não estar mais disponível.'
+        }).catch(() => {});
+    }
+
+    break;
+}
       case 'limpardb':
         try {
           if (!isOwner) return reply("Apenas o dono pode limpar o banco de dados.");
@@ -27839,67 +29679,148 @@ ${prefix}togglecmdvip premium_ia off`);
 
           if (!imgMsg) {
             return reply(
-              `❌ Marque uma imagem para remover o fundo.\n\n💡 Uso: ${prefix}${command}`
+              `❌ Marque uma imagem para remover o fundo.
+
+💡 Uso: ${prefix}${command}`
             );
           }
 
-          reply('⏳ Removendo fundo, aguarde...');
+          await reply('⏳ Removendo fundo, aguarde...');
 
+          console.log('[RemoveBG LOCAL] 📥 Baixando imagem...');
           const imageBuffer = await getFileBuffer(imgMsg, 'image');
-          const imageUrl = await upload(imageBuffer, true);
 
-          if (!imageUrl) {
-            throw new Error('Falha ao fazer upload da imagem.');
+          if (!imageBuffer || imageBuffer.length < 100) {
+            throw new Error('Imagem recebida inválida ou vazia.');
           }
 
-          const bgResult = await removeBg(imageUrl);
+          console.log(
+            `[RemoveBG LOCAL] 📦 Entrada: ${imageBuffer.length} bytes`
+          );
 
-          if (!bgResult.ok) {
-            return reply(
-              bgResult.msg || '❌ Não foi possível remover o fundo da imagem.'
+          /*
+           * O RemoveBG LOCAL agora trabalha diretamente com Buffer.
+           * Não fazemos mais upload para API externa.
+           */
+          const bgResult = await removeBg(imageBuffer);
+
+          if (!bgResult?.ok || !bgResult?.buffer) {
+            throw new Error(
+              bgResult?.msg ||
+              'Não foi possível remover o fundo da imagem.'
             );
           }
 
-          const resultUrl = bgResult.download;
+          const resultBuffer = Buffer.isBuffer(bgResult.buffer)
+            ? bgResult.buffer
+            : Buffer.from(bgResult.buffer);
 
-          if (!resultUrl) {
-            return reply('❌ A API não retornou nenhuma imagem.');
-          }
+          console.log(
+            `[RemoveBG LOCAL] ✅ Resultado: ${resultBuffer.length} bytes`
+          );
 
+          /*
+           * /sbg e /sfundo:
+           * envia como figurinha.
+           *
+           * Se o WhatsApp fechar a conexão durante o processamento,
+           * aguardamos a reconexão e tentamos novamente.
+           */
           if (command === 'sbg' || command === 'sfundo') {
 
-            const response = await fetch(resultUrl);
+            let lastError = null;
 
-            if (!response.ok) {
-              throw new Error('Falha ao baixar imagem processada.');
+            for (let tentativa = 1; tentativa <= 3; tentativa++) {
+
+              try {
+
+                console.log(
+                  `[RemoveBG LOCAL] 📤 Enviando figurinha (tentativa ${tentativa}/3)...`
+                );
+
+                const socketAtual = await waitForActiveSocket(120000);
+
+                console.log(
+                  '[RemoveBG LOCAL] 🔌 Socket atual disponível para envio:',
+                  socketAtual?.user?.id || 'conectado'
+                );
+
+                const sent = await sendSticker(
+                  socketAtual,
+                  from,
+                  {
+                    sticker: resultBuffer,
+                    author: `${pushname}
+${nomebot}
+${nomedono}`,
+                    packname: 'Kyara Bot - Stickers',
+                    type: 'image'
+                  },
+                  {
+                    quoted: info
+                  }
+                );
+
+                console.log(
+                  `[RemoveBG LOCAL] ✅ Figurinha enviada na tentativa ${tentativa}.`
+                );
+
+                return sent;
+
+              } catch (err) {
+
+                lastError = err;
+
+                const msg = String(
+                  err?.message ||
+                  err?.output?.payload?.message ||
+                  err ||
+                  ''
+                );
+
+                const connectionError =
+                  /Connection Closed/i.test(msg) ||
+                  /428/i.test(msg) ||
+                  /timed out/i.test(msg) ||
+                  /timeout/i.test(msg) ||
+                  /Precondition Required/i.test(msg);
+
+                console.error(
+                  `[RemoveBG LOCAL] ❌ Falha no envio ${tentativa}/3: ${msg}`
+                );
+
+                if (!connectionError || tentativa >= 3) {
+                  throw err;
+                }
+
+                const espera = tentativa * 5000;
+
+                console.log(
+                  `[RemoveBG LOCAL] 🔄 Conexão possivelmente fechada. ` +
+                  `Aguardando ${espera / 1000}s para tentar novamente...`
+                );
+
+                await new Promise(resolve =>
+                  setTimeout(resolve, espera)
+                );
+              }
             }
 
-            const buffer = Buffer.from(
-              await response.arrayBuffer()
+            throw lastError || new Error(
+              'Não foi possível enviar a figurinha.'
             );
-
-            return sendSticker(
-              nazu,
-              from,
-              {
-                sticker: buffer,
-                author: `${pushname}\n${nomebot}\n${nomedono}`,
-                packname: 'Kyara Bot - Stickers',
-                type: 'image'
-              },
-              {
-                quoted: info
-              }
-            );
-
           }
 
-          return nazu.sendMessage(
+          /*
+           * Caso seja /removebg ou /rmbg, envia a imagem PNG
+           * transparente diretamente pelo Buffer.
+           */
+          return await nazu.sendMessage(
             from,
             {
-              image: {
-                url: resultUrl
-              }
+              image: resultBuffer,
+              mimetype: 'image/png',
+              caption: '✅ Fundo removido!'
             },
             {
               quoted: info
@@ -27908,10 +29829,27 @@ ${prefix}togglecmdvip premium_ia off`);
 
         } catch (e) {
 
-          console.error(e);
+          console.error('[RemoveBG LOCAL] ❌ Erro:', e);
+
+          const msg = String(
+            e?.message ||
+            e?.output?.payload?.message ||
+            ''
+          );
+
+          if (
+            /Connection Closed/i.test(msg) ||
+            /428/i.test(msg)
+          ) {
+            return reply(
+              '⚠️ O WhatsApp perdeu a conexão durante o envio.\n' +
+              '🔄 A conexão está sendo restabelecida. Tente o comando novamente.'
+            );
+          }
 
           return reply(
-            e.message || '❌ Ocorreu um erro interno. Tente novamente em alguns minutos.'
+            e.message ||
+            '❌ Ocorreu um erro interno ao remover o fundo.'
           );
 
         }
@@ -27919,7 +29857,8 @@ ${prefix}togglecmdvip premium_ia off`);
 
       case 'upscale':
         try {
-          const upscaleImgMsg = quotedMessageContent?.imageMessage ||
+          const upscaleImgMsg =
+            quotedMessageContent?.imageMessage ||
             quotedMessageContent?.viewOnceMessage?.message?.imageMessage ||
             quotedMessageContent?.viewOnceMessageV2?.message?.imageMessage ||
             info.message?.imageMessage ||
@@ -27927,30 +29866,68 @@ ${prefix}togglecmdvip premium_ia off`);
             info.message?.viewOnceMessageV2?.message?.imageMessage;
 
           if (!upscaleImgMsg) {
-            return reply(`❌ Marque uma imagem para melhorar a qualidade.\n\n💡 Uso: ${prefix}${command}`);
+            return reply(
+              `❌ Marque uma imagem para melhorar a qualidade.\n\n` +
+              `💡 Uso: ${prefix}${command}`
+            );
           }
 
-          reply('⏳ Melhorando a imagem, aguarde...');
+          await reply('⏳ Melhorando a imagem localmente, aguarde...');
 
-          const imageBuffer = await getFileBuffer(upscaleImgMsg, 'image');
-          const imageUrl = await upload(imageBuffer, true);
+          console.log('[Upscale LOCAL] 📥 Baixando imagem...');
 
-          if (!imageUrl) throw new Error('Falha ao fazer upload da imagem.');
+          const imageBuffer =
+            await getFileBuffer(upscaleImgMsg, 'image');
 
-          const upscaleResult = await upscale(imageUrl, 2);
-
-          if (!upscaleResult.ok) {
-            throw new Error(upscaleResult.msg || 'Não foi possível melhorar a imagem.');
+          if (!imageBuffer || imageBuffer.length < 100) {
+            throw new Error('Não foi possível baixar a imagem.');
           }
 
-          const resultUrl = upscaleResult.result?.download;
+          console.log(
+            `[Upscale LOCAL] 📦 Entrada: ${imageBuffer.length} bytes`
+          );
 
-          return nazu.sendMessage(from, { image: { url: resultUrl } }, { quoted: info });
+          // 2x local
+          const upscaleResult =
+            await upscale(imageBuffer, 2);
+
+          if (!upscaleResult?.ok || !upscaleResult?.buffer) {
+            throw new Error(
+              upscaleResult?.msg ||
+              'Não foi possível melhorar a imagem.'
+            );
+          }
+
+          const resultBuffer =
+            Buffer.isBuffer(upscaleResult.buffer)
+              ? upscaleResult.buffer
+              : Buffer.from(upscaleResult.buffer);
+
+          console.log(
+            `[Upscale LOCAL] 📤 Enviando ${resultBuffer.length} bytes...`
+          );
+
+          return await nazu.sendMessage(
+            from,
+            {
+              image: resultBuffer,
+              mimetype: 'image/png',
+              caption:
+                `✅ Imagem melhorada em ${upscaleResult.scale || 2}x!`
+            },
+            { quoted: info }
+          );
+
         } catch (e) {
-          console.error(e);
-          return reply('❌ Ocorreu um erro interno. Tente novamente em alguns minutos.');
+          console.error('[Upscale LOCAL] ❌', e);
+
+          return reply(
+            `❌ Erro ao melhorar a imagem.\n\n` +
+            `${e?.message || 'Erro interno.'}`
+          );
         }
         break;
+
       case 'qc':
         try {
           if (!q) return reply('Falta o texto.');
@@ -28331,30 +30308,113 @@ ${prefix}togglecmdvip premium_ia off`);
         break;
 
 
-      case 'figurinhas':
-      case 'stickerpack':
-      case 'packfig':
+      case 'pacote':
         try {
-          const partes =
-            q.trim().split(/\s+/);
 
-          let quantidade =
-            parseInt(
-              partes[partes.length - 1],
-              10
+          const tema =
+            q.trim();
+
+          if (!tema) {
+            return reply(
+              "╭━━━〔 📦 PACOTE KYARA 〕━━━╮\n" +
+              "│\n" +
+              "│ Uso:\n" +
+              "│ " + prefix + "pacote Goku\n" +
+              "│ " + prefix + "pacote Naruto\n" +
+              "│ " + prefix + "pacote gatos\n" +
+              "│\n" +
+              "│ 📦 Quantidade fixa: 40\n" +
+              "╰━━━━━━━━━━━━━━━━━━━━━━━━╯"
             );
+          }
 
+          const quantidade = 40;
+
+          const destino =
+            isGroup ? sender : from;
+
+          const aviso =
+            isGroup
+              ? "📬 O pacote será enviado no seu privado.\n"
+              : "";
+
+          await reply(
+            "╭━━━〔 📦 PACOTE KYARA 〕━━━╮\n" +
+            "│\n" +
+            "│ 🎯 Tema: *" + tema + "*\n" +
+            "│ 📦 Figurinhas: *40*\n" +
+            "│ " + aviso +
+            "│ 🔎 Buscando imagens...\n" +
+            "│ 🧩 Montando pacote...\n" +
+            "╰━━━━━━━━━━━━━━━━━━━━━━━━╯"
+          );
+
+          const resultado =
+            await sendThemeStickers({
+              nazu,
+              destino,
+              tema,
+              quantidade,
+              quoted: info,
+              author: "Baki",
+              packname: "Kyara"
+            });
+
+          if (!resultado || resultado.sent < 1) {
+            return reply(
+              "❌ Não consegui encontrar figurinhas suficientes para *" +
+              tema +
+              "*."
+            );
+          }
+
+          const falhas =
+            resultado.failed > 0
+              ? "⚠️ Falhas: *" + resultado.failed + "*\n"
+              : "";
+
+          await nazu.sendMessage(
+            destino,
+            {
+              text:
+                "╭━━━〔 ✅ PACOTE CONCLUÍDO 〕━━━╮\n" +
+                "│\n" +
+                "│ 🎯 Tema: *" + tema + "*\n" +
+                "│ 📦 Solicitadas: *" + resultado.requested + "*\n" +
+                "│ 🖼️ Enviadas: *" + resultado.sent + "*\n" +
+                falhas +
+                "│\n" +
+                "│ 📦 Pacote finalizado.\n" +
+                "╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯"
+            }
+          );
+
+        } catch (error) {
+          console.error(
+            "[PACOTE KYARA]",
+            error
+          );
+
+          await reply(
+            "❌ O pacote não pôde ser concluído agora.\n" +
+            "Tente novamente com outro tema."
+          );
+        }
+        break;
+
+      case 'stickerpack':
+      case 'pacotefig':
+      case 'packfig':
+      case 'pacotefig':
+        try {
+
+          const partes = q.trim().split(/\s+/);
+
+          let quantidade = Number(partes[partes.length - 1]);
           let tema = '';
 
-          if (
-            !isNaN(quantidade) &&
-            partes.length > 1
-          ) {
-            tema =
-              partes
-                .slice(0, -1)
-                .join(' ')
-                .trim();
+          if (Number.isInteger(quantidade) && partes.length > 1) {
+            tema = partes.slice(0, -1).join(' ').trim();
           } else {
             quantidade = 5;
             tema = q.trim();
@@ -28362,73 +30422,93 @@ ${prefix}togglecmdvip premium_ia off`);
 
           if (!tema) {
             return reply(
-              `🎨 *FIGURINHAS POR TEMA*\\n\\n` +
-              `Use:\\n` +
-              `• ${prefix}figurinhas goku 15\\n` +
-              `• ${prefix}figurinhas naruto 10\\n` +
-              `• ${prefix}figurinhas gatos 5\\n\\n` +
-              `🔢 Quantidade: 1 a 20`
+              '╭━━━〔 📦 PACOTE DE FIGURINHAS 〕━━━╮\n' +
+              '│\n' +
+              '│ Use:\n' +
+              '│ ' + prefix + 'packfig Goku 5\n' +
+              '│ ' + prefix + 'pacotefig Naruto 10\n' +
+              '│\n' +
+              '│ 🔢 Quantidade: 1 a 20\n' +
+              '│ 🎯 O tema pode ter várias palavras.\n' +
+              '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
             );
           }
 
           if (
-            isNaN(quantidade) ||
+            !Number.isInteger(quantidade) ||
             quantidade < 1 ||
             quantidade > 20
           ) {
             return reply(
-              '❌ A quantidade deve ser entre *1 e 20*.'
+              '❌ A quantidade deve ser um número entre 1 e 20.'
             );
           }
 
           const destino =
+            isGroup ? sender : from;
+
+          const destinoTexto =
             isGroup
-              ? sender
-              : from;
+              ? '📬 O pacote será enviado no seu privado.\n'
+              : '';
 
           await reply(
-            `🎨 *FIGURINHAS*\\n\\n` +
-            `🎯 Tema: *${tema}*\\n` +
-            `🔢 Quantidade: *${quantidade}*\\n\\n` +
-            (isGroup
-              ? '📬 Vou enviar as figurinhas no seu privado.\\n'
-              : '') +
-            '⏳ Pesquisando e preparando...'
+            '╭━━━〔 📦 PACOTE DE FIGURINHAS 〕━━━╮\n' +
+            '│\n' +
+            '│ 🎯 Tema: *' + tema + '*\n' +
+            '│ 🔢 Quantidade: *' + quantidade + '*\n' +
+            '│ ' + destinoTexto +
+            '│ 🔎 Procurando imagens...\n' +
+            '│ 🧩 Montando seu pacote...\n' +
+            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
           );
 
           const resultado =
-            await sendThemeStickers(
+            await sendThemeStickers({
               nazu,
               destino,
               tema,
               quantidade,
-              info
+              quoted: info,
+              author: nomebot || 'Baki',
+              packname: 'Kyara'
+            });
+
+          if (!resultado || resultado.sent < 1) {
+            return reply(
+              '❌ Não consegui montar nenhuma figurinha para o tema *' +
+              tema +
+              '*.'
             );
+          }
+
+          const falhas =
+            resultado.failed > 0
+              ? '⚠️ Falhas: *' + resultado.failed + '*\n'
+              : '';
 
           await nazu.sendMessage(
             destino,
             {
               text:
-                `✅ *PACOTE FINALIZADO!*\\n\\n` +
-                `🎯 Tema: *${tema}*\\n` +
-                `📦 Solicitadas: *${resultado.requested}*\\n` +
-                `✅ Enviadas: *${resultado.sent}*\\n` +
-                (resultado.failed > 0
-                  ? `⚠️ Falhas: *${resultado.failed}*\\n`
-                  : '') +
-                '\\n🎨 Aproveite suas figurinhas!'
+                '╭━━━〔 ✅ PACOTE PRONTO 〕━━━╮\n' +
+                '│\n' +
+                '│ 🎯 Tema: *' + tema + '*\n' +
+                '│ 📦 Solicitadas: *' + resultado.requested + '*\n' +
+                '│ 🖼️ Enviadas: *' + resultado.sent + '*\n' +
+                falhas +
+                '│\n' +
+                '│ ✨ Pacote finalizado com sucesso!\n' +
+                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
             }
           );
 
         } catch (e) {
-          console.error(
-            '[FIGURINHAS TEMA]',
-            e
-          );
+          console.error('[PACOTE FIGURINHAS]', e);
 
           await reply(
-            '❌ Não consegui gerar as figurinhas desse tema agora.\\n\\n' +
-            'Tente outro personagem ou tema.'
+            '❌ O pacote não pôde ser concluído agora.\n' +
+            'Tente novamente com outro tema.'
           );
         }
         break;
@@ -30356,6 +32436,42 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
           await reply("Ocorreu um erro 💔");
         }
         break;
+
+      case 'ghost': {
+        try {
+          if (!isGroup) {
+            return reply('👻 Esse teste só funciona em grupos.');
+          }
+
+          const textoGhost = String(q || '').trim();
+
+          if (!textoGhost) {
+            return reply('/ghost <mensagem>\nExemplo: /ghost goku');
+          }
+
+          const teste = await nazu.sendMessage(from, {
+            text:
+              `👻 TESTE GHOST\n\n${textoGhost}\n\n` +
+              `_Esta mensagem será apagada automaticamente._`
+          });
+
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          await nazu.sendMessage(from, {
+            delete: teste.key
+          });
+
+          console.log(
+            '[KYARA GHOST TESTE] Mensagem enviada e apagada:',
+            teste.key?.id
+          );
+        } catch (error) {
+          console.error('[KYARA GHOST TESTE ERRO]', error);
+          await reply('❌ Não consegui apagar a mensagem de teste.');
+        }
+        break;
+      }
+
       case 'antistatus':
         try {
           if (!isGroup) return reply("Isso só pode ser usado em grupo 💔");
@@ -32066,98 +34182,263 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
       case 'assistent':
         try {
 
-          if (!isGroup) return reply("Isso só pode ser usado em grupo 💔");
-          if (!isGroupAdmin) return reply("Você precisa ser administrador 💔");
-
-          const groupFilePath = __dirname + `/../database/grupos/${from}.json`;
-          let groupData = fs.existsSync(groupFilePath) ? JSON.parse(fs.readFileSync(groupFilePath)) : {};
-
-          if (!q) {
-            groupData.assistente = !groupData.assistente;
-
-            if (!groupData.assistente) {
-              delete groupData.assistentePersonality;
-            } else {
-              groupData.assistentePersonality = groupData.assistentePersonality || 'kyara';
-            }
-
-            fs.writeFileSync(groupFilePath, JSON.stringify(groupData, null, 2));
-
-            const statusMsg = groupData.assistente
-              ? `✅ *Assistente ativada com sucesso!*\n\n` +
-              `🤖 *Personalidade atual:* ${groupData.assistentePersonality === 'kyara' ? 'Kyara (Padrão)' :
-                groupData.assistentePersonality === 'humana' ? 'Humana' :
-                  groupData.assistentePersonality === 'pro' ? 'Pro (Comandos)' :
-                    'IA Normal'
-              }\n\n` +
-              `💡 *Trocar personalidade:*\n` +
-              `• ${prefix}assistente kyara\n` +
-              `• ${prefix}assistente humana\n` +
-              `• ${prefix}assistente ia\n` +
-              `• ${prefix}assistente pro\n\n` +
-              `🧠 A IA aprende com base nos padrões de conversa.`
-              : `❌ *Assistente desativada!*`;
-
-            return reply(statusMsg);
+          if (!isGroup) {
+            return reply("Isso só pode ser usado em grupo 💔");
           }
 
-          const personality = q.toLowerCase().trim().replace(/\s+/g, '_');
+          if (!isGroupAdmin) {
+            return reply("Você precisa ser administrador 💔");
+          }
 
-          const builtinPersonalities = ['kyara', 'humana', 'ia', 'pro'];
-          let isValidPersonality = builtinPersonalities.includes(personality);
+          const groupFilePath =
+            __dirname + `/../database/grupos/${from}.json`;
 
-          // Verificar personalidades customizadas do dono
+          let groupData =
+            fs.existsSync(groupFilePath)
+              ? JSON.parse(fs.readFileSync(groupFilePath))
+              : {};
+
+          const argumento =
+            String(q || '')
+              .trim()
+              .toLowerCase()
+              .replace(/\s+/g, '_');
+
+          // ======================================================
+          // SEM ARGUMENTO:
+          // MOSTRA O PAINEL EM VEZ DE LIGAR/DESLIGAR DIRETAMENTE
+          // ======================================================
+
+          if (!argumento) {
+
+            const personalidadeAtual =
+              groupData.assistentePersonality || 'kyara';
+
+            return await enviarControleAssistenteKyara(
+              nazu,
+              from,
+              info,
+              prefix,
+              !!groupData.assistente,
+              personalidadeAtual
+            );
+          }
+
+          // ======================================================
+          // BOTÃO: LIGAR
+          // ======================================================
+
+          if (
+            argumento === 'ligar' ||
+            argumento === 'on' ||
+            argumento === 'ativar'
+          ) {
+
+            groupData.assistente = true;
+
+            groupData.assistentePersonality =
+              groupData.assistentePersonality || 'kyara';
+
+            fs.writeFileSync(
+              groupFilePath,
+              JSON.stringify(groupData, null, 2)
+            );
+
+            await reply(
+              `✅ *Assistente Kyara ligada!*\n\n` +
+              `🤖 Personalidade: *${groupData.assistentePersonality}*\n\n` +
+              `🧠 A IA já está pronta para conversar.`
+            );
+
+            return;
+          }
+
+          // ======================================================
+          // BOTÃO: DESLIGAR
+          // ======================================================
+
+          if (
+            argumento === 'desligar' ||
+            argumento === 'off' ||
+            argumento === 'desativar'
+          ) {
+
+            groupData.assistente = false;
+
+            fs.writeFileSync(
+              groupFilePath,
+              JSON.stringify(groupData, null, 2)
+            );
+
+            await reply(
+              `🔴 *Assistente Kyara desligada neste grupo.*`
+            );
+
+            return;
+          }
+
+          // ======================================================
+          // STATUS
+          // ======================================================
+
+          if (
+            argumento === 'status' ||
+            argumento === 'painel'
+          ) {
+
+            return await enviarControleAssistenteKyara(
+              nazu,
+              from,
+              info,
+              prefix,
+              !!groupData.assistente,
+              groupData.assistentePersonality || 'kyara'
+            );
+          }
+
+          // ======================================================
+          // PERSONALIDADES EXISTENTES
+          // ======================================================
+
+          const builtinPersonalities = [
+            'kyara',
+            'humana',
+            'ia',
+            'pro'
+          ];
+
+          let isValidPersonality =
+            builtinPersonalities.includes(argumento);
+
+          // ======================================================
+          // PERSONALIDADES CUSTOMIZADAS DO DONO
+          // ======================================================
+
           if (!isValidPersonality) {
+
             try {
-              const persFile = pathz.join(DATABASE_DIR, 'customPersonalidades.json');
+
+              const persFile =
+                pathz.join(
+                  DATABASE_DIR,
+                  'customPersonalidades.json'
+                );
+
               if (fs.existsSync(persFile)) {
-                const persData = JSON.parse(fs.readFileSync(persFile, 'utf-8'));
-                if (persData[personality]) isValidPersonality = true;
+
+                const persData =
+                  JSON.parse(
+                    fs.readFileSync(
+                      persFile,
+                      'utf-8'
+                    )
+                  );
+
+                if (persData[argumento]) {
+                  isValidPersonality = true;
+                }
               }
-            } catch (_) { }
+
+            } catch (_) {}
           }
 
           if (!isValidPersonality) {
-            return reply(`❌ *Personalidade inválida!*\n\n` +
-              `Escolha uma das opções padrão:\n` +
+
+            return reply(
+              `❌ *Opção inválida!*\n\n` +
+
+              `🤖 Controle:\n` +
+              `• ${prefix}assistente\n` +
+              `• ${prefix}assistente ligar\n` +
+              `• ${prefix}assistente desligar\n\n` +
+
+              `🎭 Personalidades:\n` +
               `• ${prefix}assistente kyara\n` +
               `• ${prefix}assistente humana\n` +
               `• ${prefix}assistente ia\n` +
               `• ${prefix}assistente pro\n\n` +
-              `Ou use um ID de personalidade customizada criada pelo dono do bot.`);
+
+              `Você também pode usar uma personalidade customizada criada pelo dono.`
+            );
           }
+
+          // ======================================================
+          // ATIVAR PERSONALIDADE
+          // ======================================================
 
           groupData.assistente = true;
-          groupData.assistentePersonality = personality;
-          fs.writeFileSync(groupFilePath, JSON.stringify(groupData, null, 2));
+          groupData.assistentePersonality = argumento;
+
+          fs.writeFileSync(
+            groupFilePath,
+            JSON.stringify(groupData, null, 2)
+          );
 
           const builtinNames = {
-            'kyara': '🌙 *Kyara* - Vampira tsundere',
-            'humana': '👤 *Humana* - Age como pessoa real',
-            'ia': '🤖 *IA Normal* - Direta e objetiva',
-            'pro': '⚡ *Pro* - Executa comandos'
+
+            kyara:
+              '🌙 *Kyara* — assistente principal',
+
+            humana:
+              '👤 *Humana* — conversa mais natural',
+
+            ia:
+              '🤖 *IA Normal* — direta e objetiva',
+
+            pro:
+              '⚡ *Pro* — integração com comandos'
           };
 
-          let personalityDisplayName = builtinNames[personality];
+          let personalityDisplayName =
+            builtinNames[argumento];
+
           if (!personalityDisplayName) {
+
             try {
-              const persFile = pathz.join(DATABASE_DIR, 'customPersonalidades.json');
-              const persData = JSON.parse(fs.readFileSync(persFile, 'utf-8'));
-              personalityDisplayName = `🎭 *${persData[personality]?.nome || personality}* - Personalidade customizada`;
+
+              const persFile =
+                pathz.join(
+                  DATABASE_DIR,
+                  'customPersonalidades.json'
+                );
+
+              const persData =
+                JSON.parse(
+                  fs.readFileSync(
+                    persFile,
+                    'utf-8'
+                  )
+                );
+
+              personalityDisplayName =
+                `🎭 *${persData[argumento]?.nome || argumento}* — personalizada`;
+
             } catch (_) {
-              personalityDisplayName = `🎭 *${personality}* - Personalidade customizada`;
+
+              personalityDisplayName =
+                `🎭 *${argumento}* — personalizada`;
             }
           }
 
-          reply(`✅ *Personalidade alterada!*\n\n` +
+          await reply(
+            `✅ *Assistente configurada!*\n\n` +
             `${personalityDisplayName}\n\n` +
-            `💬 A assistente agora responderá com essa personalidade.\n` +
-            `🧠 Memória separada por personalidade.`);
+            `🟢 Status: *LIGADA*\n` +
+            `🧠 A Kyara já pode conversar neste grupo.`
+          );
 
         } catch (e) {
-          console.error(e);
-          reply("Ocorreu um erro 💔");
+
+          console.error(
+            '[ASSISTENTE]',
+            e
+          );
+
+          reply(
+            "❌ Ocorreu um erro ao configurar a assistente."
+          );
         }
+
         break;
 
       case 'setpersonalidade':
@@ -34713,12 +36994,31 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
               mentions: [target]
             });
           } else if (media?.video) {
-            await nazu.sendMessage(from, {
-              video: media.video,
-              caption: responseText,
-              mentions: [target],
-              gifPlayback: true
-            });
+            try {
+              const videoUrl = typeof media.video === 'string'
+                ? media.video
+                : media.video?.url;
+
+              if (!videoUrl) {
+                throw new Error('URL do GIF não encontrada');
+              }
+
+              const gifBuffer = await kyaraPrepararGif(videoUrl);
+
+              await nazu.sendMessage(from, {
+                video: gifBuffer,
+                caption: responseText,
+                mentions: [target],
+                mimetype: 'video/mp4',
+                gifPlayback: true
+              });
+            } catch (gifError) {
+              console.error('[GIF] Erro ao baixar/enviar GIF:', gifError);
+
+              await nazu.sendMessage(from, {
+                text: '❌ Não consegui carregar o GIF agora. Tente novamente.'
+              });
+            }
           } else {
             await nazu.sendMessage(from, {
               text: responseText,
@@ -34842,7 +37142,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
               caption: responseText,
               mentions: [target],
               gifPlayback: true
-            });
+              });
           } else {
             await nazu.sendMessage(from, {
               text: responseText,
@@ -34940,7 +37240,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
               caption: responseText,
               mentions: top5,
               gifPlayback: true
-            });
+              });
           } else {
             await nazu.sendMessage(from, {
               text: responseText,
@@ -35022,7 +37322,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
               caption: responseText,
               mentions: top5,
               gifPlayback: true
-            });
+              });
           } else {
             await nazu.sendMessage(from, {
               text: responseText,
@@ -35083,12 +37383,31 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
               mentions: [menc_os2]
             });
           } else if (media?.video) {
-            await nazu.sendMessage(from, {
-              video: media.video,
-              caption: responseText,
-              mentions: [menc_os2],
-              gifPlayback: true
-            });
+            try {
+              const videoUrl = typeof media.video === 'string'
+                ? media.video
+                : media.video?.url;
+
+              if (!videoUrl) {
+                throw new Error('URL do GIF não encontrada');
+              }
+
+              const gifBuffer = await kyaraPrepararGif(videoUrl);
+
+              await nazu.sendMessage(from, {
+                video: gifBuffer,
+                caption: responseText,
+                mentions: [menc_os2],
+                mimetype: 'video/mp4',
+                gifPlayback: true
+              });
+            } catch (gifError) {
+              console.error('[GIF] Erro ao baixar/enviar GIF:', gifError);
+
+              await nazu.sendMessage(from, {
+                text: '❌ Não consegui carregar o GIF agora. Tente novamente.'
+              });
+            }
           } else {
             await nazu.sendMessage(from, {
               text: responseText,

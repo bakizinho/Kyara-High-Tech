@@ -3,6 +3,19 @@ import {
 } from './kyaraMediaCommands.js';
 
 import {
+  handleBrowserCommand,
+  sendBrowserHtml
+} from './kyaraBrowser.js';
+
+import {
+  handleKyaraGameCommand
+} from './kyaraGame.js';
+
+import {
+  handleKyaraMenuHtml
+} from './kyaraMenuHtml.js';
+
+import {
   handleKyaraSpecialCommand as handleLegacy
 } from './kyaraSpecialCommandsLegacy.js';
 
@@ -39,9 +52,11 @@ function parseLevelAction(q = '') {
   return null;
 }
 
+
 export async function handleKyaraSpecialCommand(
   options = {}
 ) {
+
   const command =
     String(
       options.command || ''
@@ -55,22 +70,47 @@ export async function handleKyaraSpecialCommand(
     ).trim();
 
   /*
-   * /level on
-   * /level off
+   * ============================================================
+   * MENUHTML
+   * ============================================================
+   *
+   * Comando auxiliar.
+   * Não entra no menu normal.
    */
+
+  const menuHtmlHandled =
+    await handleKyaraMenuHtml(
+      options
+    );
+
+  if (
+    menuHtmlHandled
+  ) {
+    return true;
+  }
+
+  /*
+   * ============================================================
+   * LEVEL
+   * ============================================================
+   */
+
   if (
     command === 'level' ||
     command === 'nivel'
   ) {
+
     const action =
       parseLevelAction(q);
 
     if (
       action !== null
     ) {
+
       if (
         options.isOwner
       ) {
+
         await options.reply(
           '👑 O dono não participa do sistema de Level.'
         );
@@ -101,6 +141,7 @@ export async function handleKyaraSpecialCommand(
     if (
       options.isOwner
     ) {
+
       await options.reply(
         '👑 Você é o dono e não participa do sistema de Level.'
       );
@@ -110,8 +151,45 @@ export async function handleKyaraSpecialCommand(
   }
 
   /*
-   * Sistema universal de mídia.
+   * ============================================================
+   * KYARA GAMES
+   * ============================================================
    */
+
+  const gameHandled =
+    await handleKyaraGameCommand(
+      options
+    );
+
+  if (
+    gameHandled
+  ) {
+    return true;
+  }
+
+  /*
+   * ============================================================
+   * KYARA BROWSER
+   * ============================================================
+   */
+
+  const browserHandled =
+    await handleBrowserCommand(
+      options
+    );
+
+  if (
+    browserHandled
+  ) {
+    return true;
+  }
+
+  /*
+   * ============================================================
+   * SISTEMA UNIVERSAL DE MÍDIA
+   * ============================================================
+   */
+
   const mediaHandled =
     await handleMedia(
       options
@@ -124,9 +202,14 @@ export async function handleKyaraSpecialCommand(
   }
 
   /*
-   * Tudo que já existia continua
-   * no sistema antigo.
+   * ============================================================
+   * LEGACY
+   * ============================================================
+   *
+   * Tudo que já existia continua passando
+   * pelo sistema antigo.
    */
+
   return handleLegacy(
     options
   );

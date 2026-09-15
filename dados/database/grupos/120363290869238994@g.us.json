@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:09:45.647Z",
+  "groupName": "ZoeirAnime Corp.",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "175140813942849@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Wilian Roberto",
+      "firstSeen": "2026-09-15T21:09:45.658Z",
+      "lastActivity": "2026-09-15T21:09:45.658Z"
+    },
+    {
+      "id": "143915881636004@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "veridiØ࿐",
+      "firstSeen": "2026-09-15T21:24:35.680Z",
+      "lastActivity": "2026-09-15T21:24:39.056Z"
+    }
+  ]
+}

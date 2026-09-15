@@ -15,21 +15,21 @@
   "contador": [
     {
       "id": "56629949104184@lid",
-      "msg": 8,
+      "msg": 13,
       "cmd": 0,
       "figu": 1,
       "pushname": "príncipe vegeta",
       "firstSeen": "2026-09-02T20:54:42.826Z",
-      "lastActivity": "2026-09-03T15:04:56.603Z"
+      "lastActivity": "2026-09-14T16:07:33.518Z"
     },
     {
       "id": "29502767915146@lid",
-      "msg": 11,
+      "msg": 25,
       "cmd": 0,
-      "figu": 1,
+      "figu": 11,
       "pushname": "Akatsuki Pain",
       "firstSeen": "2026-09-02T21:04:19.126Z",
-      "lastActivity": "2026-09-04T14:43:14.985Z"
+      "lastActivity": "2026-09-15T19:16:05.596Z"
     },
     {
       "id": "102212252512380@lid",
@@ -42,30 +42,30 @@
     },
     {
       "id": "118279758684166@lid",
-      "msg": 1,
+      "msg": 2,
       "cmd": 0,
       "figu": 0,
       "pushname": "Bendito Poba 🇵🇹 ⚽",
       "firstSeen": "2026-09-02T21:22:44.722Z",
-      "lastActivity": "2026-09-02T21:22:44.722Z"
+      "lastActivity": "2026-09-09T11:53:50.555Z"
     },
     {
       "id": "87244476010549@lid",
-      "msg": 7,
-      "cmd": 1,
-      "figu": 3,
-      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "msg": 10,
+      "cmd": 2,
+      "figu": 6,
+      "pushname": "BOT-KYARA",
       "firstSeen": "2026-09-03T15:02:17.175Z",
-      "lastActivity": "2026-09-08T22:53:39.523Z"
+      "lastActivity": "2026-09-11T16:30:18.200Z"
     },
     {
       "id": "273821428899949@lid",
-      "msg": 21,
-      "cmd": 0,
-      "figu": 0,
+      "msg": 27,
+      "cmd": 3,
+      "figu": 5,
       "pushname": "Ryan Machado Pereira",
       "firstSeen": "2026-09-03T16:04:31.657Z",
-      "lastActivity": "2026-09-08T22:50:43.867Z"
+      "lastActivity": "2026-09-13T22:16:55.627Z"
     },
     {
       "id": "274294596722921@lid",
@@ -80,10 +80,10 @@
       "id": "83000930898004@lid",
       "msg": 1,
       "cmd": 0,
-      "figu": 0,
+      "figu": 1,
       "pushname": "🥷👑",
       "firstSeen": "2026-09-04T04:13:24.714Z",
-      "lastActivity": "2026-09-04T04:13:24.720Z"
+      "lastActivity": "2026-09-13T19:30:27.361Z"
     },
     {
       "id": "37430757453988@lid",
@@ -96,12 +96,12 @@
     },
     {
       "id": "28145558278209@lid",
-      "msg": 3,
+      "msg": 7,
       "cmd": 0,
-      "figu": 1,
+      "figu": 3,
       "pushname": "᳀",
       "firstSeen": "2026-09-05T12:18:50.017Z",
-      "lastActivity": "2026-09-08T22:30:10.650Z"
+      "lastActivity": "2026-09-15T15:40:41.198Z"
     },
     {
       "id": "197294288859202@lid",
@@ -138,7 +138,27 @@
       "pushname": "𝒴𝘶𝘬𝘪",
       "firstSeen": "2026-09-08T01:00:59.011Z",
       "lastActivity": "2026-09-08T01:04:33.117Z"
+    },
+    {
+      "id": "43783467077741@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": ".No'Bru Pain⚰️☮️🈂️",
+      "firstSeen": "2026-09-09T13:21:18.730Z",
+      "lastActivity": "2026-09-15T15:39:51.894Z"
+    },
+    {
+      "id": "9853242212572@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-09-13T08:18:26.813Z",
+      "lastActivity": "2026-09-13T08:18:26.820Z"
     }
   ],
-  "levelingConfigured": true
+  "levelingConfigured": true,
+  "assistente": true,
+  "assistentePersonality": "kyara"
 }

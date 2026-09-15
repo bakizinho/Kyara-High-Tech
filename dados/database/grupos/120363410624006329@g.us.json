@@ -1,0 +1,240 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-09T13:11:56.657Z",
+  "groupName": "Os 💯 Noção",
+  "modorpg": true,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "270420435570845@lid",
+      "msg": 343,
+      "cmd": 43,
+      "figu": 32,
+      "pushname": "𝖒𝖔𝖗𝖊𝖓𝖆",
+      "firstSeen": "2026-09-09T13:11:56.683Z",
+      "lastActivity": "2026-09-15T12:27:45.006Z"
+    },
+    {
+      "id": "162654857498721@lid",
+      "msg": 25,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "Tulio",
+      "firstSeen": "2026-09-09T13:12:01.816Z",
+      "lastActivity": "2026-09-12T02:07:03.196Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 31,
+      "cmd": 7,
+      "figu": 21,
+      "pushname": "BOT-KYARA",
+      "firstSeen": "2026-09-09T13:12:30.275Z",
+      "lastActivity": "2026-09-14T22:33:04.590Z"
+    },
+    {
+      "id": "50873937973450@lid",
+      "msg": 354,
+      "cmd": 38,
+      "figu": 39,
+      "pushname": "Llane🤍",
+      "firstSeen": "2026-09-09T13:13:03.357Z",
+      "lastActivity": "2026-09-12T18:48:33.269Z"
+    },
+    {
+      "id": "141351987454000@lid",
+      "msg": 22,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Maria Nicoly",
+      "firstSeen": "2026-09-09T13:25:43.122Z",
+      "lastActivity": "2026-09-12T01:49:33.746Z"
+    },
+    {
+      "id": "77426180772043@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Gisele",
+      "firstSeen": "2026-09-09T13:49:51.813Z",
+      "lastActivity": "2026-09-09T13:52:18.747Z"
+    },
+    {
+      "id": "191500277281021@lid",
+      "msg": 32,
+      "cmd": 0,
+      "figu": 5,
+      "pushname": "j",
+      "firstSeen": "2026-09-09T14:06:45.406Z",
+      "lastActivity": "2026-09-12T13:15:07.205Z"
+    },
+    {
+      "id": "256556314673376@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "gabi",
+      "firstSeen": "2026-09-09T14:35:50.742Z",
+      "lastActivity": "2026-09-09T14:40:00.737Z"
+    },
+    {
+      "id": "240510350426288@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Fernando Sales",
+      "firstSeen": "2026-09-09T14:43:00.167Z",
+      "lastActivity": "2026-09-09T14:44:57.215Z"
+    },
+    {
+      "id": "155005990531291@lid",
+      "msg": 245,
+      "cmd": 14,
+      "figu": 28,
+      "pushname": "🔱 Carioca 🔱",
+      "firstSeen": "2026-09-09T14:44:09.799Z",
+      "lastActivity": "2026-09-14T22:33:06.658Z"
+    },
+    {
+      "id": "181398698762280@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-09-09T14:48:58.797Z",
+      "lastActivity": "2026-09-09T21:46:10.272Z"
+    },
+    {
+      "id": "169673354170373@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-09-09T15:11:52.420Z",
+      "lastActivity": "2026-09-09T15:11:52.420Z"
+    },
+    {
+      "id": "75192747442180@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-09-09T15:56:13.595Z",
+      "lastActivity": "2026-09-09T15:56:13.599Z"
+    },
+    {
+      "id": "151788456005745@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "Blaze 愛",
+      "firstSeen": "2026-09-09T16:11:18.662Z",
+      "lastActivity": "2026-09-12T16:15:44.078Z"
+    },
+    {
+      "id": "31448505536703@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-09-09T16:46:41.315Z",
+      "lastActivity": "2026-09-09T16:46:41.315Z"
+    },
+    {
+      "id": "88910671679538@lid",
+      "msg": 16,
+      "cmd": 0,
+      "figu": 17,
+      "pushname": "Coxin🌼",
+      "firstSeen": "2026-09-09T20:42:15.387Z",
+      "lastActivity": "2026-09-13T11:46:34.433Z"
+    },
+    {
+      "id": "149122136944678@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Dr. André  Alexandrino",
+      "firstSeen": "2026-09-09T21:50:38.272Z",
+      "lastActivity": "2026-09-09T22:36:15.775Z"
+    },
+    {
+      "id": "224125150863456@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Larissa",
+      "firstSeen": "2026-09-10T13:27:02.563Z",
+      "lastActivity": "2026-09-10T13:27:02.563Z"
+    },
+    {
+      "id": "192599856013511@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": ".⋆♱ 𝐊𝖆𝖙𝖑𝖞𝖓",
+      "firstSeen": "2026-09-11T14:35:42.806Z",
+      "lastActivity": "2026-09-13T18:33:50.450Z"
+    },
+    {
+      "id": "65262179069958@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Jaciare",
+      "firstSeen": "2026-09-11T23:09:21.828Z",
+      "lastActivity": "2026-09-11T23:09:22.798Z"
+    },
+    {
+      "id": "129837633126409@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Rhuan",
+      "firstSeen": "2026-09-12T01:11:17.575Z",
+      "lastActivity": "2026-09-12T01:13:28.798Z"
+    },
+    {
+      "id": "102126269292775@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "ᵏᵃᵘᵃⁿ 🇨🇦",
+      "firstSeen": "2026-09-13T18:19:51.729Z",
+      "lastActivity": "2026-09-13T19:07:13.378Z"
+    },
+    {
+      "id": "22716803469436@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Dra Vanessa Hernandes",
+      "firstSeen": "2026-09-14T11:53:40.369Z",
+      "lastActivity": "2026-09-14T12:03:32.505Z"
+    },
+    {
+      "id": "217205740421125@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝓒𝓻𝓲𝓼 🎀",
+      "firstSeen": "2026-09-15T20:03:14.007Z",
+      "lastActivity": "2026-09-15T20:03:25.981Z"
+    }
+  ],
+  "bemvindo": false,
+  "bemvindo2": true,
+  "antilinkgp": true,
+  "antiporn": false,
+  "soadm": false,
+  "antistatus": true
+}

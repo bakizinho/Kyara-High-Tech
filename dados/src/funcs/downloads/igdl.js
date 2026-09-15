@@ -1,123 +1,123 @@
-import https from 'https'
-import fs from 'fs'
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import crypto from 'crypto';
 
-const CONFIG_FILE = JSON.parse(
-  fs.readFileSync(new URL('../../config.json', import.meta.url), 'utf8')
-)
+const execFileAsync = promisify(execFile);
 
-const cache = new Map()
-const CACHE_TTL = 60 * 60 * 1000
-
-function getCached(key) {
-  const item = cache.get(key)
-  if (!item) return null
-
-  if (Date.now() - item.ts > CACHE_TTL) {
-    cache.delete(key)
-    return null
-  }
-
-  return item.val
-}
-
-function setCache(key, val) {
-  if (cache.size >= 1000) {
-    const oldest = cache.keys().next().value
-    cache.delete(oldest)
-  }
-
-  cache.set(key, {
-    val,
-    ts: Date.now()
-  })
-}
-
-function request(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, res => {
-
-      let data = ''
-
-      res.on('data', chunk => data += chunk)
-
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data))
-        } catch {
-          reject(new Error('Resposta inválida da API'))
+async function runYtDlp(args) {
+    const { stdout, stderr } = await execFileAsync(
+        'yt-dlp',
+        args,
+        {
+            timeout: 120000,
+            maxBuffer: 20 * 1024 * 1024
         }
-      })
+    );
 
-    }).on('error', reject)
-  })
+    return { stdout, stderr };
 }
 
 async function dl(url) {
-
-  try {
-
-    if (!url) {
-      return {
-        ok: false,
-        msg: 'URL inválida'
-      }
+    if (!url || !/instagram\.com/i.test(url)) {
+        return {
+            ok: false,
+            msg: 'Envie um link válido do Instagram.'
+        };
     }
 
-    const cached = getCached(`download:${url}`)
-    if (cached) return { ok: true, ...cached, cached: true }
+    const dir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'kyara-ig-')
+    );
 
-    const { apikey_vex, site_vex } = CONFIG_FILE
+    try {
+        const output = path.join(
+            dir,
+            `${crypto.randomUUID()}.%(ext)s`
+        );
 
-    const api =
-      `${site_vex}/api/downloads/instagram?apikey=${apikey_vex}&query=${encodeURIComponent(url)}`
+        console.log('[Instagram LOCAL] 📥 Baixando...');
 
-    const data = await request(api)
+        const { stdout } = await runYtDlp([
+            '--no-playlist',
+            '--print-json',
+            '--no-warnings',
+            '-o',
+            output,
+            url
+        ]);
 
+        const infoLine = stdout
+            .split('\n')
+            .reverse()
+            .find(line => line.trim().startsWith('{'));
 
-    const checkAfter = await verificarAPI(data)
-    if (checkAfter !== true) {
-      return { ok: false, msg: checkAfter }
+        let info = {};
+
+        try {
+            info = infoLine ? JSON.parse(infoLine) : {};
+        } catch {}
+
+        const files = await fs.readdir(dir);
+
+        const mediaFile = files.find(file =>
+            !file.endsWith('.part') &&
+            !file.endsWith('.ytdl')
+        );
+
+        if (!mediaFile) {
+            throw new Error('O yt-dlp não gerou nenhum arquivo.');
+        }
+
+        const filePath = path.join(dir, mediaFile);
+        const buffer = await fs.readFile(filePath);
+
+        if (!buffer.length) {
+            throw new Error('Arquivo do Instagram está vazio.');
+        }
+
+        const ext = path.extname(mediaFile).toLowerCase();
+
+        const mime =
+            ext === '.mp4'
+                ? 'video/mp4'
+                : ext === '.webm'
+                    ? 'video/webm'
+                    : 'image/jpeg';
+
+        console.log(
+            `[Instagram LOCAL] ✅ ${buffer.length} bytes`
+        );
+
+        return {
+            ok: true,
+            criador: 'Kyara',
+            type: mime.startsWith('video/') ? 'video' : 'image',
+            mime,
+            buffer,
+            title: info.title || '',
+            author: info.uploader || info.channel || ''
+        };
+
+    } catch (err) {
+        console.error(
+            '[Instagram LOCAL] ❌',
+            err.message
+        );
+
+        return {
+            ok: false,
+            msg: `Não foi possível baixar o Instagram: ${err.message}`
+        };
+
+    } finally {
+        await fs.rm(dir, {
+            recursive: true,
+            force: true
+        }).catch(() => {});
     }
-
-    if (!data?.status || !data?.resposta?.medias?.length) {
-      return {
-        ok: false,
-        msg: 'Postagem não encontrada'
-      }
-    }
-
-    const medias = data.resposta.medias
-
-    const results = medias.map(m => ({
-      type: m.type,
-      url: m.url,
-      mime: m.type === 'image' ? 'image/jpeg' : 'video/mp4'
-    }))
-
-    const result = {
-      criador: 'null',
-      data: results,
-      count: results.length
-    }
-
-    setCache(`download:${url}`, result)
-
-    return {
-      ok: true,
-      ...result
-    }
-
-  } catch (err) {
-
-    return {
-      ok: false,
-      msg: 'Erro ao baixar post: ' + err.message
-    }
-
-  }
-
 }
 
-export {
-  dl
-}
+export { dl };

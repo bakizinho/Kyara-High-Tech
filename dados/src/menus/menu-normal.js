@@ -20,5 +20,20 @@ export default async function menuNormal(
 ┊•.̇𖥨֗💜⭟ ${prefix}alteradores
 ┊•.̇𖥨֗💜⭟ ${prefix}menurpg
 ┊•.̇𖥨֗💜⭟ ${prefix}menuvip
-╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`;
+┊
+┊🧠 ${prefix}assistente
+┊🔊 ${prefix}ler <texto>
+┊🎮 ${prefix}quiz
+┊📊 ${prefix}menulevel
+╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯
+╭┈❁ *💡 COMUNIDADE & LEVEL*
+┊
+┊💡 ${prefix}ideia <sua ideia>
+┊💡 ${prefix}caixadeideias
+┊💡 ${prefix}melhoresideias
+┊💡 ${prefix}votarideia <id>
+┊⭐ ${prefix}level
+┊⭐ ${prefix}ranklevel
+╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯
+`;
 }

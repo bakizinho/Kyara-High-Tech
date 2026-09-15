@@ -1,0 +1,56 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-10T01:05:40.148Z",
+  "groupName": "MELHORES AMIGOS ADITZ ANIMES ",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 1,
+      "cmd": 1,
+      "figu": 1,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-10T01:05:40.165Z",
+      "lastActivity": "2026-09-14T15:12:10.213Z"
+    },
+    {
+      "id": "118279758684166@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Bendito Poba 🇵🇹 ⚽",
+      "firstSeen": "2026-09-10T06:26:03.729Z",
+      "lastActivity": "2026-09-10T06:26:03.732Z"
+    },
+    {
+      "id": "187287132463184@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mama",
+      "firstSeen": "2026-09-11T12:53:15.179Z",
+      "lastActivity": "2026-09-11T12:53:15.179Z"
+    },
+    {
+      "id": "56629949104184@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "príncipe vegeta",
+      "firstSeen": "2026-09-11T13:03:31.037Z",
+      "lastActivity": "2026-09-11T13:03:33.047Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true
+}

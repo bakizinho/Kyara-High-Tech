@@ -1,3 +1,33 @@
+
+const kyaraMenuHeader = ({
+  isOwner = false,
+  pushName = "Usuário",
+  uptime = "0s",
+  ram = "0 MB",
+  level = null
+} = {}) => {
+  const nome = String(pushName || "Usuário").replace(/\n/g, " ").trim();
+  const cargo = isOwner ? "👑 DONO" : "👤 MEMBRO";
+
+  const nivel = level !== null && level !== undefined
+    ? `┃ ⭐ Nível: ${level}\n`
+    : "";
+
+  return [
+    `╭━━〔 🌸 *BOT-KYARA* 〕━━╮`,
+    `┃ ${cargo}: @${nome}`,
+    `┃ ⚡ Online: ${uptime}`,
+    `┃ 🧠 RAM: ${ram}`,
+    nivel ? nivel.trimEnd() : null,
+    `╰━━━━━━━━━━━━━━━━━━━━╯`
+  ].filter(Boolean).join("\n");
+};
+
+import {
+    setActiveSocket,
+    markSocketOpen,
+    markSocketClosed
+} from './utils/activeSocket.js';
 import { boot, core, wa, data, bot, sync, ok, warn } from './utils/logger.js';
 import { useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, makeWASocket, fetchLatestBaileysVersion, isJidBroadcast, isJidNewsletter, isJidStatusBroadcast } from 'baileys';
 import { Boom } from '@hapi/boom';
@@ -19,6 +49,10 @@ import { loadMsgBotOn } from './utils/database.js';
 import { buildUserId } from './utils/helpers.js';
 import { initCaptchaIndex, loadCaptchaJson, saveCaptchaJson } from './utils/captchaIndex.js';
 import CaptchaIndex from './utils/captchaIndex.js';
+import { extractId, routeOwnerFlow, isOwnerFlowId } from './core/nativeFlow/owner-flow-router.js';
+import { sendOwnerMain } from './core/nativeFlow/owner-flow.js';
+import { installGlobalButtons } from './core/nativeFlow/autoButtons.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const modules = await import('./funcs/exports.js');
@@ -348,7 +382,12 @@ async function initializeOptimizedCaches(KyaraSock) {
 
     }
 }
-const codeMode = process.argv.includes('--code') || process.env.KYARA_CODE_MODE === '1';
+const connectionMethod = process.env.KYARA_CONNECTION_METHOD || 'auto';
+
+const codeMode =
+    connectionMethod === 'pairing' ||
+    process.argv.includes('--code') ||
+    process.env.KYARA_CODE_MODE === '1';
 
 
 let cacheCleanupInterval = null;
@@ -1226,7 +1265,7 @@ async function updateOwnerLid(KyaraSock) {
     try {
         const result = await fetchLidWithRetry(KyaraSock, ownerJid);
         if (result) {
-            config.lidowner = result.lid;
+            config.isOwnerCheck = result.lid;
             await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
         }
     } catch (err) {
@@ -1348,6 +1387,8 @@ async function createBotSocket(authDir) {
             console.log(`🔑 Código de pareamento: ${formattedCode}`);
             console.log('📲 Envie este código no WhatsApp para autenticar o bot.');
         }
+
+        setActiveSocket(KyaraSock);
 
         KyaraSock.ev.on('creds.update', saveCreds);
 
@@ -1482,9 +1523,164 @@ async function createBotSocket(authDir) {
 
         messageQueue.setErrorHandler(queueErrorHandler);
 
-        const processMessage = async (info) => {
+        
+// === KYARA V9 HANDLER - QUANTUM ===
+const kyaraFlowDebounce = new Map()
+const kyaraNativeFlowHandler = async (info) => {
+  try {
+    if(!info?.message || info.key.fromMe) return false
+    const flowId = extractId(info.message)
+    if(!flowId ||!isOwnerFlowId(flowId)) return false
+    const jid = info.key.remoteJid
+    const senderRaw =
+      info.key.participant ||
+      info.message?.participant ||
+      info.key.participantAlt ||
+      info.key.participantPn ||
+      info.message?.participantPn ||
+      info.message?.extendedTextMessage?.contextInfo?.participant ||
+      info.key.remoteJid ||
+      ''
+
+    const senderBase = String(senderRaw).split('@')[0].split(':')[0]
+    const ownerBase = String(numerodono || '').replace(/\D/g, '')
+
+    let resolvedSender = senderRaw
+    let resolvedSenderBase = senderBase
+    let resolvedFrom = 'raw'
+
+    // WhatsApp/Baileys pode entregar o participante do grupo como @lid.
+    // Primeiro tenta resolver LID -> PN pelo mapping da sessão.
+    if (String(senderRaw).endsWith('@lid')) {
+      try {
+        const mapping =
+          KyaraSock?.signalRepository?.lidMapping
+
+        if (mapping?.getPNForLID) {
+          const pn =
+            await mapping.getPNForLID(senderRaw)
+
+          if (pn) {
+            resolvedSender = pn
+            resolvedSenderBase = String(pn)
+              .split('@')[0]
+              .split(':')[0]
+
+            resolvedFrom =
+              'signalRepository.lidMapping'
+          }
+        }
+      } catch (e) {
+        console.log(
+          '[KYARA FLOW AUTH] Falha LID -> PN:',
+          e?.message || e
+        )
+      }
+    }
+
+    // Alguns eventos já carregam o PN diretamente.
+    const participantPn =
+      info.key.participantPn ||
+      info.message?.participantPn ||
+      info.key.senderPn ||
+      info.message?.senderPn ||
+      ''
+
+    if (participantPn && String(participantPn).endsWith('@s.whatsapp.net')) {
+      resolvedSender = participantPn
+      resolvedSenderBase = String(participantPn)
+        .split('@')[0]
+        .split(':')[0]
+
+      resolvedFrom = 'participantPn'
+    }
+
+    const ownerBaseClean = ownerBase.replace(/\D/g, '')
+    const senderBaseClean = resolvedSenderBase.replace(/\D/g, '')
+
+    const configuredLidOwner =
+      String(config?.isOwnerCheck || '').trim()
+
+    const senderIsOwnerByLid =
+      Boolean(configuredLidOwner) &&
+      String(senderRaw).trim() === configuredLidOwner
+
+    const senderIsOwnerByNumber =
+      Boolean(ownerBaseClean) &&
+      Boolean(senderBaseClean) &&
+      senderBaseClean === ownerBaseClean
+
+    const senderIsBot =
+      info.key.fromMe === true ||
+      String(senderRaw) === String(KyaraSock.user?.id || '') ||
+      senderBase === String(KyaraSock.user?.id || '')
+        .split(':')[0]
+        .split('@')[0]
+
+    const isOwnerCheck =
+      senderIsOwnerByNumber ||
+      senderIsOwnerByLid ||
+      senderIsBot
+
+    console.log('[KYARA FLOW AUTH]', JSON.stringify({
+      sender: senderRaw,
+      resolvedSender,
+      resolvedFrom,
+      senderBase,
+      resolvedSenderBase,
+      ownerBase: ownerBaseClean,
+      byNumber: senderIsOwnerByNumber,
+      byLid: senderIsOwnerByLid,
+      byBot: senderIsBot,
+      isOwner: isOwnerCheck
+    }))
+
+    if(!isOwnerCheck) {
+      await KyaraSock.sendMessage(jid, { text: '⛔ *ACESSO NEGADO*\nPainel exclusivo do proprietário.' })
+      return true
+    }
+    if(kyaraFlowDebounce.get(jid+flowId) && Date.now()-kyaraFlowDebounce.get(jid+flowId)<1200) return true
+    kyaraFlowDebounce.set(jid+flowId, Date.now())
+    await routeOwnerFlow({
+      Kyara: KyaraSock, jid, id: flowId,
+      prefix: config?.prefixo||prefixo||'/', botName: config?.nomebot||nomebot||'KYARA',
+      userName: info.pushName||nomedono||'Dono', ownerId: numerodono,
+      executeCommand: async (cmd, ctx={}) => {
+        const text = `${ctx.prefix||prefixo||'/'}${cmd}`
+        const internal = { key: { remoteJid: ctx.jid||jid, participant: info.key.participant||ctx.jid||jid, fromMe: false, id: `FLOW-${Date.now()}` }, pushName: info.pushName||'Dono', message: { conversation: text }, messageTimestamp: Math.floor(Date.now()/1000) }
+        await indexModule(KyaraSock, internal, null, messagesCache, rentalExpirationManager)
+      }
+    })
+    return true
+  } catch(e){ console.error('[KYARA V9]', e.stack||e); return false }
+}
+
+const processMessage = async (info) => {
+
+            // Diagnóstico temporário de mensagens relacionadas a status
+            try {
+                const bruto = JSON.stringify(info?.message || {});
+                const chave = JSON.stringify(info?.key || {});
+
+                if (
+                    bruto.toLowerCase().includes('status') ||
+                    chave.toLowerCase().includes('status')
+                ) {
+                    console.log('[KYARA STATUS DEBUG]', {
+                        tipo: info?.message ? Object.keys(info.message) : [],
+                        key: info?.key,
+                        remoteJid: info?.key?.remoteJid,
+                        participant: info?.key?.participant,
+                        id: info?.key?.id
+                    });
+                }
+            } catch (e) {
+                console.error('[KYARA STATUS DEBUG ERRO]', e.message);
+            }
 
             const isJoinRequest = info?.messageStubType === 172;
+ if(await kyaraNativeFlowHandler(info)) return;
+
 
 
             if (isJoinRequest) {
@@ -1571,6 +1767,8 @@ async function createBotSocket(authDir) {
                 console.log('📱 Escaneie o QR code acima com o WhatsApp para autenticar o bot.');
             }
             if (connection === 'open') {
+
+                markSocketOpen(KyaraSock);
                                  try {
                  
                 reconnectAttempts = 0;
@@ -1641,6 +1839,8 @@ core('Inicializando sistema de otimização...');
                 }
             }
             if (connection === 'close') {
+
+                markSocketClosed(KyaraSock);
                 const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
                 const reasonMessage = {
                     [DisconnectReason.loggedOut]: 'Deslogado do WhatsApp',

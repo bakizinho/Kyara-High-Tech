@@ -15,6 +15,8 @@ import {
   getWeeklyStatus,
   submitIdea,
   listIdeas,
+  getIdea,
+  voteIdea,
   addWeeklyXP
 } from './weeklyLevel.js';
 
@@ -214,6 +216,13 @@ async function handleLevel({
     `│ 💬 Mensagens: *${Number(user?.messages) || 0}*\n` +
     `│ ⚡ Comandos: *${Number(user?.commands) || 0}*\n` +
     `│ 🗓️ XP semanal: *${weeklyXP}*\n` +
+    `│\n` +
+    `│ 💡 *Recompensa por Level Up:*\n` +
+    `│ └─ A cada nível o prêmio em dinheiro dobra.\n` +
+    `│ 💰 Nível 2: *100* moedas\n` +
+    `│ 💰 Nível 3: *200* moedas\n` +
+    `│ 💰 Nível 4: *400* moedas\n` +
+    `│\n` +
     `│ 💡 Digite *${prefix || '/'}levelinfo* para saber mais.\n` +
     `╰━━━━━━━━━━━━━━━━━━━━╯`;
 
@@ -596,7 +605,7 @@ async function handleIdea({
     `│ 🆔 Nº *${result.id}*\n` +
     `│ 👤 ${pushname || safeName(sender)}\n` +
     `│\n` +
-    `│ 📝 ${result.item?.text || text}\n` +
+    `│ 📝 ${result.item?.text || result.item?.idea || text}\n` +
     `│\n` +
     `│ ⭐ +20 XP semanal\n` +
     `│\n` +
@@ -2354,6 +2363,46 @@ export async function handleKyaraSpecialCommand(
       .toLowerCase()
   ) {
 
+    /*
+     * ==================================================
+     * CENTRAL DE SUBDONO
+     * ==================================================
+     */
+
+    case 'subdono':
+    case 'subdonos':
+    case 'ajudasubdono':
+      if (!options.isOwner && !options.isSubOwner) {
+        await reply(
+          '🚫 Apenas o Dono e Subdonos podem consultar esta central.'
+        );
+
+        return true;
+      }
+
+      await reply(
+        `╭━━━〔 👑 *CENTRAL DE SUBDONO* 〕━━━╮\n` +
+        `│\n` +
+        `│ 👑 *Gerenciamento*\n` +
+        `│ ├─ ${prefix}addsubdono @usuario\n` +
+        `│ ├─ ${prefix}remsubdono @usuario\n` +
+        `│ └─ ${prefix}listasubdonos\n` +
+        `│\n` +
+        `│ 🔐 *Permissões de comandos*\n` +
+        `│ ├─ ${prefix}addcmd-subdono <comando>\n` +
+        `│ ├─ ${prefix}removecmd-subdono <comando>\n` +
+        `│ └─ ${prefix}listcmd-subdono\n` +
+        `│\n` +
+        `│ ⚠️ *Importante*\n` +
+        `│ ├─ Somente o Dono principal adiciona subdonos.\n` +
+        `│ ├─ Subdonos não podem criar outros subdonos.\n` +
+        `│ └─ O Dono principal não pode virar subdono.\n` +
+        `│\n` +
+        `╰━━━━━━━━━━━━━━━━━━━━╯`
+      );
+
+      return true;
+
     case 'levelinfo':
     case 'nivelinfo':
     case 'levelajuda':
@@ -2434,6 +2483,284 @@ export async function handleKyaraSpecialCommand(
       });
 
       return true;
+
+    /*
+     * ==================================================
+     * VER UMA IDEIA ESPECÍFICA
+     * ==================================================
+     */
+
+    case 'verideia':
+    case 'ideiaview':
+      {
+        const id =
+          String(q || '')
+            .trim()
+            .replace(/^#/, '');
+
+        if (!/^\d+$/.test(id)) {
+          await reply(
+            `💡 *Como usar:*\n\n` +
+            `${prefix}verideia 5\n\n` +
+            `Exemplo:\n` +
+            `${prefix}verideia 1`
+          );
+
+          return true;
+        }
+
+        const idea =
+          getIdea({
+            id
+          });
+
+        if (!idea) {
+          await reply(
+            `❌ A ideia #${id} não foi encontrada.`
+          );
+
+          return true;
+        }
+
+        const text =
+          idea.text ||
+          idea.idea ||
+          'Sem texto';
+
+        const score =
+          Number(idea.score) || 0;
+
+        const up =
+          Array.isArray(idea?.votes?.up)
+            ? idea.votes.up.length
+            : 0;
+
+        const down =
+          Array.isArray(idea?.votes?.down)
+            ? idea.votes.down.length
+            : 0;
+
+        await reply(
+          `╭━━━〔 💡 *IDEIA #${idea.id}* 〕━━━╮\n` +
+          `│\n` +
+          `│ 👤 *Autor:* ${idea.name || 'Usuário'}\n` +
+          `│ 📅 *Data:* ${new Date(idea.createdAt || Date.now()).toLocaleDateString('pt-BR')}\n` +
+          `│ 📌 *Status:* ${idea.status || 'pendente'}\n` +
+          `│\n` +
+          `│ 📝 ${text}\n` +
+          `│\n` +
+          `│ 👍 ${up}  |  👎 ${down}\n` +
+          `│ ⭐ *Pontuação:* ${score}\n` +
+          `│\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯\n\n` +
+          `💡 Vote com *${prefix}votarideia ${idea.id}*`
+        );
+
+        return true;
+      }
+
+    /*
+     * ==================================================
+     * MINHAS IDEIAS
+     * ==================================================
+     */
+
+    case 'minhasideias':
+    case 'minhasideia':
+      {
+        const all =
+          listIdeas({
+            limit: 100000,
+            sort: 'recent'
+          });
+
+        const mine =
+          all.filter(
+            item =>
+              String(item?.user || '') ===
+              String(sender || '')
+          );
+
+        if (!mine.length) {
+          await reply(
+            `💡 Você ainda não registrou nenhuma ideia.\n\n` +
+            `Use:\n` +
+            `${prefix}ideia sua ideia aqui`
+          );
+
+          return true;
+        }
+
+        let text =
+          `╭━━━〔 💡 *MINHAS IDEIAS* 〕━━━╮\n│\n`;
+
+        mine.slice(0, 20).forEach(
+          item => {
+            const score =
+              Number(item?.score) || 0;
+
+            text +=
+              `│ 💡 *#${item.id}* — ⭐ ${score}\n` +
+              `│ ${item.text || item.idea || 'Sem texto'}\n│\n`;
+          }
+        );
+
+        text +=
+          `╰━━━━━━━━━━━━━━━━━━━━╯`;
+
+        await reply(text);
+
+        return true;
+      }
+
+    /*
+     * ==================================================
+     * MELHORES IDEIAS
+     * ==================================================
+     */
+
+    case 'melhoresideias':
+    case 'topideias':
+    case 'ideiastop':
+      {
+        const ideas =
+          listIdeas({
+            limit: 10,
+            sort: 'votes'
+          });
+
+        if (!ideas.length) {
+          await reply(
+            '📭 Ainda não existem ideias registradas.'
+          );
+
+          return true;
+        }
+
+        let text =
+          `╭━━━〔 🏆 *MELHORES IDEIAS* 〕━━━╮\n│\n`;
+
+        ideas.forEach(
+          (item, index) => {
+            const score =
+              Number(item?.score) || 0;
+
+            const up =
+              Array.isArray(item?.votes?.up)
+                ? item.votes.up.length
+                : 0;
+
+            const down =
+              Array.isArray(item?.votes?.down)
+                ? item.votes.down.length
+                : 0;
+
+            text +=
+              `│ ${index + 1}. 💡 *#${item.id}*\n` +
+              `│ ${item.text || item.idea || 'Sem texto'}\n` +
+              `│ 👍 ${up}  👎 ${down}  ⭐ *${score}*\n│\n`;
+          }
+        );
+
+        text +=
+          `╰━━━━━━━━━━━━━━━━━━━━╯\n\n` +
+          `💡 Para votar: *${prefix}votarideia <id>*`;
+
+        await reply(text);
+
+        return true;
+      }
+
+    /*
+     * ==================================================
+     * VOTAR EM IDEIA
+     * ==================================================
+     */
+
+    case 'votarideia':
+    case 'voteideia':
+    case 'votoideia':
+      {
+        const parts =
+          String(q || '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
+        const id =
+          String(parts[0] || '')
+            .replace(/^#/, '');
+
+        if (!/^\d+$/.test(id)) {
+          await reply(
+            `💡 *Como votar:*\n\n` +
+            `${prefix}votarideia 5\n\n` +
+            `👍 voto positivo:\n` +
+            `${prefix}votarideia 5\n\n` +
+            `👎 voto negativo:\n` +
+            `${prefix}votarideia 5 contra\n\n` +
+            `🔄 Repetir o mesmo voto remove seu voto.`
+          );
+
+          return true;
+        }
+
+        const type =
+          String(parts[1] || '')
+            .toLowerCase();
+
+        const voteType =
+          [
+            'contra',
+            'negativo',
+            'down',
+            'nao',
+            'não',
+            '-'
+          ].includes(type)
+            ? 'down'
+            : 'up';
+
+        const result =
+          voteIdea({
+            id,
+            userId: sender,
+            type: voteType
+          });
+
+        if (!result?.success) {
+          await reply(
+            `❌ ${result?.error || 'Não foi possível registrar seu voto.'}`
+          );
+
+          return true;
+        }
+
+        const item =
+          result.item;
+
+        const actionText =
+          result.removed
+            ? 'voto removido'
+            : voteType === 'up'
+              ? 'voto positivo registrado'
+              : 'voto negativo registrado';
+
+        await reply(
+          `╭━━━〔 💡 *VOTAÇÃO* 〕━━━╮\n` +
+          `│\n` +
+          `│ 💡 Ideia: *#${item.id}*\n` +
+          `│ ${actionText}.\n` +
+          `│\n` +
+          `│ 👍 ${item.votes.up.length}\n` +
+          `│ 👎 ${item.votes.down.length}\n` +
+          `│ ⭐ *Pontuação: ${item.score}*\n` +
+          `│\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`
+        );
+
+        return true;
+      }
 
     case 'figurinhas':
     case 'stickerpack':

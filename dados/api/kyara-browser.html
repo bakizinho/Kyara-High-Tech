@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KYARA</title>
+
+<style>
+html,body{
+ margin:0;
+ padding:0;
+ width:100%;
+ height:100%;
+ background:#100818;
+ color:white;
+ font-family:Arial,sans-serif;
+ overflow:hidden;
+}
+
+*{box-sizing:border-box}
+
+#app{
+ width:100%;
+ height:100%;
+ display:flex;
+ flex-direction:column;
+}
+
+#bar{
+ height:58px;
+ flex:none;
+ background:#170d20;
+ border-bottom:1px solid #49265c;
+ display:flex;
+ align-items:center;
+ padding:8px;
+ gap:8px;
+}
+
+#logo{
+ width:40px;
+ height:40px;
+ border-radius:50%;
+ background:#8b27c7;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:22px;
+}
+
+#url{
+ flex:1;
+ height:40px;
+ border-radius:20px;
+ background:#24132d;
+ color:#ddd;
+ display:flex;
+ align-items:center;
+ padding:0 14px;
+ font-size:13px;
+}
+
+#content{
+ flex:1;
+ min-height:0;
+ position:relative;
+}
+
+.page{
+ position:absolute;
+ left:0;
+ top:0;
+ right:0;
+ bottom:0;
+ overflow:auto;
+ padding:18px;
+ display:none;
+}
+
+.page.on{
+ display:block;
+}
+
+h1{
+ font-size:27px;
+ margin:10px 0;
+}
+
+p{
+ color:#bcaac5;
+}
+
+.search{
+ display:flex;
+ gap:7px;
+ margin:18px 0;
+}
+
+input{
+ flex:1;
+ min-width:0;
+ height:46px;
+ border:1px solid #64367b;
+ border-radius:13px;
+ background:#160d1d;
+ color:white;
+ padding:0 13px;
+ outline:none;
+}
+
+button{
+ border:0;
+ color:white;
+ background:#8d2bc2;
+ border-radius:13px;
+ padding:0 15px;
+ font-weight:bold;
+}
+
+.box{
+ padding:18px;
+ margin:10px 0;
+ border-radius:16px;
+ border:1px solid #43234f;
+ background:#1a0e22;
+}
+
+#nav{
+ height:64px;
+ flex:none;
+ display:flex;
+ border-top:1px solid #49265c;
+ background:#100914;
+}
+
+.navbtn{
+ flex:1;
+ background:transparent;
+ color:#9b87a4;
+ border-radius:0;
+ padding:5px;
+}
+
+.navbtn.active{
+ color:#d56aff;
+}
+
+#gameArea{
+ position:absolute;
+ left:0;
+ right:0;
+ top:0;
+ bottom:0;
+ overflow:hidden;
+ background:linear-gradient(#150b20,#30114d,#09060d);
+}
+
+#score{
+ position:absolute;
+ top:12px;
+ left:12px;
+ z-index:10;
+ font-weight:bold;
+}
+
+#player{
+ position:absolute;
+ width:48px;
+ height:48px;
+ border-radius:14px;
+ background:#a638df;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:25px;
+ bottom:70px;
+ left:calc(50% - 24px);
+ box-shadow:0 0 25px #a638df;
+}
+
+.enemy{
+ position:absolute;
+ width:35px;
+ height:35px;
+ border-radius:10px;
+ background:#e73587;
+ box-shadow:0 0 15px #e73587;
+}
+
+.coin{
+ position:absolute;
+ width:25px;
+ height:25px;
+ border-radius:50%;
+ background:#ffd83d;
+ box-shadow:0 0 15px #ffd83d;
+}
+
+#start{
+ position:absolute;
+ z-index:20;
+ inset:0;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background:rgba(5,2,8,.72);
+}
+
+.panel{
+ width:85%;
+ max-width:330px;
+ padding:25px;
+ border-radius:22px;
+ background:#190d21;
+ border:1px solid #7939a0;
+ text-align:center;
+}
+
+.panel h2{
+ margin:5px 0 12px;
+}
+
+.panel button{
+ width:100%;
+ height:48px;
+}
+
+#controls{
+ position:absolute;
+ bottom:10px;
+ left:0;
+ right:0;
+ z-index:15;
+ display:flex;
+ justify-content:center;
+ gap:12px;
+}
+
+.control{
+ width:70px;
+ height:55px;
+ background:#24122e;
+ border:1px solid #704087;
+}
+
+.result{
+ padding:13px;
+ margin:9px 0;
+ border-radius:14px;
+ background:#180d20;
+ border:1px solid #39203f;
+}
+
+.result b{
+ display:block;
+ margin-bottom:6px;
+}
+
+.small{
+ color:#9f8aa8;
+ font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+<div id="bar">
+ <div id="logo">🌸</div>
+ <div id="url">kyara://home</div>
+</div>
+
+<div id="content">
+
+<section id="home" class="page on">
+
+<h1>🌸 KYARA BROWSER</h1>
+<p>Navegador da Kyara.</p>
+
+<div class="search">
+ <input id="q" placeholder="Pesquisar no YouTube">
+ <button onclick="doSearch()">BUSCAR</button>
+</div>
+
+<div class="box" onclick="game()">
+ <b>🎮 KYARA RUN</b>
+ <p>Jogue diretamente dentro do Browser.</p>
+</div>
+
+<div class="box" onclick="youtube()">
+ <b>▶️ YOUTUBE</b>
+ <p>Pesquisar vídeos.</p>
+</div>
+
+</section>
+
+<section id="yt" class="page">
+
+<h1>▶️ YouTube</h1>
+
+<div class="search">
+ <input id="q2" placeholder="Pesquisar">
+ <button onclick="doSearch2()">BUSCAR</button>
+</div>
+
+<div id="results"></div>
+
+</section>
+
+<section id="game" class="page">
+
+<div id="gameArea">
+
+<div id="score">⭐ 0 ❤️ 3</div>
+
+<div id="player">🌸</div>
+
+<div id="start">
+ <div class="panel">
+  <div style="font-size:55px">🌸</div>
+  <h2>KYARA RUN</h2>
+  <p>Desvie dos inimigos e pegue moedas.</p>
+  <button onclick="startGame()">JOGAR</button>
+ </div>
+</div>
+
+<div id="controls">
+ <button class="control" ontouchstart="move(-1)" onclick="move(-1)">◀</button>
+ <button class="control" ontouchstart="move(1)" onclick="move(1)">▶</button>
+</div>
+
+</div>
+
+</section>
+
+</div>
+
+<div id="nav">
+
+<button id="n1" class="navbtn active" onclick="home()">⌂<br>Início</button>
+
+<button id="n2" class="navbtn" onclick="youtube()">▶<br>YouTube</button>
+
+<button id="n3" class="navbtn" onclick="game()">🎮<br>Jogo</button>
+
+</div>
+
+</div>
+
+<script>
+const API_BASE="__KYARA_API_BASE__";
+const INITIAL_QUERY=__KYARA_BROWSER_INITIAL_QUERY__;
+
+var running=false;
+var score=0;
+var lives=3;
+var px=.5;
+var enemies=[];
+var coins=[];
+var last=0;
+var spawn=0;
+var coinSpawn=0;
+
+function page(id){
+
+ document.querySelectorAll(".page")
+ .forEach(function(x){x.classList.remove("on")});
+
+ document.getElementById(id)
+ .classList.add("on");
+
+ document.getElementById("n1").classList.remove("active");
+ document.getElementById("n2").classList.remove("active");
+ document.getElementById("n3").classList.remove("active");
+
+ if(id=="home"){
+  document.getElementById("n1").classList.add("active");
+  document.getElementById("url").innerHTML="kyara://home";
+ }
+
+ if(id=="yt"){
+  document.getElementById("n2").classList.add("active");
+  document.getElementById("url").innerHTML="kyara://youtube";
+ }
+
+ if(id=="game"){
+  document.getElementById("n3").classList.add("active");
+  document.getElementById("url").innerHTML="kyara://game";
+ }
+}
+
+function home(){page("home")}
+
+function youtube(){
+ page("yt");
+ setTimeout(function(){
+  document.getElementById("q2").focus();
+ },50);
+}
+
+function game(){
+ page("game");
+}
+
+function doSearch(){
+ var q=document.getElementById("q").value.trim();
+
+ if(!q)return;
+
+ document.getElementById("q2").value=q;
+
+ youtube();
+
+ searchAPI(q);
+}
+
+function doSearch2(){
+ var q=document.getElementById("q2").value.trim();
+
+ if(!q)return;
+
+ document.getElementById("q").value=q;
+
+ searchAPI(q);
+}
+
+function searchAPI(q){
+
+ var r=document.getElementById("results");
+
+ r.innerHTML=
+ '<div class="box">🔎 Pesquisando "'+
+ escapeHTML(q)+'"...</div>';
+
+ fetch(
+  API_BASE+
+  "/api/browser/search?query="+
+  encodeURIComponent(q)
+ )
+ .then(function(x){
+  return x.json();
+ })
+ .then(function(data){
+
+  var list=
+   data.results||
+   data.videos||
+   data.items||
+   [];
+
+  if(!list.length){
+   r.innerHTML=
+    '<div class="box">Nenhum resultado encontrado.</div>';
+   return;
+  }
+
+  r.innerHTML="";
+
+  list.slice(0,20).forEach(function(v){
+
+   var id=v.videoId||v.id||"";
+   var title=v.title||"Vídeo";
+   var author=v.author||v.channel||"YouTube";
+
+   var el=document.createElement("div");
+
+   el.className="result";
+
+   el.innerHTML=
+    "<b>"+escapeHTML(title)+"</b>"+
+    '<div class="small">'+
+    escapeHTML(author)+
+    "</div>";
+
+   el.onclick=function(){
+
+    if(id){
+     window.open(
+      "https://www.youtube.com/watch?v="+
+      encodeURIComponent(id),
+      "_blank"
+     );
+    }else if(v.url){
+     window.open(v.url,"_blank");
+    }
+
+   };
+
+   r.appendChild(el);
+
+  });
+
+ })
+ .catch(function(e){
+
+  r.innerHTML=
+   '<div class="box">❌ Erro na pesquisa.<br>'+
+   '<span class="small">'+
+   escapeHTML(e.message)+
+   "</span></div>";
+
+ });
+}
+
+function escapeHTML(x){
+ return String(x)
+  .replace(/&/g,"&amp;")
+  .replace(/</g,"&lt;")
+  .replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;");
+}
+
+/* GAME */
+
+function move(d){
+
+ if(!running)return;
+
+ px+=d*.1;
+
+ if(px<.06)px=.06;
+ if(px>.94)px=.94;
+
+ document.getElementById("player")
+ .style.left=
+ (px*100)+"%";
+
+}
+
+function startGame(){
+
+ enemies.forEach(function(x){
+  if(x.parentNode)x.parentNode.removeChild(x);
+ });
+
+ coins.forEach(function(x){
+  if(x.parentNode)x.parentNode.removeChild(x);
+ });
+
+ enemies=[];
+ coins=[];
+
+ score=0;
+ lives=3;
+ px=.5;
+ spawn=0;
+ coinSpawn=0;
+ last=Date.now();
+
+ running=true;
+
+ document.getElementById("start")
+ .style.display="none";
+
+ updateScore();
+
+ requestAnimationFrame(loop);
+}
+
+function updateScore(){
+
+ document.getElementById("score")
+ .innerHTML=
+ "⭐ "+score+" ❤️ "+lives;
+
+}
+
+function makeEnemy(){
+
+ var e=document.createElement("div");
+
+ e.className="enemy";
+ e.innerHTML="✦";
+
+ document.getElementById("gameArea")
+ .appendChild(e);
+
+ enemies.push({
+  el:e,
+  x:Math.random()*.9,
+  y:-40,
+  speed:.12+Math.random()*.08
+ });
+
+}
+
+function makeCoin(){
+
+ var e=document.createElement("div");
+
+ e.className="coin";
+
+ document.getElementById("gameArea")
+ .appendChild(e);
+
+ coins.push({
+  el:e,
+  x:Math.random()*.92,
+  y:-30,
+  speed:.09
+ });
+
+}
+
+function hit(a,b){
+
+ var A=a.getBoundingClientRect();
+ var B=b.getBoundingClientRect();
+
+ return !(
+  A.right<B.left||
+  A.left>B.right||
+  A.bottom<B.top||
+  A.top>B.bottom
+ );
+
+}
+
+function loop(){
+
+ if(!running)return;
+
+ var now=Date.now();
+ var dt=Math.min(40,now-last);
+ last=now;
+
+ spawn+=dt;
+ coinSpawn+=dt;
+
+ if(spawn>700){
+  makeEnemy();
+  spawn=0;
+ }
+
+ if(coinSpawn>1100){
+  makeCoin();
+  coinSpawn=0;
+ }
+
+ var area=document.getElementById("gameArea");
+ var h=area.clientHeight;
+ var w=area.clientWidth;
+ var player=document.getElementById("player");
+
+ enemies.forEach(function(o,i){
+
+  o.y+=o.speed*dt;
+
+  o.el.style.left=
+   (o.x*(w-35))+"px";
+
+  o.el.style.top=o.y+"px";
+
+  if(hit(player,o.el)){
+
+   if(o.el.parentNode)
+    o.el.parentNode.removeChild(o.el);
+
+   enemies.splice(i,1);
+
+   lives--;
+
+   updateScore();
+
+   if(lives<=0){
+    running=false;
+    document.getElementById("start").style.display="flex";
+    document.querySelector("#start .panel").innerHTML=
+     '<div style="font-size:50px">💜</div>'+
+     '<h2>GAME OVER</h2>'+
+     '<p>Pontuação: '+score+'</p>'+
+     '<button onclick="startGame()">JOGAR NOVAMENTE</button>';
+   }
+
+  }else if(o.y>h){
+
+   if(o.el.parentNode)
+    o.el.parentNode.removeChild(o.el);
+
+   enemies.splice(i,1);
+
+   score++;
+
+   updateScore();
+
+  }
+
+ });
+
+ coins.forEach(function(o,i){
+
+  o.y+=o.speed*dt;
+
+  o.el.style.left=
+   (o.x*(w-25))+"px";
+
+  o.el.style.top=o.y+"px";
+
+  if(hit(player,o.el)){
+
+   if(o.el.parentNode)
+    o.el.parentNode.removeChild(o.el);
+
+   coins.splice(i,1);
+
+   score+=5;
+
+   updateScore();
+
+  }else if(o.y>h){
+
+   if(o.el.parentNode)
+    o.el.parentNode.removeChild(o.el);
+
+   coins.splice(i,1);
+
+  }
+
+ });
+
+ requestAnimationFrame(loop);
+
+}
+
+/* COMANDO /browser PESQUISA */
+
+setTimeout(function(){
+
+ if(INITIAL_QUERY){
+
+  document.getElementById("q").value=
+   INITIAL_QUERY;
+
+  document.getElementById("q2").value=
+   INITIAL_QUERY;
+
+  searchAPI(INITIAL_QUERY);
+
+  page("yt");
+
+ }
+
+},200);
+</script>
+
+
+
+<script>
+(function(){
+  "use strict";
+
+  const GAME_NAME =
+    document.title ||
+    location.pathname ||
+    "kyara-game";
+
+  const SAVE_KEY =
+    "kyara_game_save_" +
+    GAME_NAME
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g,"_");
+
+  window.KYARA_GAME_SAVE = {
+
+    load(){
+      try{
+        return JSON.parse(
+          localStorage.getItem(SAVE_KEY) || "{}"
+        );
+      }catch{
+        return {};
+      }
+    },
+
+    save(data){
+      try{
+        localStorage.setItem(
+          SAVE_KEY,
+          JSON.stringify(data || {})
+        );
+      }catch{}
+    },
+
+    patch(data){
+      const old = this.load();
+
+      this.save({
+        ...old,
+        ...(data || {}),
+        savedAt: Date.now()
+      });
+    }
+  };
+
+  /*
+   * Tela cheia.
+   */
+  function fullscreen(){
+    const el = document.documentElement;
+
+    try{
+      if(
+        !document.fullscreenElement &&
+        el.requestFullscreen
+      ){
+        el.requestFullscreen();
+      }else if(
+        document.exitFullscreen
+      ){
+        document.exitFullscreen();
+      }
+    }catch{}
+  }
+
+  window.KYARA_FULLSCREEN = fullscreen;
+
+  const btn =
+    document.createElement("button");
+
+  btn.type = "button";
+  btn.textContent = "⛶";
+
+  btn.title = "Tela cheia";
+
+  btn.style.cssText = `
+    position:fixed;
+    right:12px;
+    top:12px;
+    z-index:2147483647;
+    width:44px;
+    height:44px;
+    border:0;
+    border-radius:14px;
+    background:rgba(0,0,0,.72);
+    color:#fff;
+    font-size:22px;
+    box-shadow:0 4px 18px rgba(0,0,0,.35);
+    cursor:pointer;
+  `;
+
+  btn.addEventListener(
+    "click",
+    fullscreen
+  );
+
+  document.addEventListener(
+    "keydown",
+    function(e){
+      if(
+        e.key === "F11" ||
+        (
+          e.key === "Enter" &&
+          e.ctrlKey &&
+          e.shiftKey
+        )
+      ){
+        e.preventDefault();
+        fullscreen();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "fullscreenchange",
+    function(){
+      btn.textContent =
+        document.fullscreenElement
+          ? "✕"
+          : "⛶";
+    }
+  );
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+      document.body.appendChild(btn);
+    }
+  );
+
+  /*
+   * Salvamento periódico.
+   *
+   * Não sobrescreve variáveis dos jogos.
+   * Apenas dispara um evento que jogos podem
+   * utilizar caso queiram registrar estado.
+   */
+  window.dispatchEvent(
+    new CustomEvent(
+      "kyara:game-save-ready",
+      {
+        detail:{
+          save: window.KYARA_GAME_SAVE
+        }
+      }
+    )
+  );
+
+})();
+</script>
+
+</body>
+</html>

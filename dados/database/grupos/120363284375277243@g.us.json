@@ -1,0 +1,81 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:39:06.262Z",
+  "groupName": "🜲 𑫋Ʈ𑫋Г𑢫𐤠Ł 𐊿⦿⦿ꚡ ⦿Ʈ𐤠Ԟ𑢸 🜲",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "106696399655054@lid",
+      "msg": 9,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "Allysson",
+      "firstSeen": "2026-09-15T20:39:06.363Z",
+      "lastActivity": "2026-09-15T21:13:06.757Z"
+    },
+    {
+      "id": "35386504020130@lid",
+      "msg": 8,
+      "cmd": 1,
+      "figu": 3,
+      "pushname": "Mr.x doidão",
+      "firstSeen": "2026-09-15T20:39:49.573Z",
+      "lastActivity": "2026-09-15T20:51:42.687Z"
+    },
+    {
+      "id": "143211976765554@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mitsuki",
+      "firstSeen": "2026-09-15T20:41:04.954Z",
+      "lastActivity": "2026-09-15T20:52:11.057Z"
+    },
+    {
+      "id": "235368519589943@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Ravena",
+      "firstSeen": "2026-09-15T20:43:44.598Z",
+      "lastActivity": "2026-09-15T20:43:44.598Z"
+    },
+    {
+      "id": "17399180976187@lid",
+      "msg": 4,
+      "cmd": 2,
+      "figu": 3,
+      "pushname": "⏤͟͟͞ 🌘⃟⃟𝘿𝙧𝙚𝙖𝙢 '𝙁ø𝙤𝙭 ツ࿐ 🜲",
+      "firstSeen": "2026-09-15T20:50:37.192Z",
+      "lastActivity": "2026-09-15T20:54:21.466Z"
+    },
+    {
+      "id": "143044355555447@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "ঔৣ͜͡𝑅𝐼𝐴𝑆 •͢  𝐵𝑂𝑇࿋྄",
+      "firstSeen": "2026-09-15T20:51:08.067Z",
+      "lastActivity": "2026-09-15T20:54:22.150Z"
+    },
+    {
+      "id": "72319112359942@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Eralith 🜲",
+      "firstSeen": "2026-09-15T20:51:29.879Z",
+      "lastActivity": "2026-09-15T20:51:57.762Z"
+    }
+  ]
+}

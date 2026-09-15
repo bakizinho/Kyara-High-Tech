@@ -634,10 +634,7 @@ export async function sendThemeStickers({
   const requested =
     Math.max(
       1,
-      Math.min(
-        20,
-        Number(quantidade) || 1
-      )
+      Math.min(40, Number(quantidade) || 1)
     );
 
   if (

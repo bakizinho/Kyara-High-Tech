@@ -1,0 +1,66 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-09T17:20:12.097Z",
+  "groupName": "Testar bot",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 396,
+      "cmd": 572,
+      "figu": 98,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-09T17:20:12.122Z",
+      "lastActivity": "2026-09-15T21:29:44.024Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 21,
+      "cmd": 25,
+      "figu": 15,
+      "pushname": "BOT-KYARA",
+      "firstSeen": "2026-09-10T00:11:45.649Z",
+      "lastActivity": "2026-09-15T18:17:55.636Z"
+    },
+    {
+      "id": "16845667094736@lid",
+      "msg": 73,
+      "cmd": 1,
+      "figu": 48,
+      "pushname": ".....",
+      "firstSeen": "2026-09-14T23:28:57.504Z",
+      "lastActivity": "2026-09-15T21:08:35.099Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 43,
+      "cmd": 1,
+      "figu": 18,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T19:16:36.338Z",
+      "lastActivity": "2026-09-15T21:27:12.440Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true,
+  "assistente": true,
+  "assistentePersonality": "kyara",
+  "modobrincadeira": true,
+  "bemvindo2": true,
+  "welcome": {
+    "photo": true,
+    "photoType": "api"
+  },
+  "autotranscrever": false,
+  "antistatus": true
+}

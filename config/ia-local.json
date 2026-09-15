@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "mode": "local",
+  "provider": "llama.cpp",
+  "api": false,
+  "external_api": false,
+  "model": "~/kyara-ai/models/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+  "temperature": 0.7,
+  "max_tokens": 512,
+  "context": 4096
+}

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "sendVideo": true,
+  "nativeFlow": true,
+  "fallback": true,
+  "maxButtons": 9,
+  "roleAware": true,
+  "roles": {
+    "member": true,
+    "admin": true,
+    "owner": true
+  }
+}

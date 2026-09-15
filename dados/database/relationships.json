@@ -1,4 +1,59 @@
 {
-  "pairs": {},
+  "pairs": {
+    "187072417673333@lid::222638588874797@lid": {
+      "users": [
+        "222638588874797@lid",
+        "187072417673333@lid"
+      ],
+      "status": "casamento",
+      "stages": {
+        "namoro": {
+          "since": "2026-09-11T14:38:40.918Z",
+          "requestedBy": "187072417673333@lid",
+          "acceptedBy": "222638588874797@lid",
+          "groupId": "120363428920073811@g.us",
+          "requestedAt": "2026-09-11T14:38:15.172Z",
+          "acceptedAt": "2026-09-11T14:38:40.918Z"
+        },
+        "brincadeira": {
+          "since": "2026-09-11T14:38:40.918Z",
+          "requestedBy": "187072417673333@lid",
+          "acceptedBy": "222638588874797@lid",
+          "groupId": "120363428920073811@g.us",
+          "requestedAt": "2026-09-11T14:38:15.172Z",
+          "acceptedAt": "2026-09-11T14:38:40.918Z"
+        },
+        "casamento": {
+          "since": "2026-09-14T12:08:21.875Z",
+          "requestedBy": "222638588874797@lid",
+          "acceptedBy": "187072417673333@lid",
+          "groupId": "120363428920073811@g.us",
+          "requestedAt": "2026-09-14T12:08:16.825Z",
+          "acceptedAt": "2026-09-14T12:08:21.875Z"
+        }
+      },
+      "history": [
+        {
+          "type": "namoro",
+          "requestedBy": "187072417673333@lid",
+          "acceptedBy": "222638588874797@lid",
+          "requestedAt": "2026-09-11T14:38:15.172Z",
+          "acceptedAt": "2026-09-11T14:38:40.918Z"
+        },
+        {
+          "type": "casamento",
+          "requestedBy": "222638588874797@lid",
+          "acceptedBy": "187072417673333@lid",
+          "requestedAt": "2026-09-14T12:08:16.825Z",
+          "acceptedAt": "2026-09-14T12:08:21.875Z"
+        }
+      ],
+      "createdAt": "2026-09-11T14:38:40.918Z",
+      "updatedAt": "2026-09-14T12:08:21.875Z",
+      "terminatedAt": null,
+      "terminatedBy": null,
+      "lastStatus": "casamento"
+    }
+  },
   "archived": []
 }

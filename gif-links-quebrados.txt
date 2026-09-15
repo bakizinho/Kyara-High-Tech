@@ -1,0 +1,118 @@
+RELATÓRIO DE GIFS/VÍDEOS QUEBRADOS - KYARA
+============================================================
+
+CAMINHO: games2.chutar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/1347e619df19a156582c.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.tapa.video.url
+URL: https://hobsidian.shop/uploads/templates-api/0624f93f5ddc073bcdc0.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.soco.video.url
+URL: https://hobsidian.shop/uploads/templates-api/7156b15ae1ff10a5500d.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.socar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/7156b15ae1ff10a5500d.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.beijo.video.url
+URL: https://hobsidian.shop/uploads/templates-api/d15b5db8f0938f18f211.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.beijar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/d15b5db8f0938f18f211.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.beijob.video.url
+URL: https://hobsidian.shop/uploads/templates-api/d15b5db8f0938f18f211.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.beijarb.video.url
+URL: https://hobsidian.shop/uploads/templates-api/d15b5db8f0938f18f211.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.abraco.video.url
+URL: https://hobsidian.shop/uploads/templates-api/e381d24685d26adf6d80.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.abracar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/e381d24685d26adf6d80.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.mata.video.url
+URL: https://hobsidian.shop/uploads/templates-api/9ae43d7894d468b5e497.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.matar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/9ae43d7894d468b5e497.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.goza.video.url
+URL: https://hobsidian.shop/uploads/templates-api/91861912a1d2803b7c1b.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.gozar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/91861912a1d2803b7c1b.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.mamar.video.url
+URL: https://hobsidian.shop/uploads/templates-api/5337f475655d807af56e.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.mamada.video.url
+URL: https://hobsidian.shop/uploads/templates-api/5337f475655d807af56e.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.cafune.video.url
+URL: https://hobsidian.shop/uploads/templates-api/d50b4f60660fa828d93f.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.morder.video.url
+URL: https://hobsidian.shop/uploads/templates-api/bfec286d2e3b9580d4ba.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.mordida.video.url
+URL: https://hobsidian.shop/uploads/templates-api/bfec286d2e3b9580d4ba.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.lamber.video.url
+URL: https://hobsidian.shop/uploads/templates-api/6a82b0c8151fe4602f72.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.lambida.video.url
+URL: https://hobsidian.shop/uploads/templates-api/6a82b0c8151fe4602f72.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.explodir.video.url
+URL: https://hobsidian.shop/uploads/templates-api/aafe0b007a36530343df.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------
+CAMINHO: games2.tomate.video.url
+URL: https://hobsidian.shop/uploads/templates-api/00a41d865241fa72c877.mp4
+STATUS: ERRO
+RESPOSTA: <urlopen error [SSL: TLSV1_ALERT_INTERNAL_ERROR] tlsv1 alert internal error (_ssl.c:1032)>
+------------------------------------------------------------

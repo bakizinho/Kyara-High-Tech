@@ -4,7 +4,7 @@ import axios from 'axios';
 const CONFIG = {
     API: {
         BASE_URL: 'https://tenor.googleapis.com/v2',
-        KEY: "AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ",
+        KEY: process.env.TENOR_API_KEY || process.env.GOOGLE_TENOR_API_KEY || '',
         DEFAULT_PARAMS: {
             contentfilter: 'high',
             media_filter: 'png_transparent',
@@ -80,7 +80,16 @@ class TenorClient {
 
 // --- FUNÇÃO PÚBLICA ---
 // Cria uma única instância do cliente (padrão Singleton) para ser usada pela função
-const client = new TenorClient(CONFIG.API.KEY);
+const client = null;
+
+function getClient() {
+  const key =
+    CONFIG.API.KEY;
+
+  return key
+    ? new TenorClient(key)
+    : null;
+}
 
 /**
  * Retorna a URL de uma mistura aleatória de dois emojis.
@@ -90,7 +99,20 @@ const client = new TenorClient(CONFIG.API.KEY);
  */
 async function emojiMix(emoji1, emoji2) {
     try {
-        const urls = await client.fetchMix(emoji1, emoji2);
+        const activeClient =
+          getClient();
+
+        if (!activeClient) {
+          throw new EmojiMixError(
+            'Chave da API Tenor não configurada.'
+          );
+        }
+
+        const urls =
+          await activeClient.fetchMix(
+            emoji1,
+            emoji2
+          );
         // Retorna um elemento aleatório do array de URLs
         return urls[Math.floor(Math.random() * urls.length)];
     } catch (error) {

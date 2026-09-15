@@ -1,0 +1,81 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-12T23:24:04.868Z",
+  "groupName": "🏹🗡️MINI◈GAME◈RPG🤖💬",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "65292143169648@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "[ 珍妮 ]",
+      "firstSeen": "2026-09-12T23:24:04.892Z",
+      "lastActivity": "2026-09-12T23:24:04.892Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 4,
+      "cmd": 1,
+      "figu": 4,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-12T23:24:05.904Z",
+      "lastActivity": "2026-09-15T03:19:24.974Z"
+    },
+    {
+      "id": "260056310378693@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mirella Souza",
+      "firstSeen": "2026-09-12T23:24:17.503Z",
+      "lastActivity": "2026-09-12T23:24:17.503Z"
+    },
+    {
+      "id": "226057382842605@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Matheus Souza Machado",
+      "firstSeen": "2026-09-12T23:24:18.235Z",
+      "lastActivity": "2026-09-12T23:24:18.235Z"
+    },
+    {
+      "id": "20736857133310@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 5,
+      "pushname": "𝕬𝕷𝖁𝕰𝕾",
+      "firstSeen": "2026-09-12T23:30:53.030Z",
+      "lastActivity": "2026-09-14T22:33:02.017Z"
+    },
+    {
+      "id": "139763168325783@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Kauan",
+      "firstSeen": "2026-09-12T23:45:45.614Z",
+      "lastActivity": "2026-09-12T23:46:01.138Z"
+    },
+    {
+      "id": "27281682595920@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "𝒦𝒶𝒾𝓆𝓊𝑒",
+      "firstSeen": "2026-09-14T17:52:31.825Z",
+      "lastActivity": "2026-09-15T03:18:39.796Z"
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#ffffff"/>
+<stop offset="50%" stop-color="#777777"/>
+<stop offset="100%" stop-color="#ffffff"/>
+</linearGradient>
+
+<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+<path d="M40 0H0V40" fill="none" stroke="#fff" stroke-opacity=".08"/>
+</pattern>
+
+<filter id="glow">
+<feGaussianBlur stdDeviation="5" result="blur"/>
+<feMerge>
+<feMergeNode in="blur"/>
+<feMergeNode in="SourceGraphic"/>
+</feMerge>
+</filter>
+
+<style>
+.pulse{animation:pulse 2.4s infinite ease-in-out;transform-origin:700px 270px}
+.orbit{animation:orbit 9s infinite linear;transform-origin:700px 270px}
+.scan{animation:scan 4s infinite linear}
+.blink{animation:blink 1.2s infinite}
+.bar{animation:bar 2.5s infinite ease-in-out}
+
+@keyframes pulse{
+0%,100%{opacity:.45}
+50%{opacity:1}
+}
+
+@keyframes orbit{
+from{transform:rotate(0deg)}
+to{transform:rotate(360deg)}
+}
+
+@keyframes scan{
+0%{transform:translateY(-250px);opacity:0}
+20%{opacity:.8}
+80%{opacity:.8}
+100%{transform:translateY(500px);opacity:0}
+}
+
+@keyframes blink{
+0%,45%,100%{opacity:1}
+50%,90%{opacity:.15}
+}
+
+@keyframes bar{
+0%,100%{opacity:.45}
+50%{opacity:1}
+}
+</style>
+</defs>
+
+<rect width="1400" height="620" fill="#050505"/>
+<rect width="1400" height="620" fill="url(#grid)"/>
+
+<rect x="30" y="30" width="1340" height="560" rx="18"
+fill="none" stroke="#fff" stroke-opacity=".35"/>
+
+<path d="M30 90H250M1150 90H1370"
+stroke="#fff" stroke-width="2"/>
+
+<text x="70" y="70" fill="#fff" font-family="monospace"
+font-size="20" letter-spacing="5">KYARA // HIGH-TECH ENGINE</text>
+
+<text x="1130" y="70" fill="#fff" font-family="monospace"
+font-size="15">BUILD 001</text>
+
+<g class="orbit">
+<circle cx="700" cy="270" r="155" fill="none"
+stroke="#fff" stroke-opacity=".14" stroke-dasharray="4 12"/>
+<circle cx="700" cy="270" r="135" fill="none"
+stroke="#fff" stroke-opacity=".20" stroke-dasharray="2 20"/>
+<circle cx="855" cy="270" r="7" fill="#fff" filter="url(#glow)"/>
+</g>
+
+<g class="pulse">
+<circle cx="700" cy="270" r="115" fill="none"
+stroke="#fff" stroke-opacity=".25"/>
+<circle cx="700" cy="270" r="85" fill="none"
+stroke="#fff" stroke-opacity=".45"/>
+<circle cx="700" cy="270" r="52" fill="#090909"
+stroke="url(#g)" stroke-width="3" filter="url(#glow)"/>
+
+<text x="700" y="278" text-anchor="middle"
+fill="#fff" font-family="monospace" font-size="35"
+font-weight="bold" letter-spacing="6">KYARA</text>
+</g>
+
+<text x="700" y="450" text-anchor="middle"
+fill="#aaa" font-family="monospace" font-size="14"
+letter-spacing="3">SYSTEM CORE ONLINE</text>
+
+<g font-family="monospace">
+<text x="80" y="150" fill="#fff" font-size="18"
+letter-spacing="3">SYSTEM STATUS</text>
+
+<circle cx="90" cy="190" r="6" fill="#fff" class="blink"/>
+<text x="110" y="196" fill="#fff" font-size="15">ONLINE</text>
+
+<text x="80" y="235" fill="#888" font-size="13">NODE ENGINE</text>
+<text x="250" y="235" fill="#fff" font-size="13">ACTIVE</text>
+
+<text x="80" y="265" fill="#888" font-size="13">WHATSAPP</text>
+<text x="250" y="265" fill="#fff" font-size="13">CONNECTED</text>
+
+<text x="80" y="295" fill="#888" font-size="13">DATABASE</text>
+<text x="250" y="295" fill="#fff" font-size="13">READY</text>
+
+<text x="80" y="325" fill="#888" font-size="13">MODULES</text>
+<text x="250" y="325" fill="#fff" font-size="13">LOADED</text>
+</g>
+
+<g font-family="monospace">
+<text x="1080" y="150" fill="#fff" font-size="18"
+letter-spacing="3">MODULES</text>
+
+<text x="1080" y="195" fill="#aaa" font-size="13">AI</text>
+<rect x="1130" y="184" width="170" height="8" fill="#222"/>
+<rect x="1130" y="184" width="140" height="8"
+fill="#fff" class="bar"/>
+
+<text x="1080" y="235" fill="#aaa" font-size="13">MEDIA</text>
+<rect x="1130" y="224" width="170" height="8" fill="#222"/>
+<rect x="1130" y="224" width="120" height="8"
+fill="#fff" class="bar"/>
+
+<text x="1080" y="275" fill="#aaa" font-size="13">RPG</text>
+<rect x="1130" y="264" width="170" height="8" fill="#222"/>
+<rect x="1130" y="264" width="150" height="8"
+fill="#fff" class="bar"/>
+
+<text x="1080" y="315" fill="#aaa" font-size="13">GROUP</text>
+<rect x="1130" y="304" width="170" height="8" fill="#222"/>
+<rect x="1130" y="304" width="105" height="8"
+fill="#fff" class="bar"/>
+</g>
+
+<rect x="50" y="100" width="1300" height="2"
+fill="#fff" opacity=".3" class="scan"/>
+
+<path d="M80 500H1320" stroke="#fff" stroke-opacity=".2"/>
+
+<text x="80" y="535" fill="#fff" font-family="monospace"
+font-size="17" letter-spacing="4">MORE THAN A BOT.</text>
+
+<text x="80" y="562" fill="#888" font-family="monospace"
+font-size="13">A MODULAR WHATSAPP ECOSYSTEM.</text>
+
+<text x="1050" y="535" fill="#fff" font-family="monospace"
+font-size="15">HIGH-TECH v1</text>
+
+<text x="1050" y="562" fill="#888" font-family="monospace"
+font-size="13">BAKI × KYARA</text>
+
+</svg>

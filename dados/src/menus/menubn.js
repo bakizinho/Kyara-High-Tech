@@ -223,7 +223,6 @@ ${middleBorder}${menuItemIcon}${prefix}inteligente
 ${middleBorder}${menuItemIcon}${prefix}otaku
 ${middleBorder}${menuItemIcon}${prefix}fiel
 ${middleBorder}${menuItemIcon}${prefix}infiel${isLiteMode ? '' : `\n${middleBorder}${menuItemIcon}${prefix}corna`}
-${middleBorder}${menuItemIcon}${prefix}gada
 ${middleBorder}${menuItemIcon}${prefix}gostosa
 ${middleBorder}${menuItemIcon}${prefix}feia
 ${middleBorder}${menuItemIcon}${prefix}rica

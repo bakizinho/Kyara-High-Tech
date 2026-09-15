@@ -6,10 +6,478 @@ import path from "path";
 import os from "os";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { platformOf } from "../src/features/kyaraBrowser.js";
+import { mp3 as youtubeMp3, mp4 as youtubeMp4 } from "../src/funcs/downloads/youtube.js";
 
 const execFileAsync = promisify(execFile);
 
-const HOST = "127.0.0.1";
+/*
+ * ==========================================================
+ * KYARA BROWSER
+ * ==========================================================
+ */
+
+async function readRequestBody(req) {
+
+  return await new Promise((resolve, reject) => {
+
+    let body = "";
+
+    req.on("data", chunk => {
+      body += chunk;
+    });
+
+    req.on("end", () => {
+
+      try {
+
+        resolve(
+          body
+            ? JSON.parse(body)
+            : {}
+        );
+
+      } catch {
+
+        reject(
+          new Error("JSON inválido.")
+        );
+
+      }
+
+    });
+
+    req.on("error", reject);
+
+  });
+
+}
+
+
+function browserSearchDomain(platform) {
+
+  return {
+    youtube: "youtube.com",
+    tiktok: "tiktok.com",
+    instagram: "instagram.com",
+    facebook: "facebook.com",
+    twitter: "x.com",
+    pinterest: "pinterest.com"
+  }[platform] || "";
+
+}
+
+
+async function browserSearch(siteUrl = '', query = '') {
+  const q = String(query || '').trim();
+
+  if (!q) {
+    return [];
+  }
+
+  const site = String(siteUrl || '').trim().toLowerCase();
+
+  /*
+   * =========================================================
+   * YOUTUBE
+   * =========================================================
+   */
+
+  if (
+    site.includes('youtube.com') ||
+    site.includes('youtu.be')
+  ) {
+    try {
+      const yt = await import('yt-search');
+      const result = await yt.default(q);
+
+      const videos =
+        (result.videos || [])
+          .slice(0, 18)
+          .map(video => ({
+            type: 'video',
+            title: video.title || 'YouTube',
+            url:
+              video.url ||
+              `https://www.youtube.com/watch?v=${video.videoId}`,
+            thumbnail: video.thumbnail || '',
+            author: video.author?.name || 'YouTube',
+            platform: 'youtube',
+            duration: video.timestamp || '',
+            views: Number(video.views) || 0,
+            ago: video.ago || ''
+          }))
+          .filter(item => item.url);
+
+      const channels =
+        (result.channels || [])
+          .slice(0, 6)
+          .map(channel => ({
+            type: 'channel',
+            title: channel.name || 'Canal',
+            url: channel.url || '',
+            thumbnail:
+              channel.thumbnail ||
+              channel.image ||
+              channel.thumbnails?.[0]?.url ||
+              '',
+            author: channel.name || 'YouTube',
+            platform: 'youtube',
+            subscribers:
+              Number(channel.subscribers) || 0
+          }))
+          .filter(item => item.url);
+
+      return [
+        ...videos,
+        ...channels
+      ];
+    } catch (error) {
+      console.error('[KYARA BROWSER] YouTube:', error.message);
+    }
+  }
+
+  /*
+   * =========================================================
+   * DOMÍNIO PARA PESQUISA
+   * =========================================================
+   */
+
+  let domain = '';
+
+  if (site.includes('vimeo.com')) {
+    domain = 'vimeo.com';
+  } else if (site.includes('dailymotion.com')) {
+    domain = 'dailymotion.com';
+  } else if (site.includes('tiktok.com')) {
+    domain = 'tiktok.com';
+  } else if (site.includes('instagram.com')) {
+    domain = 'instagram.com';
+  } else if (site.includes('facebook.com')) {
+    domain = 'facebook.com';
+  } else if (
+    site.includes('twitter.com') ||
+    site.includes('x.com')
+  ) {
+    domain = 'x.com';
+  } else if (site.includes('pinterest.com')) {
+    domain = 'pinterest.com';
+  }
+
+  /*
+   * =========================================================
+   * DUCKDUCKGO + BING
+   * =========================================================
+   */
+
+  const searchQuery =
+    domain
+      ? `site:${domain} ${q}`
+      : q;
+
+  const headers = {
+    'User-Agent':
+      'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36',
+    'Accept':
+      'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language':
+      'pt-BR,pt;q=0.9,en;q=0.8'
+  };
+
+  function decodeHtml(value = '') {
+    return String(value)
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&#x27;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&#x2F;/gi, '/')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function parseDdg(html) {
+    const results = [];
+    const seen = new Set();
+
+    const patterns = [
+      /<a[^>]+class=["'][^"']*result__a[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+      /<a[^>]+href=["']([^"']+)["'][^>]+class=["'][^"']*result__a[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi,
+      /<a[^>]+class=["'][^"']*result__url[^"']*["'][^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
+    ];
+
+    for (const regex of patterns) {
+      let match;
+
+      while ((match = regex.exec(html)) !== null) {
+        let url = decodeHtml(match[1]);
+        const title = decodeHtml(
+          match[2].replace(/<[^>]+>/g, ' ')
+        );
+
+        if (url.includes('uddg=')) {
+          try {
+            const parsed = new URL(url, 'https://duckduckgo.com');
+            url =
+              decodeURIComponent(
+                parsed.searchParams.get('uddg') || url
+              );
+          } catch {}
+        }
+
+        if (
+          !/^https?:\/\//i.test(url) ||
+          !title ||
+          seen.has(url)
+        ) {
+          continue;
+        }
+
+        seen.add(url);
+
+        results.push({
+          title,
+          url,
+          thumbnail: '',
+          author: domain || 'Web',
+          platform: domain || 'web'
+        });
+
+        if (results.length >= 12) {
+          return results;
+        }
+      }
+    }
+
+    return results;
+  }
+
+  function parseBing(html) {
+    const results = [];
+    const seen = new Set();
+
+    const regex =
+      /<li[^>]+class=["'][^"']*b_algo[^"']*["'][\s\S]*?<h2[^>]*>\s*<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+    let match;
+
+    while ((match = regex.exec(html)) !== null) {
+      const url = decodeHtml(match[1]);
+      const title = decodeHtml(
+        match[2].replace(/<[^>]+>/g, ' ')
+      );
+
+      if (
+        !/^https?:\/\//i.test(url) ||
+        !title ||
+        seen.has(url)
+      ) {
+        continue;
+      }
+
+      seen.add(url);
+
+      results.push({
+        title,
+        url,
+        thumbnail: '',
+        author: domain || 'Web',
+        platform: domain || 'web'
+      });
+
+      if (results.length >= 12) {
+        break;
+      }
+    }
+
+    return results;
+  }
+
+  /*
+   * Primeiro DuckDuckGo.
+   */
+
+  try {
+    const response = await fetch(
+      'https://html.duckduckgo.com/html/?q=' +
+      encodeURIComponent(searchQuery),
+      {
+        headers,
+        redirect: 'follow'
+      }
+    );
+
+    if (response.ok) {
+      const html = await response.text();
+      const results = parseDdg(html);
+
+      if (results.length) {
+        return results;
+      }
+    }
+  } catch (error) {
+    console.error(
+      '[KYARA BROWSER] DuckDuckGo:',
+      error.message
+    );
+  }
+
+  /*
+   * Se o DuckDuckGo não responder ou não puder ser
+   * interpretado, usa Bing como fallback.
+   */
+
+  try {
+    const response = await fetch(
+      'https://www.bing.com/search?q=' +
+      encodeURIComponent(searchQuery),
+      {
+        headers,
+        redirect: 'follow'
+      }
+    );
+
+    if (response.ok) {
+      const html = await response.text();
+      const results = parseBing(html);
+
+      if (results.length) {
+        return results;
+      }
+    }
+  } catch (error) {
+    console.error(
+      '[KYARA BROWSER] Bing:',
+      error.message
+    );
+  }
+
+  return [];
+}
+
+
+/* =========================================================
+ * KYARA BROWSER — PLAYER / EMBED
+ * ========================================================= */
+
+function browserEmbedUrl(value = '') {
+  const raw = String(value || '').trim();
+
+  if (!raw) {
+    return '';
+  }
+
+  try {
+    const url = new URL(raw);
+    const host = url.hostname
+      .toLowerCase()
+      .replace(/^www\./, '');
+
+    /*
+     * YouTube
+     */
+
+    if (host === 'youtu.be') {
+      const id =
+        url.pathname
+          .replace(/^\/+/, '')
+          .split('/')[0];
+
+      if (id) {
+        return (
+          'https://www.youtube.com/embed/' +
+          encodeURIComponent(id) +
+          '?autoplay=1&rel=0'
+        );
+      }
+    }
+
+    if (
+      host === 'youtube.com' ||
+      host.endsWith('.youtube.com')
+    ) {
+      let id = url.searchParams.get('v') || '';
+
+      if (!id) {
+        const parts =
+          url.pathname
+            .split('/')
+            .filter(Boolean);
+
+        if (
+          ['shorts', 'embed', 'live'].includes(parts[0])
+        ) {
+          id = parts[1] || '';
+        }
+      }
+
+      if (id) {
+        return (
+          'https://www.youtube.com/embed/' +
+          encodeURIComponent(id) +
+          '?autoplay=1&rel=0'
+        );
+      }
+    }
+
+    /*
+     * Vimeo
+     */
+
+    if (host === 'vimeo.com') {
+      const match =
+        url.pathname.match(/(?:video\/)?(\d+)/);
+
+      if (match) {
+        return (
+          'https://player.vimeo.com/video/' +
+          encodeURIComponent(match[1]) +
+          '?autoplay=1'
+        );
+      }
+    }
+
+    /*
+     * Dailymotion
+     */
+
+    if (
+      host === 'dailymotion.com' ||
+      host === 'dai.ly'
+    ) {
+      let id = '';
+
+      if (host === 'dai.ly') {
+        id =
+          url.pathname
+            .replace(/^\/+/, '')
+            .split('/')[0];
+      } else {
+        const match =
+          url.pathname.match(
+            /\/video\/([a-zA-Z0-9]+)/
+          );
+
+        id = match ? match[1] : '';
+      }
+
+      if (id) {
+        return (
+          'https://www.dailymotion.com/embed/video/' +
+          encodeURIComponent(id) +
+          '?autoplay=1'
+        );
+      }
+    }
+  } catch {}
+
+  return '';
+}
+
+
+const HOST = "0.0.0.0";
 const PORT = 3000;
 
 const TMP_DIR = path.join(os.tmpdir(), "kyara-api");
@@ -22,6 +490,8 @@ function json(res, status, data) {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Accept",
     "Cache-Control": "no-store"
   });
 
@@ -339,6 +809,884 @@ const server = http.createServer(async (req, res) => {
     );
 
     /*
+     * CORS PREFLIGHT
+     */
+
+    if (req.method === "OPTIONS") {
+
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+        "Access-Control-Max-Age": "86400"
+      });
+
+      return res.end();
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA TUBE — INTERFACE
+     * ========================================================
+     */
+
+    if (
+      url.pathname === "/kyara-tube" ||
+      url.pathname === "/kyara-tube/"
+    ) {
+
+      const htmlPath =
+        path.join(
+          process.cwd(),
+          "dados",
+          "api",
+          "kyara-tube.html"
+        );
+
+      if (!fs.existsSync(htmlPath)) {
+
+        return json(res, 404, {
+          status: false,
+          error: "kyara-tube.html não encontrado."
+        });
+
+      }
+
+      const html =
+        fs.readFileSync(
+          htmlPath,
+          "utf8"
+        );
+
+      res.writeHead(200, {
+        "Content-Type":
+          "text/html; charset=utf-8",
+
+        
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+"Cache-Control":
+          "no-store"
+      });
+
+      return res.end(html);
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA TUBE — MANIFEST
+     * ========================================================
+     */
+
+    if (
+      url.pathname ===
+      "/kyara-tube/manifest.webmanifest"
+    ) {
+
+      res.writeHead(200, {
+        "Content-Type":
+          "application/manifest+json; charset=utf-8",
+
+        "Cache-Control":
+          "no-store"
+      });
+
+      return res.end(
+        JSON.stringify({
+          name: "KYARA TUBE",
+          short_name: "KYARA TUBE",
+          start_url: "/kyara-tube",
+          scope: "/kyara-tube",
+          display: "standalone",
+          background_color: "#07050b",
+          theme_color: "#08050d"
+        })
+      );
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA TUBE — SERVICE WORKER
+     * ========================================================
+     */
+
+    if (
+      url.pathname ===
+      "/kyara-tube/sw.js"
+    ) {
+
+      res.writeHead(200, {
+        "Content-Type":
+          "application/javascript; charset=utf-8",
+
+        "Cache-Control":
+          "no-store"
+      });
+
+      return res.end(
+        `
+self.addEventListener(
+  "install",
+  () => self.skipWaiting()
+);
+
+self.addEventListener(
+  "activate",
+  event =>
+    event.waitUntil(
+      self.clients.claim()
+    )
+);
+`
+      );
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA BROWSER — INTERFACE
+     * ========================================================
+     */
+
+    if (
+      url.pathname === "/browser" ||
+      url.pathname === "/browser/"
+    ) {
+
+      if (!fs.existsSync(
+        path.join(
+          process.cwd(),
+          "dados",
+          "api",
+          "kyara-browser.html"
+        )
+      )) {
+
+        return json(res, 404, {
+          status: false,
+          error: "kyara-browser.html não encontrado."
+        });
+
+      }
+
+      const html =
+        fs.readFileSync(
+          path.join(
+            process.cwd(),
+            "dados",
+            "api",
+            "kyara-browser.html"
+          ),
+          "utf8"
+        );
+
+      res.writeHead(200, {
+        "Content-Type":
+          "text/html; charset=utf-8",
+
+        "Cache-Control":
+          "no-store"
+      });
+
+      return res.end(html);
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA BROWSER — PESQUISA
+     * ========================================================
+     */
+
+    
+    /*
+     * ========================================================
+     * KYARA BROWSER — PESQUISA GET
+     * ========================================================
+     */
+
+    if (
+      url.pathname === "/api/browser/search" &&
+      req.method === "GET"
+    ) {
+
+      try {
+
+        const query =
+          String(
+            url.searchParams.get("query") || ""
+          ).trim();
+
+        const siteUrl =
+          String(
+            url.searchParams.get("siteUrl") || ""
+          ).trim();
+
+        if (!query) {
+
+          return json(
+            res,
+            400,
+            {
+              status: false,
+              error: "A pesquisa é obrigatória."
+            }
+          );
+
+        }
+
+        const results =
+          await browserSearch(
+            siteUrl,
+            query
+          );
+
+        return json(
+          res,
+          200,
+          {
+            status: true,
+            site: siteUrl || "web",
+            platform:
+              siteUrl
+                ? platformOf(siteUrl)
+                : "web",
+            results
+          }
+        );
+
+      } catch (error) {
+
+        console.error(
+          "[KYARA BROWSER] Pesquisa GET:",
+          error
+        );
+
+        return json(
+          res,
+          500,
+          {
+            status: false,
+            error:
+              error?.message ||
+              "Falha na pesquisa."
+          }
+        );
+
+      }
+
+    }
+
+if (
+      url.pathname ===
+      "/api/browser/search" &&
+      req.method === "POST"
+    ) {
+
+      try {
+
+        const body =
+          await readRequestBody(req);
+
+        const siteUrl =
+          String(
+            body?.url ||
+            body?.siteUrl ||
+            ""
+          ).trim();
+
+        const query =
+          String(
+            body?.query || ""
+          ).trim();
+
+        if (!query) {
+
+          return json(res, 400, {
+            status: false,
+            error: "A pesquisa é obrigatória."
+          });
+
+        }
+
+        const results =
+          await browserSearch(
+            siteUrl,
+            query
+          );
+
+        return json(res, 200, {
+          status: true,
+          site: siteUrl || "web",
+          platform:
+            siteUrl
+              ? platformOf(siteUrl)
+              : "web",
+          results
+        });
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA BROWSER SEARCH]",
+          err
+        );
+
+        return json(res, 500, {
+          status: false,
+          error:
+            err?.message ||
+            "Falha na pesquisa."
+        });
+
+      }
+
+    }
+
+
+
+    /*
+     * ========================================================
+     * KYARA BROWSER — EMBED
+     * ========================================================
+     */
+
+    /*
+     * ========================================================
+     * KYARA TUBE — CANAL
+     * ========================================================
+     */
+
+    if (
+      url.pathname ===
+      "/api/browser/channel" &&
+      req.method === "GET"
+    ) {
+
+      try {
+
+        const source =
+          String(
+            url.searchParams.get("url") ||
+            ""
+          ).trim();
+
+        if (!source) {
+
+          return json(
+            res,
+            400,
+            {
+              status: false,
+              error:
+                "URL do canal não informada."
+            }
+          );
+
+        }
+
+        const yt =
+          await import("yt-search");
+
+        const result =
+          await yt.default(source);
+
+        const channel =
+          result?.channels?.[0];
+
+        const channelName =
+          channel?.name ||
+          source;
+
+        let videos =
+          result?.videos ||
+          [];
+
+        if (!videos.length) {
+
+          const fallback =
+            await yt.default(
+              channelName
+            );
+
+          videos =
+            fallback?.videos ||
+            [];
+
+        }
+
+        videos =
+          videos
+            .slice(0, 18)
+            .map(video => ({
+              title:
+                video.title ||
+                "Vídeo",
+
+              url:
+                video.url ||
+                `https://www.youtube.com/watch?v=${video.videoId}`,
+
+              thumbnail:
+                video.thumbnail ||
+                "",
+
+              author:
+                video.author?.name ||
+                channelName,
+
+              duration:
+                video.timestamp ||
+                "",
+
+              views:
+                Number(video.views) ||
+                0,
+
+              published:
+                video.ago ||
+                ""
+            }));
+
+        return json(
+          res,
+          200,
+          {
+            status: true,
+
+            channel: {
+
+              id:
+                channel?.channelId ||
+                channel?.id ||
+                "",
+
+              name:
+                channelName,
+
+              url:
+                channel?.url ||
+                source,
+
+              subscribers:
+                channel?.subscribers ||
+                "",
+
+              description:
+                "Canal do YouTube aberto pelo Kyara Tube.",
+
+              thumbnails:
+                channel?.image
+                  ? [
+                      {
+                        url:
+                          channel.image
+                      }
+                    ]
+                  : [],
+
+              verified:
+                Boolean(
+                  channel?.verified
+                )
+
+            },
+
+            videos
+
+          }
+        );
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA TUBE CHANNEL]",
+          err
+        );
+
+        return json(
+          res,
+          500,
+          {
+            status: false,
+            error:
+              err?.message ||
+              "Falha ao carregar canal."
+          }
+        );
+
+      }
+
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA TUBE — PESQUISA NO CANAL
+     * ========================================================
+     */
+
+    if (
+      url.pathname ===
+      "/api/browser/channel/search" &&
+      req.method === "GET"
+    ) {
+
+      try {
+
+        const channelName =
+          String(
+            url.searchParams.get("channelName") ||
+            ""
+          ).trim();
+
+        const query =
+          String(
+            url.searchParams.get("query") ||
+            ""
+          ).trim();
+
+        if (!query) {
+
+          return json(
+            res,
+            400,
+            {
+              status: false,
+              error:
+                "Digite algo para pesquisar."
+            }
+          );
+
+        }
+
+        const yt =
+          await import("yt-search");
+
+        const result =
+          await yt.default(
+            (
+              channelName +
+              " " +
+              query
+            ).trim()
+          );
+
+        const videos =
+          (result?.videos || [])
+            .slice(0, 18)
+            .map(video => ({
+              title:
+                video.title ||
+                "Vídeo",
+
+              url:
+                video.url ||
+                `https://www.youtube.com/watch?v=${video.videoId}`,
+
+              thumbnail:
+                video.thumbnail ||
+                "",
+
+              author:
+                video.author?.name ||
+                channelName ||
+                "YouTube",
+
+              duration:
+                video.timestamp ||
+                "",
+
+              views:
+                Number(video.views) ||
+                0,
+
+              published:
+                video.ago ||
+                ""
+            }));
+
+        return json(
+          res,
+          200,
+          {
+            status: true,
+            videos
+          }
+        );
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA TUBE CHANNEL SEARCH]",
+          err
+        );
+
+        return json(
+          res,
+          500,
+          {
+            status: false,
+            error:
+              err?.message ||
+              "Falha na pesquisa do canal."
+          }
+        );
+
+      }
+
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/browser/embed" &&
+      req.method === "GET"
+    ) {
+
+      try {
+
+        const source =
+          String(
+            url.searchParams.get("url") ||
+            ""
+          ).trim();
+
+        if (!source) {
+
+          return json(res, 400, {
+            status: false,
+            error: "URL não informada."
+          });
+
+        }
+
+        const embed =
+          browserEmbedUrl(source);
+
+        let platform = "web";
+
+        if (
+          /youtube\.com|youtu\.be/i.test(source)
+        ) {
+          platform = "youtube";
+
+        } else if (
+          /vimeo\.com/i.test(source)
+        ) {
+          platform = "vimeo";
+
+        } else if (
+          /dailymotion\.com|dai\.ly/i.test(source)
+        ) {
+          platform = "dailymotion";
+        }
+
+        return json(res, 200, {
+
+          status: true,
+
+          source,
+
+          embeddable:
+            Boolean(embed),
+
+          embed:
+            embed || source,
+
+          platform
+
+        });
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA BROWSER EMBED]",
+          err
+        );
+
+        return json(res, 500, {
+
+          status: false,
+
+          error:
+            err?.message ||
+            "Falha ao preparar o player."
+
+        });
+
+      }
+
+    }
+
+
+    /*
+     * ========================================================
+     * KYARA TUBE — DOWNLOAD REAL
+     * ========================================================
+     */
+
+    if (
+      url.pathname ===
+      "/api/browser/download" &&
+      req.method === "POST"
+    ) {
+
+      try {
+
+        const body =
+          await readRequestBody(req);
+
+        const source =
+          String(
+            body?.url ||
+            ""
+          ).trim();
+
+        const type =
+          String(
+            body?.type ||
+            "video"
+          ).toLowerCase();
+
+        if (
+          !/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//i.test(
+            source
+          )
+        ) {
+
+          return json(
+            res,
+            400,
+            {
+              status: false,
+              error:
+                "O Kyara Tube aceita somente URLs do YouTube."
+            }
+          );
+
+        }
+
+        if (
+          type !== "video" &&
+          type !== "audio"
+        ) {
+
+          return json(
+            res,
+            400,
+            {
+              status: false,
+              error:
+                "Tipo deve ser video ou audio."
+            }
+          );
+
+        }
+
+        console.log(
+          "[KYARA TUBE] Download:",
+          type,
+          source
+        );
+
+        const result =
+          type === "video"
+            ? await youtubeMp4(source)
+            : await youtubeMp3(source);
+
+        if (
+          !result?.ok ||
+          !result?.buffer?.length
+        ) {
+
+          return json(
+            res,
+            502,
+            {
+              status: false,
+              error:
+                result?.msg ||
+                "yt-dlp não conseguiu gerar o arquivo."
+            }
+          );
+
+        }
+
+        const filename =
+          String(
+            result.filename ||
+            (
+              type === "video"
+                ? "kyara-video.mp4"
+                : "kyara-audio.mp3"
+            )
+          )
+          .replace(
+            /[^a-zA-Z0-9._-]+/g,
+            "_"
+          );
+
+        res.writeHead(
+          200,
+          {
+
+            "Content-Type":
+              result.mimetype ||
+              (
+                type === "video"
+                  ? "video/mp4"
+                  : "audio/mpeg"
+              ),
+
+            "Content-Length":
+              result.buffer.length,
+
+            "Content-Disposition":
+              `attachment; filename="${filename}"`,
+
+            "Cache-Control":
+              "no-store",
+
+            "Access-Control-Allow-Origin":
+              "*"
+
+          }
+        );
+
+        return res.end(
+          result.buffer
+        );
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA TUBE DOWNLOAD]",
+          err?.stack ||
+          err
+        );
+
+        return json(
+          res,
+          500,
+          {
+            status: false,
+            error:
+              err?.message ||
+              "Falha no download."
+          }
+        );
+
+      }
+
+    }
+
+
+    /*
      * STATUS
      */
 
@@ -532,6 +1880,29 @@ server.on("error", err => {
     err
   );
 });
+
+
+// KYARA GAME EXTERNO
+try {
+  const KYARA_GAME_FILE = path.join(process.cwd(), "dados", "api", "kyara-jogo.html");
+
+  app.get("/kyarajogo", async (req, res) => {
+    try {
+      const html = await fs.readFile(KYARA_GAME_FILE, "utf8");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(html);
+    } catch (err) {
+      console.error("[KYARA GAME]", err);
+      res.statusCode = 500;
+      res.end("KYARA GAME indisponível.");
+    }
+  });
+
+  console.log("[KYARA GAME] Rota /kyarajogo registrada.");
+} catch (err) {
+  console.error("[KYARA GAME] Falha ao registrar rota:", err);
+}
 
 server.listen(PORT, HOST, () => {
   console.log("");

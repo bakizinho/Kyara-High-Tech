@@ -15,48 +15,48 @@
   "contador": [
     {
       "id": "96752929644567@lid",
-      "msg": 28,
+      "msg": 86,
       "cmd": 0,
-      "figu": 55,
+      "figu": 85,
       "pushname": "FÁBIO WILLIANS",
       "firstSeen": "2026-09-02T20:41:00.324Z",
-      "lastActivity": "2026-09-09T02:43:54.261Z"
+      "lastActivity": "2026-09-15T17:04:48.223Z"
     },
     {
       "id": "168561075040376@lid",
-      "msg": 113,
-      "cmd": 9,
-      "figu": 11,
-      "pushname": "Kirito",
+      "msg": 164,
+      "cmd": 13,
+      "figu": 22,
+      "pushname": "Kazuto Kirigaya",
       "firstSeen": "2026-09-02T20:42:41.962Z",
-      "lastActivity": "2026-09-08T20:31:27.531Z"
+      "lastActivity": "2026-09-14T23:55:58.058Z"
     },
     {
       "id": "87244476010549@lid",
-      "msg": 13,
-      "cmd": 1,
-      "figu": 2,
-      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "msg": 22,
+      "cmd": 3,
+      "figu": 5,
+      "pushname": "BOT-KYARA",
       "firstSeen": "2026-09-02T21:09:28.319Z",
-      "lastActivity": "2026-09-08T00:51:34.909Z"
+      "lastActivity": "2026-09-12T20:07:52.800Z"
     },
     {
       "id": "28145558278209@lid",
-      "msg": 170,
+      "msg": 189,
       "cmd": 41,
-      "figu": 33,
+      "figu": 38,
       "pushname": "᳀",
       "firstSeen": "2026-09-02T21:14:01.750Z",
-      "lastActivity": "2026-09-09T02:13:22.749Z"
+      "lastActivity": "2026-09-15T17:04:14.306Z"
     },
     {
       "id": "158815391604861@lid",
-      "msg": 251,
-      "cmd": 22,
-      "figu": 12,
+      "msg": 350,
+      "cmd": 32,
+      "figu": 17,
       "pushname": "𝑨𝒍𝒑𝒉𝒂_𝙂𝙪𝙨𝙩𝙖𝙫𝙤👑",
       "firstSeen": "2026-09-02T21:36:33.831Z",
-      "lastActivity": "2026-09-09T01:51:20.774Z"
+      "lastActivity": "2026-09-15T02:56:11.281Z"
     },
     {
       "id": "245500381012123@lid",
@@ -69,30 +69,30 @@
     },
     {
       "id": "56629949104184@lid",
-      "msg": 21,
-      "cmd": 1,
-      "figu": 5,
+      "msg": 51,
+      "cmd": 2,
+      "figu": 18,
       "pushname": "príncipe vegeta",
       "firstSeen": "2026-09-02T23:43:18.013Z",
-      "lastActivity": "2026-09-09T01:47:17.219Z"
+      "lastActivity": "2026-09-15T02:23:24.697Z"
     },
     {
       "id": "203864968060938@lid",
-      "msg": 115,
+      "msg": 132,
       "cmd": 4,
-      "figu": 158,
+      "figu": 169,
       "pushname": "HEITOR",
       "firstSeen": "2026-09-03T20:41:38.977Z",
-      "lastActivity": "2026-09-09T01:51:10.469Z"
+      "lastActivity": "2026-09-14T22:34:59.176Z"
     },
     {
       "id": "104192316325932@lid",
-      "msg": 29,
-      "cmd": 0,
-      "figu": 2,
+      "msg": 91,
+      "cmd": 11,
+      "figu": 13,
       "pushname": "Riquelme",
       "firstSeen": "2026-09-03T20:47:47.603Z",
-      "lastActivity": "2026-09-08T20:34:44.546Z"
+      "lastActivity": "2026-09-15T05:56:03.168Z"
     },
     {
       "id": "34566635036894@lid",
@@ -105,25 +105,45 @@
     },
     {
       "id": "235485121245285@lid",
-      "msg": 13,
+      "msg": 14,
       "cmd": 0,
       "figu": 0,
       "pushname": "Josafá",
       "firstSeen": "2026-09-08T00:16:37.762Z",
-      "lastActivity": "2026-09-08T00:25:57.489Z"
+      "lastActivity": "2026-09-12T21:05:33.170Z"
     },
     {
       "id": "250062072459383@lid",
-      "msg": 6,
+      "msg": 16,
       "cmd": 0,
-      "figu": 2,
+      "figu": 3,
       "pushname": "𓅓𝗦𝗢𝗟𝗔𝗡𝗢𓅓",
       "firstSeen": "2026-09-08T00:56:16.315Z",
-      "lastActivity": "2026-09-08T01:04:37.297Z"
+      "lastActivity": "2026-09-12T17:23:16.366Z"
+    },
+    {
+      "id": "8645903413278@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Felipe Vieira",
+      "firstSeen": "2026-09-12T17:57:47.980Z",
+      "lastActivity": "2026-09-12T18:02:52.877Z"
+    },
+    {
+      "id": "103448884330738@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Son William",
+      "firstSeen": "2026-09-13T18:15:37.515Z",
+      "lastActivity": "2026-09-13T18:15:37.515Z"
     }
   ],
   "levelingConfigured": true,
   "autodl": true,
   "afkUsers": {},
-  "autodlMode": "video"
+  "autodlMode": "video",
+  "assistente": true,
+  "assistentePersonality": "kyara"
 }

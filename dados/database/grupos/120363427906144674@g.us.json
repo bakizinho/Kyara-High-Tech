@@ -15,12 +15,12 @@
   "contador": [
     {
       "id": "28145558278209@lid",
-      "msg": 505,
-      "cmd": 322,
-      "figu": 111,
+      "msg": 595,
+      "cmd": 327,
+      "figu": 127,
       "pushname": "᳀",
       "firstSeen": "2026-09-02T18:19:30.216Z",
-      "lastActivity": "2026-09-09T04:17:22.461Z"
+      "lastActivity": "2026-09-09T16:22:14.995Z"
     },
     {
       "id": "87244476010549@lid",
@@ -33,21 +33,21 @@
     },
     {
       "id": "4836821061781@lid",
-      "msg": 309,
+      "msg": 310,
       "cmd": 39,
       "figu": 132,
       "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
       "firstSeen": "2026-09-03T15:28:57.678Z",
-      "lastActivity": "2026-09-09T01:31:53.268Z"
+      "lastActivity": "2026-09-15T21:03:05.287Z"
     },
     {
       "id": "16845667094736@lid",
-      "msg": 285,
+      "msg": 333,
       "cmd": 14,
-      "figu": 94,
+      "figu": 114,
       "pushname": ".....",
       "firstSeen": "2026-09-07T17:05:33.491Z",
-      "lastActivity": "2026-09-09T04:12:57.206Z"
+      "lastActivity": "2026-09-15T21:03:09.343Z"
     }
   ],
   "bemvindo": true,
@@ -79,7 +79,7 @@
   },
   "afkUsers": {},
   "assistente": true,
-  "assistentePersonality": "humana",
+  "assistentePersonality": "kyara",
   "autodlMode": "video",
   "autodl": true
 }

@@ -1,18 +1,11 @@
 import axios from 'axios';
 
 
-const tokenParts = [
-  "github_", "pat_11C", "CKVUAQ01", "BbBrmHz0",
-  "Mql_9Kr", "vPwR9wV", "BmveVNJ",
-  "DyQEGji", "PrePq4j", "TLu6z7i",
-  "OO0C662", "H2PGJTT", "rsvHWAU"
-];
-
 const CONFIG = {
     GITHUB: {
         REPO: 'uploadsnew/uploads',
         API_URL: 'https://api.github.com/repos',
-        TOKEN: tokenParts.join(""),
+        TOKEN: String(process.env.GITHUB_TOKEN || '').trim(),
     },
 
     FILE_TYPES: {
@@ -296,14 +289,16 @@ class UploaderService {
 
     constructor(config) {
 
-        if (!config.GITHUB.TOKEN) {
-            throw new Error('Token do GitHub não configurado.');
-        }
+        this.token =
+            String(config.GITHUB.TOKEN || '').trim();
 
-        this.uploader = new GitHubUploader(
-            config.GITHUB.TOKEN,
-            config.GITHUB.REPO
-        );
+        this.uploader =
+            this.token
+                ? new GitHubUploader(
+                    this.token,
+                    config.GITHUB.REPO
+                  )
+                : null;
 
         this.maxSizeBytes =
             config.MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -311,7 +306,13 @@ class UploaderService {
 
     async upload(buffer, deleteAfter10Min = false) {
 
-        if (!Buffer.isBuffer(buffer)) {
+        if (!this.uploader) {
+            throw new Error(
+                'GitHub não configurado. Defina GITHUB_TOKEN antes de usar este recurso.'
+            );
+        }
+
+if (!Buffer.isBuffer(buffer)) {
             throw new Error(
                 'Entrada inválida: o dado fornecido não é um Buffer.'
             );

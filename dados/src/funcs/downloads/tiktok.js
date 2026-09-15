@@ -1,171 +1,145 @@
-import https from 'https'
-import fs from 'fs'
-import verificarAPI from '../API.js'
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import crypto from 'crypto';
 
-const CONFIG_FILE = JSON.parse(
-  fs.readFileSync(new URL('../../config.json', import.meta.url), 'utf8')
-)
+const execFileAsync = promisify(execFile);
 
-const cache = new Map()
-const CACHE_TTL = 60 * 60 * 1000
-
-function getCached(key) {
-  const item = cache.get(key)
-  if (!item) return null
-  if (Date.now() - item.ts > CACHE_TTL) {
-    cache.delete(key)
-    return null
-  }
-  return item.val
-}
-
-function setCache(key, val) {
-  if (cache.size >= 1000) {
-    const oldest = cache.keys().next().value
-    cache.delete(oldest)
-  }
-  cache.set(key, {
-    val,
-    ts: Date.now()
-  })
-}
-
-function request(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      let data = ''
-      res.on('data', chunk => data += chunk)
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data))
-        } catch {
-          reject(new Error('Resposta inválida da API'))
+async function runYtDlp(args) {
+    const { stdout, stderr } = await execFileAsync(
+        'yt-dlp',
+        args,
+        {
+            timeout: 120000,
+            maxBuffer: 20 * 1024 * 1024
         }
-      })
-    }).on('error', reject)
-  })
+    );
+
+    return { stdout, stderr };
 }
 
-async function search(query) {
+async function baixar(url) {
+    const dir = await fs.mkdtemp(
+        path.join(os.tmpdir(), 'kyara-tt-')
+    );
 
-  const checkAPI = await verificarAPI()
-  if (checkAPI !== true) {
-    return { ok: false, msg: checkAPI }
-  }
+    try {
+        const output = path.join(
+            dir,
+            `${crypto.randomUUID()}.%(ext)s`
+        );
 
-  try {
-    if (!query) {
-      return { ok: false, msg: 'Termo de pesquisa inválido' }
+        console.log('[TikTok LOCAL] 📥 Baixando...');
+
+        const { stdout } = await runYtDlp([
+            '--no-playlist',
+            '--print-json',
+            '--no-warnings',
+            '-o',
+            output,
+            url
+        ]);
+
+        const infoLine = stdout
+            .split('\n')
+            .reverse()
+            .find(line => line.trim().startsWith('{'));
+
+        let info = {};
+
+        try {
+            info = infoLine ? JSON.parse(infoLine) : {};
+        } catch {}
+
+        const files = await fs.readdir(dir);
+
+        const mediaFile = files.find(file =>
+            !file.endsWith('.part') &&
+            !file.endsWith('.ytdl')
+        );
+
+        if (!mediaFile) {
+            throw new Error(
+                'O yt-dlp não gerou nenhum arquivo.'
+            );
+        }
+
+        const filePath = path.join(dir, mediaFile);
+        const buffer = await fs.readFile(filePath);
+
+        if (!buffer.length) {
+            throw new Error('Vídeo do TikTok está vazio.');
+        }
+
+        const ext = path.extname(mediaFile).toLowerCase();
+
+        const mime =
+            ext === '.webm'
+                ? 'video/webm'
+                : 'video/mp4';
+
+        console.log(
+            `[TikTok LOCAL] ✅ ${buffer.length} bytes`
+        );
+
+        return {
+            ok: true,
+            criador: 'Kyara',
+            type: 'video',
+            mime,
+            buffer,
+            title: info.title || info.description || '',
+            author:
+                info.uploader ||
+                info.uploader_id ||
+                info.channel ||
+                ''
+        };
+
+    } catch (err) {
+        console.error(
+            '[TikTok LOCAL] ❌',
+            err.message
+        );
+
+        return {
+            ok: false,
+            msg: `Não foi possível baixar o TikTok: ${err.message}`
+        };
+
+    } finally {
+        await fs.rm(dir, {
+            recursive: true,
+            force: true
+        }).catch(() => {});
     }
-
-    const cacheKey = `search:${query}`
-    const cached = getCached(cacheKey)
-    if (cached) return { ok: true, ...cached, cached: true }
-
-    const { apikey_vex, site_vex } = CONFIG_FILE
-    const url = `${site_vex}/api/pesquisa/tiktok?apikey=${apikey_vex}&query=${encodeURIComponent(query)}`
-
-    const data = await request(url)
-
-    const checkAfter = await verificarAPI(data)
-    if (checkAfter !== true) {
-      return { ok: false, msg: checkAfter }
-    }
-
-    if (!data?.status || !data?.results?.length) {
-      return { ok: false, msg: 'Nenhum vídeo encontrado' }
-    }
-
-
-    const video = data.results[Math.floor(Math.random() * data.results.length)]
-
-    if (!video?.url) {
-      return { ok: false, msg: 'Vídeo selecionado sem URL válida' }
-    }
-
-
-    const downloaded = await dl(video.url)
-
-    if (!downloaded.ok) {
-      return downloaded
-    }
-
-    const result = {
-      criador: 'DevTokyo',
-      title: downloaded.title || video.title,
-      duration: video.duration,
-      type: downloaded.type,
-      mime: downloaded.mime,
-      urls: downloaded.urls,
-      author: downloaded.author || video.author,
-      username: downloaded.username || video.username,
-      views: downloaded.views,
-      likes: downloaded.likes,
-      comments: downloaded.comments,
-      shares: downloaded.shares,
-      link: video.url
-    }
-
-    setCache(cacheKey, result)
-
-    return { ok: true, ...result }
-
-  } catch (err) {
-    return { ok: false, msg: err.message }
-  }
 }
 
 async function dl(url) {
-
-  const checkAPI = await verificarAPI()
-  if (checkAPI !== true) {
-    return { ok: false, msg: checkAPI }
-  }
-
-  try {
-    if (!url) {
-      return { ok: false, msg: 'URL inválida' }
+    if (!url || !/tiktok\.com/i.test(url)) {
+        return {
+            ok: false,
+            msg: 'Envie um link válido do TikTok.'
+        };
     }
 
-    const cached = getCached(`download:${url}`)
-    if (cached) return { ok: true, ...cached, cached: true }
-
-    const { apikey_vex, site_vex } = CONFIG_FILE
-    const api = `${site_vex}/api/downloads/tiktok?apikey=${apikey_vex}&query=${encodeURIComponent(url)}`
-
-    const data = await request(api)
-
-    const checkAfter = await verificarAPI(data)
-    if (checkAfter !== true) {
-      return { ok: false, msg: checkAfter }
-    }
-
-    const result = data?.result
-    if (!result) {
-      return { ok: false, msg: 'Não foi possível obter o vídeo' }
-    }
-
-    const response = {
-      criador: 'DevTokyo',
-      title: result.desc,
-      type: result.type,
-      mime: 'video/mp4',
-      urls: result.video?.playAddr || [],
-      author: result.author?.nickname,
-      username: result.author?.username,
-      views: result.statistics?.playCount,
-      likes: result.statistics?.likeCount,
-      comments: result.statistics?.commentCount,
-      shares: result.statistics?.shareCount
-    }
-
-    setCache(`download:${url}`, response)
-
-    return { ok: true, ...response }
-
-  } catch (err) {
-    return { ok: false, msg: err.message }
-  }
+    return await baixar(url);
 }
 
-export { search, dl }
+async function search(query) {
+    if (!query) {
+        return {
+            ok: false,
+            msg: 'Digite o que deseja pesquisar no TikTok.'
+        };
+    }
+
+    return {
+        ok: false,
+        msg: 'A pesquisa por palavra-chave do TikTok ainda será migrada para o sistema local. Use um link do TikTok por enquanto.'
+    };
+}
+
+export { search, dl };

@@ -227,9 +227,9 @@ pairingCode
 
                 try {
                     const indexModule = await import('../index.js');
-                    const NazuninhaBotExec = indexModule.default || indexModule;
-                    if (typeof NazuninhaBotExec === 'function') {
-                        await NazuninhaBotExec(sock, info, null, new Map(), null);
+                    const KyaraBotExec = indexModule.default || indexModule;
+                    if (typeof KyaraBotExec === 'function') {
+                        await KyaraBotExec(sock, info, null, new Map(), null);
                     }
                 } catch (e) {
                     console.error(`❌ Erro no sub-bot ${botId}:`, e.message);

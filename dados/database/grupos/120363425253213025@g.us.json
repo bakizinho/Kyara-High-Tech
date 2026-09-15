@@ -1,0 +1,45 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:08:10.918Z",
+  "groupName": "O COMEÇO",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "273821428899949@lid",
+      "msg": 4,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "Ryan Machado Pereira",
+      "firstSeen": "2026-09-15T21:08:10.987Z",
+      "lastActivity": "2026-09-15T21:29:49.413Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 6,
+      "cmd": 2,
+      "figu": 1,
+      "pushname": "᳀",
+      "firstSeen": "2026-09-15T21:21:46.697Z",
+      "lastActivity": "2026-09-15T21:36:27.200Z"
+    },
+    {
+      "id": "246046378688670@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Luiz Antônio ᵐᵇʳ⋆⁰¹🎧🏁⚽🧤",
+      "firstSeen": "2026-09-15T21:25:35.833Z",
+      "lastActivity": "2026-09-15T21:25:36.890Z"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:03:17.236Z",
+  "groupName": "🍥 OTAKINHOS LIMPINHOS 3.0 🍥\n꧁𝕭𝕷꧂",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "4836821061781@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T21:03:17.244Z",
+      "lastActivity": "2026-09-15T21:03:17.244Z"
+    },
+    {
+      "id": "40592339906676@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "𝙻𝚞𝚌𝚔𝚊𝚜",
+      "firstSeen": "2026-09-15T21:05:20.804Z",
+      "lastActivity": "2026-09-15T21:05:21.101Z"
+    },
+    {
+      "id": "49633279647785@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Light shizuke",
+      "firstSeen": "2026-09-15T21:06:26.404Z",
+      "lastActivity": "2026-09-15T21:06:26.404Z"
+    },
+    {
+      "id": "97732047962189@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Evitem Áudios!!!",
+      "firstSeen": "2026-09-15T21:24:53.040Z",
+      "lastActivity": "2026-09-15T21:24:53.040Z"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import webp from 'node-webpmux';
 import axios from 'axios';
 import ffmpeg from 'fluent-ffmpeg';
+import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,93 +42,222 @@ function detectImageExtension(buf) {
 
 // Converter para WebP (sempre .mp4 para vídeo)
 async function convertToWebp(mediaBuffer, isVideo = false, forceSquare = false) {
-  // Se já for webp estático e não for vídeo, retorna direto
-  if (!isVideo &&
-      mediaBuffer.slice(0, 4).toString() === "RIFF" &&
-      mediaBuffer.slice(8, 12).toString() === "WEBP") {
-    return mediaBuffer;
+
+  if (
+    !Buffer.isBuffer(mediaBuffer) ||
+    mediaBuffer.length < 10
+  ) {
+    throw new Error(
+      'Buffer de mídia inválido.'
+    );
   }
 
-  // Arquivo de entrada temporário
-  const inExt = isVideo ? "mp4" : detectImageExtension(mediaBuffer);
-  const tmpIn = generateTempFileName(isVideo ? "mp4" : inExt);
+  const MAX_SIZE =
+    990000;
 
-  await fs.writeFile(tmpIn, mediaBuffer);
-  const st = await fs.stat(tmpIn);
-  if (st.size === 0) throw new Error("Arquivo temporário de entrada vazio");
+  /*
+   * ========================================================
+   * IMAGEM
+   * ========================================================
+   */
 
-  const vfBase = forceSquare
-    ? "scale=320:320"
-    : "scale=320:320:force_original_aspect_ratio=decrease,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba";
+  if (!isVideo) {
 
-  const filters = isVideo ? `${vfBase},fps=15` : vfBase;
+    let quality = 95;
+    let outBuffer = null;
 
-  // Limites de tamanho e qualidade
-  const MAX_SIZE = 990000; // Menos de 1MB com margem de segurança (~966KB)
-  const MIN_QUALITY = isVideo ? 15 : 25;
-  let quality = isVideo ? 45 : 75;
-  let outBuffer = null;
-  let attempts = 0;
-  const MAX_ATTEMPTS = 8;
+    for (
+      let attempt = 1;
+      attempt <= 7;
+      attempt++
+    ) {
 
-  while (attempts < MAX_ATTEMPTS) {
-    attempts++;
-    const tmpOut = generateTempFileName("webp");
+      outBuffer =
+        await sharp(
+          mediaBuffer
+        )
+          .rotate()
+          .ensureAlpha()
+          .resize({
+            width: 512,
+            height: 512,
+            fit: 'contain',
+            background: {
+              r: 0,
+              g: 0,
+              b: 0,
+              alpha: 0
+            },
+            kernel:
+              sharp.kernel.lanczos3
+          })
+          .webp({
+            quality,
+            alphaQuality: 100,
+            effort: 6
+          })
+          .toBuffer();
 
-    const cmdOptions = [
-      "-vf", filters,
-      "-c:v", "libwebp",
-      "-lossless", "0",
-      "-compression_level", "6",
-      "-preset", "default",
-      ...(isVideo
-        ? ["-q:v", String(quality), "-loop", "0", "-an", "-vsync", "0", "-t", "8"]
-        : ["-q:v", String(quality)])
-    ];
+      if (
+        outBuffer.length <=
+          MAX_SIZE ||
+        quality <= 45
+      ) {
+        break;
+      }
 
-    await new Promise((resolve, reject) => {
-      ffmpeg(tmpIn)
-        .outputOptions(cmdOptions)
-        .format("webp")
-        .on("error", err => reject(err))
-        .on("end", () => resolve())
-        .save(tmpOut);
-    });
-
-    const outStat = await fs.stat(tmpOut).catch(() => null);
-    if (!outStat || outStat.size === 0) {
-      await fs.unlink(tmpOut).catch(()=>{});
-      throw new Error("Conversão falhou: saída vazia");
+      quality =
+        Math.max(
+          45,
+          quality - 10
+        );
     }
 
-    outBuffer = await fs.readFile(tmpOut);
-    await fs.unlink(tmpOut).catch(()=>{});
+    const check =
+      await sharp(
+        outBuffer
+      )
+        .ensureAlpha()
+        .raw()
+        .toBuffer({
+          resolveWithObject:
+            true
+        });
 
-    // Verifica se está dentro do limite
-    if (outBuffer.length <= MAX_SIZE) {
-      break;
+    let transparentPixels = 0;
+
+    for (
+      let i = 3;
+      i < check.data.length;
+      i += 4
+    ) {
+
+      if (
+        check.data[i] <= 8
+      ) {
+        transparentPixels++;
+      }
     }
 
-    // Se ainda está grande, reduz qualidade
-    if (quality <= MIN_QUALITY) {
-      break;
-    }
+    console.log(
+      '[STICKER] 🔎 Alpha:',
+      transparentPixels,
+      'pixels transparentes'
+    );
 
-    // Reduz qualidade progressivamente
-    const reductionFactor = outBuffer.length / MAX_SIZE;
-    if (reductionFactor > 1.5) {
-      quality = Math.max(MIN_QUALITY, Math.floor(quality * 0.6));
-    } else if (reductionFactor > 1.2) {
-      quality = Math.max(MIN_QUALITY, Math.floor(quality * 0.75));
-    } else {
-      quality = Math.max(MIN_QUALITY, quality - 10);
-    }
+    return outBuffer;
   }
 
-  // Limpeza
-  await fs.unlink(tmpIn).catch(()=>{});
+  /*
+   * ========================================================
+   * VÍDEO
+   * ========================================================
+   */
 
-  return outBuffer;
+  const tmpIn =
+    generateTempFileName(
+      'mp4'
+    );
+
+  await fs.writeFile(
+    tmpIn,
+    mediaBuffer
+  );
+
+  try {
+
+    let quality = 45;
+    let outBuffer = null;
+
+    for (
+      let attempt = 1;
+      attempt <= 8;
+      attempt++
+    ) {
+
+      const tmpOut =
+        generateTempFileName(
+          'webp'
+        );
+
+      await new Promise(
+        (resolve, reject) => {
+
+          ffmpeg(tmpIn)
+            .outputOptions([
+              '-vf',
+              'scale=320:320:force_original_aspect_ratio=decrease,' +
+              'pad=320:320:(ow-iw)/2:(oh-ih)/2:' +
+              'color=0x00000000,format=rgba,fps=15',
+
+              '-c:v',
+              'libwebp',
+
+              '-lossless',
+              '0',
+
+              '-compression_level',
+              '6',
+
+              '-q:v',
+              String(quality),
+
+              '-loop',
+              '0',
+
+              '-an',
+
+              '-vsync',
+              '0',
+
+              '-t',
+              '9.9'
+            ])
+            .format('webp')
+            .on(
+              'error',
+              reject
+            )
+            .on(
+              'end',
+              resolve
+            )
+            .save(tmpOut);
+        }
+      );
+
+      outBuffer =
+        await fs.readFile(
+          tmpOut
+        );
+
+      await fs
+        .unlink(tmpOut)
+        .catch(() => {});
+
+      if (
+        outBuffer.length <=
+          MAX_SIZE ||
+        quality <= 15
+      ) {
+        break;
+      }
+
+      quality =
+        Math.max(
+          15,
+          quality - 7
+        );
+    }
+
+    return outBuffer;
+
+  } finally {
+
+    await fs
+      .unlink(tmpIn)
+      .catch(() => {});
+  }
 }
 
 // Escrever EXIF
@@ -136,10 +266,10 @@ async function writeExif(webpBuffer, metadata) {
     const img = new webp.Image();
     await img.load(webpBuffer);
     const json = {
-      "sticker-pack-id": "https://github.com/hiudyy",
+      "sticker-pack-id": "https://github.com/bakizinho/BKkyara-",
       "sticker-pack-name": metadata.packname || "",
       "sticker-pack-publisher": metadata.author || "",
-      "emojis": ["NazuninhaBot"]
+      "emojis":["KyaraBot"]
     };
     const exifAttr = Buffer.from([
       0x49, 0x49, 0x2A, 0x00,

@@ -1,7 +1,7 @@
 /**
  * @author Dev Gui
  */
-import { PREFIX } from "../../../config.js";
+const PREFIX = globalThis.__KYARA_PREFIX__ || "/";
 import { createHtmlGameCommand } from "./_htmlGameCommand.js";
 
 export const RICH_SLOTS_HTML = String.raw`<style>

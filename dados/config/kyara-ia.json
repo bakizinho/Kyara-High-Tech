@@ -1,0 +1,12 @@
+{
+  "nome": "Kyara",
+  "modo": "personagem",
+  "motor": "llama-cli",
+  "api_conversacional": false,
+  "llama_server": false,
+  "memoria": true,
+  "pv": true,
+  "grupos": true,
+  "voz": true,
+  "max_tokens": 384
+}

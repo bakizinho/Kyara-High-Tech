@@ -16,12 +16,12 @@
   "contador": [
     {
       "id": "28145558278209@lid",
-      "msg": 1,
+      "msg": 2,
       "cmd": 1,
       "figu": 0,
       "pushname": "᳀",
       "firstSeen": "2026-09-09T02:48:36.132Z",
-      "lastActivity": "2026-09-09T02:48:40.070Z"
+      "lastActivity": "2026-09-15T21:03:15.459Z"
     },
     {
       "id": "226057382842605@lid",
@@ -40,6 +40,42 @@
       "pushname": "Raniaaa",
       "firstSeen": "2026-09-09T02:48:38.290Z",
       "lastActivity": "2026-09-09T02:48:38.930Z"
+    },
+    {
+      "id": "143211976765554@lid",
+      "msg": 24,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mitsuki",
+      "firstSeen": "2026-09-09T18:17:02.879Z",
+      "lastActivity": "2026-09-15T21:14:50.156Z"
+    },
+    {
+      "id": "236756498690245@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Josué Santos S.",
+      "firstSeen": "2026-09-10T16:44:31.678Z",
+      "lastActivity": "2026-09-10T16:44:31.678Z"
+    },
+    {
+      "id": "12816534765705@lid",
+      "msg": 7,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Antônio Malavolta Andrade",
+      "firstSeen": "2026-09-11T16:57:05.969Z",
+      "lastActivity": "2026-09-15T21:26:48.201Z"
+    },
+    {
+      "id": "79164954693740@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Nina",
+      "firstSeen": "2026-09-13T01:10:27.578Z",
+      "lastActivity": "2026-09-13T01:10:27.582Z"
     }
   ],
   "autodlMode": "video",

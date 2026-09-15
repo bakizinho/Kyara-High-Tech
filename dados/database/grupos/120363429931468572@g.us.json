@@ -8,19 +8,19 @@
   "allowedModCommands": [],
   "mutedUsers": {},
   "mutedUsers2": {},
-  "levelingEnabled": false,
+  "levelingEnabled": true,
   "adminWhitelist": {},
   "roles": {},
   "roleMessages": {},
   "contador": [
     {
       "id": "94292517351672@lid",
-      "msg": 17,
+      "msg": 31,
       "cmd": 0,
-      "figu": 9,
+      "figu": 14,
       "pushname": "Mika🤎",
       "firstSeen": "2026-09-02T19:01:52.446Z",
-      "lastActivity": "2026-09-03T23:04:56.796Z"
+      "lastActivity": "2026-09-09T22:08:54.698Z"
     },
     {
       "id": "198986556293355@lid",
@@ -33,12 +33,12 @@
     },
     {
       "id": "187990718550060@lid",
-      "msg": 15,
+      "msg": 23,
       "cmd": 0,
-      "figu": 20,
+      "figu": 26,
       "pushname": "daniel",
       "firstSeen": "2026-09-02T19:35:34.857Z",
-      "lastActivity": "2026-09-03T23:13:26.335Z"
+      "lastActivity": "2026-09-09T22:08:01.750Z"
     },
     {
       "id": "259614012608721@lid",
@@ -60,21 +60,21 @@
     },
     {
       "id": "227410146517084@lid",
-      "msg": 29,
+      "msg": 44,
       "cmd": 0,
-      "figu": 3,
+      "figu": 8,
       "pushname": "Sebastiao Silva",
       "firstSeen": "2026-09-02T21:40:43.058Z",
-      "lastActivity": "2026-09-03T23:05:43.523Z"
+      "lastActivity": "2026-09-09T22:00:46.033Z"
     },
     {
       "id": "229798450307158@lid",
-      "msg": 21,
+      "msg": 22,
       "cmd": 0,
-      "figu": 2,
+      "figu": 4,
       "pushname": "Anderson",
       "firstSeen": "2026-09-02T22:14:51.701Z",
-      "lastActivity": "2026-09-04T07:14:53.418Z"
+      "lastActivity": "2026-09-09T22:12:24.203Z"
     },
     {
       "id": "148018229694697@lid",
@@ -97,11 +97,39 @@
     {
       "id": "28145558278209@lid",
       "msg": 1,
-      "cmd": 0,
-      "figu": 2,
+      "cmd": 1,
+      "figu": 3,
       "pushname": "᳀",
       "firstSeen": "2026-09-03T13:41:36.572Z",
-      "lastActivity": "2026-09-04T14:31:58.290Z"
+      "lastActivity": "2026-09-09T18:15:51.982Z"
+    },
+    {
+      "id": "10845379637403@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "~💤",
+      "firstSeen": "2026-09-09T18:17:20.518Z",
+      "lastActivity": "2026-09-09T18:17:20.518Z"
+    },
+    {
+      "id": "98686235332808@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "kaelizinha🫶🏾😎",
+      "firstSeen": "2026-09-09T18:18:23.450Z",
+      "lastActivity": "2026-09-09T18:18:23.456Z"
+    },
+    {
+      "id": "236524503318719@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "peixinho 7",
+      "firstSeen": "2026-09-09T21:16:58.076Z",
+      "lastActivity": "2026-09-09T21:16:58.076Z"
     }
-  ]
+  ],
+  "levelingConfigured": true
 }

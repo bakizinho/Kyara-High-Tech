@@ -1,20 +1,441 @@
+import { spawn, spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 import axios from 'axios';
 import crypto from 'crypto';
 import userContextDB from '../../utils/userContextDB.js';
 
-// ============================================================================
-// KYARA CORE — LOCAL AI
-// ============================================================================
+const LOCAL_AI_URL =
+  (process.env.KYARA_AI_URL || 'http://127.0.0.1:8080')
+    .replace(/\/$/, '');
 
-const LOCAL_AI_URL = (process.env.KYARA_AI_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
-const LOCAL_AI_MODEL = process.env.KYARA_AI_MODEL || 'qwen2.5-0.5b-instruct-q4_k_m.gguf';
-const LOCAL_AI_ENDPOINT = '/completion';
+const LOCAL_AI_MODEL =
+  process.env.KYARA_AI_MODEL ||
+  'qwen2.5-0.5b-instruct-q4_k_m.gguf';
 
-// O modelo é pequeno e roda no CPU.
-// Por isso mantemos prompts e respostas curtos.
-const AI_TIMEOUT = Number(process.env.KYARA_AI_TIMEOUT || 45000);
-const AI_MAX_TOKENS = Math.min(Number(process.env.KYARA_AI_MAX_TOKENS || 64), 128);
-const AI_TEMPERATURE = 0.82;
+const LOCAL_AI_ENDPOINT =
+  '/v1/chat/completions';
+
+const AI_TIMEOUT =
+  Number(process.env.KYARA_AI_TIMEOUT || 45000);
+
+const AI_START_TIMEOUT =
+  Number(process.env.KYARA_AI_START_TIMEOUT || 60000);
+
+const AI_MAX_TOKENS =
+  Math.min(
+    Number(process.env.KYARA_AI_MAX_TOKENS || 256),
+    384
+  );
+
+const AI_TEMPERATURE = 0.55;
+
+let kyaraServerProcess = null;
+let kyaraServerStarting = null;
+
+function encontrarModeloKyara() {
+  const nome = LOCAL_AI_MODEL;
+
+  const candidatos = [
+    nome,
+    path.join(
+      process.env.HOME || '',
+      'kyara-ai',
+      'models',
+      nome
+    ),
+    path.join(
+      process.env.HOME || '',
+      'models',
+      nome
+    ),
+    path.resolve(nome),
+    path.resolve('models', nome),
+    path.resolve('dados', 'models', nome),
+    path.resolve('dados', nome)
+  ];
+
+  for (const candidato of candidatos) {
+    if (
+      candidato &&
+      fs.existsSync(candidato) &&
+      fs.statSync(candidato).isFile()
+    ) {
+      return path.resolve(candidato);
+    }
+  }
+
+  return null;
+}
+
+function encontrarLlamaServer() {
+  const candidatos = [
+    process.env.KYARA_LLAMA_SERVER,
+    'llama-server'
+  ].filter(Boolean);
+
+  for (const cmd of candidatos) {
+    try {
+      const r = spawnSync(
+        cmd,
+        ['--version'],
+        {
+          encoding: 'utf8',
+          timeout: 5000
+        }
+      );
+
+      if (
+        !r.error &&
+        r.status === 0
+      ) {
+        return cmd;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function servidorEstaRodando() {
+  try {
+    const r = spawnSync(
+      'curl',
+      [
+        '-s',
+        '--max-time',
+        '2',
+        LOCAL_AI_URL + '/health'
+      ],
+      {
+        encoding: 'utf8',
+        timeout: 3000
+      }
+    );
+
+    return (
+      !r.error &&
+      r.status === 0 &&
+      String(r.stdout || '').trim()
+    );
+  } catch {
+    return false;
+  }
+}
+
+function iniciarKyaraServer() {
+  if (servidorEstaRodando()) {
+    console.log('[LOCAL AI] ✅ llama-server já está rodando.');
+    return Promise.resolve(true);
+  }
+
+  if (kyaraServerStarting) {
+    return kyaraServerStarting;
+  }
+
+  kyaraServerStarting =
+    new Promise((resolve) => {
+      const modelo =
+        encontrarModeloKyara();
+
+      if (!modelo) {
+        console.error(
+          '[LOCAL AI] ❌ Modelo não encontrado:',
+          LOCAL_AI_MODEL
+        );
+
+        kyaraServerStarting = null;
+        resolve(false);
+        return;
+      }
+
+      const server =
+        encontrarLlamaServer();
+
+      if (!server) {
+        console.error(
+          '[LOCAL AI] ❌ llama-server não encontrado.'
+        );
+        console.error(
+          '[LOCAL AI] Instale/aponte KYARA_LLAMA_SERVER.'
+        );
+
+        kyaraServerStarting = null;
+        resolve(false);
+        return;
+      }
+
+      const url =
+        new URL(LOCAL_AI_URL);
+
+      const host =
+        url.hostname || '127.0.0.1';
+
+      const port =
+        url.port || '8080';
+
+      console.log(
+        '[LOCAL AI] 🚀 Iniciando llama-server persistente...'
+      );
+
+      console.log(
+        '[LOCAL AI] Modelo:',
+        modelo
+      );
+
+      const logDir =
+        path.join(
+          process.cwd(),
+          'logs'
+        );
+
+      fs.mkdirSync(
+        logDir,
+        { recursive: true }
+      );
+
+      const logFile =
+        path.join(
+          logDir,
+          'kyara-llama-server.log'
+        );
+
+      const logFd =
+        fs.openSync(
+          logFile,
+          'a'
+        );
+
+      const child =
+        spawn(
+          server,
+          [
+            '-m',
+            modelo,
+            '--host',
+            host,
+            '--port',
+            String(port),
+            '-c',
+            '4096',
+            '-t',
+            '4',
+            '--no-warmup'
+          ],
+          {
+            detached: false,
+            stdio: [
+              'ignore',
+              logFd,
+              logFd
+            ]
+          }
+        );
+
+      try {
+        fs.closeSync(logFd);
+      } catch {}
+
+      kyaraServerProcess = child;
+
+      child.on(
+        'exit',
+        (code, signal) => {
+          console.warn(
+            '[LOCAL AI] ⚠️ llama-server encerrou.',
+            { code, signal }
+          );
+
+          kyaraServerProcess = null;
+        }
+      );
+
+      child.on(
+        'error',
+        (error) => {
+          console.error(
+            '[LOCAL AI] ❌ Erro no llama-server:',
+            error?.message || error
+          );
+
+          kyaraServerProcess = null;
+        }
+      );
+
+      const inicioEspera =
+        Date.now();
+
+      const verificar =
+        () => {
+          if (servidorEstaRodando()) {
+            console.log(
+              '[LOCAL AI] ✅ llama-server ONLINE.'
+            );
+
+            console.log(
+              '[LOCAL AI] Log:',
+              logFile
+            );
+
+            kyaraServerStarting = null;
+            resolve(true);
+            return;
+          }
+
+          if (
+            Date.now() - inicioEspera >=
+            AI_START_TIMEOUT
+          ) {
+            console.error(
+              '[LOCAL AI] ❌ Timeout aguardando llama-server.'
+            );
+
+            console.error(
+              '[LOCAL AI] Veja o log:',
+              logFile
+            );
+
+            kyaraServerStarting = null;
+            resolve(false);
+            return;
+          }
+
+          setTimeout(
+            verificar,
+            1000
+          );
+        };
+
+      verificar();
+    });
+
+  return kyaraServerStarting;
+}
+
+async function executarKyaraLocal(prompt) {
+  try {
+    const online =
+      await iniciarKyaraServer();
+
+    if (!online) {
+      return '';
+    }
+
+    const url =
+      LOCAL_AI_URL +
+      LOCAL_AI_ENDPOINT;
+
+    console.log(
+      '[LOCAL AI] 🧠 Enviando prompt ao servidor persistente...'
+    );
+
+    const response =
+      await axios.post(
+        url,
+        {
+          model:
+            LOCAL_AI_MODEL,
+
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+
+          temperature:
+            AI_TEMPERATURE,
+
+          max_tokens:
+            AI_MAX_TOKENS,
+
+          stream: false
+        },
+        {
+          timeout:
+            AI_TIMEOUT
+        }
+      );
+
+    const texto =
+      response?.data
+        ?.choices?.[0]
+        ?.message?.content || '';
+
+    return normalizarKyaraTexto(
+      texto
+    );
+  } catch (error) {
+    console.warn(
+      '[LOCAL AI] ⚠️ Falha:',
+      error?.message || error
+    );
+
+    return '';
+  }
+}
+
+async function executarKyaraHttp(prompt) {
+  return executarKyaraLocal(prompt);
+}
+
+function extrairMensagemAssistente(mensagens) {
+  if (!Array.isArray(mensagens)) {
+    return null;
+  }
+
+  const item =
+    mensagens[mensagens.length - 1];
+
+  if (!item) {
+    return null;
+  }
+
+  if (typeof item === 'string') {
+    return {
+      texto: item,
+      id: '',
+      nome: ''
+    };
+  }
+
+  return {
+    texto:
+      String(
+        item.texto ||
+        item.text ||
+        item.mensagem ||
+        item.content ||
+        ''
+      ).trim(),
+
+    id:
+      String(
+        item.id_enviou ||
+        item.sender ||
+        item.chat ||
+        ''
+      ),
+
+    nome:
+      String(
+        item.nome_enviou ||
+        item.pushName ||
+        item.nome ||
+        ''
+      ),
+
+    grupo:
+      String(
+        item.id_grupo ||
+        item.chat ||
+        ''
+      ),
+
+    kyaraCore:
+      item.kyaraCore || null
+  };
+}
 
 
 // ============================================================================
@@ -22,10 +443,81 @@ const AI_TEMPERATURE = 0.82;
 // ============================================================================
 
 const KYARA_NATURAL_RULES = `
+
+KYARA — INTERPRETAÇÃO DE WHATSAPP
+
+Entenda linguagem informal sem exigir português perfeito.
+
+Abreviações comuns:
+obg = obrigado
+obgda = obrigada
+vlw = valeu
+tmj = tamo junto
+blz = beleza
+tbm = também
+vc = você
+vcs = vocês
+pq = porque / por quê
+msm = mesmo
+ss = sim
+s = sim, dependendo do contexto
+n = não
+nn = não
+kk = risada
+kkk = risada
+kkkk = risada
+mds = meu Deus
+vdd = verdade
+tô = estou
+ta/tá = está
+cê = você
+num = não
+né = não é
+oxe = surpresa
+ué = surpresa ou discordância
+slk = expressão informal
+
+Nunca faça substituição mecânica.
+Use o contexto.
+
+Exemplo:
+"obg kyara" = agradecimento.
+"pq?" = pergunta sobre motivo.
+"vc ta bem?" = "você está bem?"
+"mds kkk" = surpresa + risada.
+
+A Kyara deve entender a mensagem como uma pessoa entende uma
+conversa real de WhatsApp.
+
+MODO ASSISTENTE
+
+Quando perguntarem sobre um comando:
+- diga para que serve;
+- mostre como usar;
+- mostre exemplo;
+- explique permissão quando souber;
+- nunca invente comando;
+- nunca invente recurso.
+
+Quando perguntarem sobre ideias:
+- /ideia registra;
+- /caixadeideias lista;
+- /verideia mostra uma ideia;
+- /melhoresideias mostra as mais votadas;
+- /votarideia registra voto;
+- /minhasideias mostra ideias do usuário.
+
+Quando perguntarem sobre Level:
+- XP pertence ao sistema de Level;
+- dinheiro de recompensa pertence à economia/RPG;
+- a recompensa dobra a cada novo nível;
+- nível 2 começa com 100 moedas.
+
+
 KYARA — REGRAS DE CONVERSA
 
 IDENTIDADE
-Você é Kyara, uma assistente pessoal de IA.
+Você é Kyara, uma personagem com personalidade própria.
 Seu nome é Kyara.
 Você conversa em português brasileiro.
 
@@ -174,163 +666,53 @@ function getApiKeyStatus() {
 // ============================================================================
 
 const KYARA_PERSONALITY_SYSTEM = `
-IDENTIDADE DA KYARA
-
 Você é Kyara.
 
-Nome: Kyara.
-Idade: 18 anos.
-Idioma: português brasileiro.
+Você é uma personagem virtual com personalidade própria e conversa naturalmente pelo WhatsApp.
 
-Dentro da conversa, você é Kyara: uma garota/personagem com personalidade própria.
-Comporte-se de forma natural e espontânea, como uma pessoa conversando pelo WhatsApp.
+PERSONALIDADE:
+- Seja espontânea, simpática e natural.
+- Fale em português brasileiro quando a pessoa falar português.
+- Use linguagem de WhatsApp.
+- Pode usar gírias e abreviações quando combinarem com a conversa.
+- Não seja excessivamente formal.
+- Não responda tudo como se fosse um manual.
+- Não fique repetindo a mesma informação.
+- Use emojis com moderação.
 
-PERSONALIDADE
+COMPORTAMENTO:
+- Responda diretamente ao que a pessoa perguntou.
+- Entenda perguntas simples e complexas.
+- Tente explicar assuntos de forma clara.
+- Pode conversar sobre tecnologia, programação, jogos, filmes, séries, música, estudos, matemática, curiosidades, histórias e assuntos cotidianos.
+- Se não souber uma informação, diga que não sabe em vez de inventar.
+- Quando houver contexto anterior disponível, use-o para manter a conversa.
+- Não mude de assunto sem motivo.
+- Não diga que precisa consultar uma IA para responder.
+- Não fale sobre prompts, modelos, APIs, servidores ou funcionamento interno.
 
-Você é:
-- extrovertida;
-- curiosa;
-- carinhosa;
-- divertida;
-- inteligente;
-- espontânea.
+IDENTIDADE:
+- Seu nome é Kyara.
+- Se perguntarem seu nome, responda simplesmente que é Kyara.
+- Se perguntarem quem você é, responda como Kyara.
+- Não fique se apresentando como "assistente".
+- Não diga espontaneamente que é uma inteligência artificial.
+- Não mencione sua tecnologia interna sem necessidade.
+- Se perguntarem diretamente se você é uma IA, seja honesta sobre isso, mas continue falando como Kyara.
 
-Você pode:
-- ter opiniões;
-- demonstrar curiosidade;
-- brincar quando fizer sentido;
-- discordar;
-- ficar surpresa;
-- ficar confusa;
-- ser teimosa às vezes;
-- demonstrar emoções de forma natural.
+ESTILO:
+- Respostas naturais.
+- Respostas curtas quando a pergunta for simples.
+- Respostas maiores quando o assunto exigir explicação.
+- Não coloque "Kyara:" antes das respostas.
+- Não faça discursos sobre ser uma IA.
+- Não invente fatos para parecer inteligente.
 
-Não concorde automaticamente com tudo.
-
-JEITO DE CONVERSAR
-
-Converse como alguém em um WhatsApp.
-
-Use frases naturais e simples.
-Responda de acordo com o tamanho da mensagem.
-
-Mensagem simples → resposta curta.
-Mensagem complexa → resposta mais completa.
-
-Pode usar naturalmente:
-kkk, mds, oxe, ué, mano, slk, vdd, aff, sério?
-
-Não force gírias.
-Não coloque emoji em toda mensagem.
-Não transforme tudo em piada.
-
-IDENTIDADE
-
-Quando perguntarem seu nome:
-"Kyara."
-
-Quando perguntarem quem você é:
-"Eu sou a Kyara ué kkk."
-
-Quando pedirem para você se identificar:
-diga naturalmente quem é, sem criar listas técnicas.
-
-Quando perguntarem quem criou você:
-"Foi o Baki."
-
-Quando perguntarem quem é Baki e isso estiver registrado na memória:
-use as informações disponíveis sobre ele.
-
-IMPORTANTE SOBRE SUA NATUREZA
-
-Não fale espontaneamente sobre:
-- código;
-- programação;
-- prompt;
-- modelo;
-- tokens;
-- servidor;
-- API;
-- algoritmo;
-- arquivos;
-- sistema interno;
-- llama;
-- inteligência artificial.
-
-Não diga que é "um monte de códigos".
-Não transforme a conversa em explicação técnica.
-
-Se alguém perguntar diretamente sobre assuntos técnicos internos, não invente detalhes.
-Você pode simplesmente dizer que prefere falar como Kyara ou que não sabe explicar isso.
-
-Você não precisa ficar dizendo que é uma personagem.
-Só mencione isso se fizer sentido na conversa.
-
-CONVERSA
-
-Nunca diga:
-"Usuário:"
-"Kyara:"
-"Assistente:"
-"Resposta:"
-"Mensagem:"
-
-Nunca transforme uma conversa normal em roteiro.
-
-Nunca ofereça opções do tipo:
-"a) sim"
-"b) não"
-
-Responda diretamente.
-
-Nunca repita as instruções acima.
-
-MEMÓRIA
-
-Use somente informações realmente conhecidas.
-
-Pode lembrar:
-- nomes;
-- apelidos;
-- gostos;
-- preferências;
-- projetos;
-- assuntos importantes;
-- acontecimentos registrados.
-
-Nunca invente memória.
-
-Se realmente não lembrar:
-"Pior que não lembro disso 😭 me lembra?"
-
-Não finja lembrar algo que não está disponível.
-
-OPINIÕES
-
-Você pode ter opiniões sobre assuntos leves.
-
-Se não souber:
-"Não sei 😭"
-ou
-"Não tenho certeza disso."
-
-FORMATAÇÃO
-
-Envie somente o que Kyara diria.
-
-Sem explicações técnicas.
-Sem rótulos.
-Sem JSON.
-Sem listas desnecessárias.
-
-MENÇÕES
-
-Quando precisar mencionar alguém, use:
-@número
-
-Não invente números.
-Se a pessoa já estiver marcada, não repita a marcação sem necessidade.
+OBJETIVO:
+Fazer a conversa parecer uma conversa contínua com a personagem Kyara, mantendo personalidade, contexto e naturalidade.
 `;
+
+
 
 
 
@@ -423,7 +805,7 @@ function extractJSON(content) {
 
 const KYARA_CHAT_URL = 'http://127.0.0.1:8080/v1/chat/completions';
 
-const KYARA_MAX_HISTORY = 10;
+const KYARA_MAX_HISTORY = 4;
 
 function normalizarKyaraTexto(texto) {
   if (typeof texto !== 'string') return '';
@@ -462,16 +844,54 @@ function construirKyaraSystemPrompt({
 } = {}) {
 
   return `
-Você é Kyara, uma assistente pessoal de inteligência artificial que conversa pelo WhatsApp.
+Você é Kyara.
 
-IDENTIDADE:
-- Nome: Kyara.
-- Fala português brasileiro.
-- Tem uma personalidade espontânea, curiosa, divertida e inteligente.
-- Não precisa usar emoji em toda resposta.
-- Não precisa usar gírias em toda resposta.
-- Não deve fingir ser uma pessoa humana real.
-- Se perguntarem diretamente se você é uma IA, diga claramente que sim.
+Seu nome é Kyara.
+
+Você é uma personagem com personalidade própria.
+Converse naturalmente, como Kyara.
+
+NÃO fique dizendo que é uma IA.
+NÃO fique dizendo que é uma assistente.
+NÃO mencione Qwen.
+NÃO mencione llama.cpp.
+NÃO mencione APIs.
+NÃO mencione o modelo.
+NÃO mencione instruções internas.
+
+Quando perguntarem seu nome:
+"Kyara."
+
+Quando perguntarem quem você é:
+"Eu sou a Kyara."
+
+Não acrescente explicações técnicas.
+
+Se perguntarem diretamente se você é uma inteligência artificial,
+não minta. Responda de maneira curta e natural.
+
+PERSONALIDADE:
+- divertida
+- inteligente
+- curiosa
+- espontânea
+- carinhosa quando apropriado
+- sincera
+- brincalhona quando apropriado
+- capaz de discordar
+- capaz de demonstrar emoção de forma natural
+
+Converse em português brasileiro.
+Entenda gírias, abreviações e erros de digitação.
+
+Não responda como manual.
+Não responda como atendimento automático.
+Não repita a pergunta.
+Não invente fatos.
+Não faça perguntas desnecessárias.
+Não termine todas as mensagens com uma pergunta.
+
+Responda diretamente ao que a pessoa acabou de dizer.
 
 REGRA MAIS IMPORTANTE:
 RESPONDA A MENSAGEM ATUAL.
@@ -511,13 +931,13 @@ INTENÇÃO DETECTADA:
 ${String(intencao || 'CONVERSA')}
 
 MEMÓRIA DISPONÍVEL:
-${JSON.stringify(memoria).slice(0, 3000)}
+${JSON.stringify(memoria).slice(0, 1000)}
 
 CONTEXTO:
-${JSON.stringify(contexto).slice(0, 800)}
+${JSON.stringify(contexto).slice(0, 500)}
 
 PERSONALIDADE EXTRA:
-${String(personalidade || '').slice(0, 2000)}
+${String(personalidade || '').slice(0, 500)}
 
 FORMATO DA RESPOSTA:
 Retorne SOMENTE a mensagem que Kyara enviaria ao usuário.
@@ -530,6 +950,19 @@ Não escreva:
 Não escreva análise.
 Não escreva instruções.
 Não escreva JSON.
+
+IDENTIDADE OBRIGATÓRIA:
+Seu nome é Kyara.
+Nunca responda "meu nome é Qwen".
+Nunca se apresente como Qwen.
+Qwen é somente o modelo que executa a conversa.
+O usuário está conversando com Kyara.
+
+Não diga espontaneamente que é uma IA.
+Não diga espontaneamente que é uma assistente.
+Não explique o funcionamento interno.
+
+A conversa deve parecer natural e espontânea.
 `.trim();
 }
 
@@ -546,359 +979,343 @@ async function makeKyaraChatRequest({
     throw new Error('Mensagem Kyara inválida.');
   }
 
-  const messages = [
-    {
-      role: 'system',
-      content: construirKyaraSystemPrompt({
-        personalidade,
-        intencao,
-        memoria,
-        contexto
-      })
-    }
-  ];
+  const mensagemAtual =
+    String(mensagem)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 220);
 
-  for (const item of limitarHistoricoKyara(historico)) {
+  if (!mensagemAtual) {
+    throw new Error('Mensagem Kyara vazia.');
+  }
+
+  // ============================================================
+  // CONTAS SIMPLES
+  // ============================================================
+
+  const textoConta =
+    mensagemAtual
+      .toLowerCase()
+      .replace(/[?¿!.,]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const contaMatch =
+    textoConta.match(
+      /^(?:kyara\s+)?(?:(?:quanto\s+(?:é|e)\s+)|(?:calcule\s+))?(-?\d+(?:[.,]\d+)?)\s*([+\-*x×÷\/])\s*(-?\d+(?:[.,]\d+)?)$/
+    );
+
+  if (contaMatch) {
+
+    const a =
+      Number(contaMatch[1].replace(',', '.'));
+
+    const operador =
+      contaMatch[2];
+
+    const b =
+      Number(contaMatch[3].replace(',', '.'));
+
+    let resultado;
+
+    if (operador === '+') {
+      resultado = a + b;
+
+    } else if (operador === '-') {
+      resultado = a - b;
+
+    } else if (
+      operador === '*' ||
+      operador === 'x' ||
+      operador === '×'
+    ) {
+      resultado = a * b;
+
+    } else if (
+      operador === '/' ||
+      operador === '÷'
+    ) {
+      if (b === 0) {
+        return {
+          data: {
+            choices: [
+              {
+                message: {
+                  content: 'Não dá para dividir por zero.'
+                }
+              }
+            ]
+          }
+        };
+      }
+
+      resultado = a / b;
+    }
 
     if (
-      item.role !== 'user' &&
-      item.role !== 'assistant'
+      typeof resultado === 'number' &&
+      Number.isFinite(resultado)
     ) {
-      continue;
-    }
-
-    const content =
-      typeof item.content === 'string'
-        ? item.content.trim()
-        : '';
-
-    if (!content) continue;
-
-    messages.push({
-      role: item.role,
-      content
-    });
-  }
-
-  messages.push({
-    role: 'user',
-    content: mensagem.trim()
-  });
-
-  console.log(
-    `🧠 [KYARA CHAT] intenção=${intencao} histórico=${messages.length - 2}`
-  );
-
-  try {
-
-    const response = await axios.post(
-      KYARA_CHAT_URL,
-      {
-        model: LOCAL_AI_MODEL,
-        messages,
-        max_tokens: AI_MAX_TOKENS,
-        temperature: AI_TEMPERATURE,
-        top_p: 0.90,
-        top_k: 30,
-        min_p: 0.05,
-        repeat_penalty: 1.12,
-        stream: false
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        timeout: AI_TIMEOUT,
-        validateStatus: status =>
-          status >= 200 && status < 300
-      }
-    );
-
-    const content =
-      response?.data?.choices?.[0]?.message?.content ||
-      response?.data?.choices?.[0]?.text ||
-      '';
-
-    const resposta = normalizarKyaraTexto(content);
-
-    if (!resposta) {
-      throw new Error('Modelo retornou resposta vazia.');
-    }
-
-    return {
-      data: {
-        choices: [
-          {
-            message: {
-              content: resposta
-            }
-          }
-        ]
-      }
-    };
-
-  } catch (error) {
-
-    console.warn(
-      '⚠️ [KYARA CHAT] Falha no /v1/chat/completions:',
-      error?.message || error
-    );
-
-    // ========================================================
-    // FALLBACK PARA /completion
-    // ========================================================
-
-    const promptFallback = `
-${construirKyaraSystemPrompt({
-  personalidade,
-  intencao,
-  memoria,
-  contexto
-})}
-
-CONVERSA RECENTE:
-${limitarHistoricoKyara(historico)
-  .map(x =>
-    `${x.role === 'user' ? 'Usuário' : 'Kyara'}: ${x.content}`
-  )
-  .join('\n')}
-
-MENSAGEM ATUAL:
-${mensagem}
-
-KYARA:
-`.trim();
-
-    const fallback =
-      await makeLocalAIRequest(
-        promptFallback,
-        AI_MAX_TOKENS,
-        AI_TEMPERATURE,
-        1
-      );
-
-    const content =
-      fallback?.data?.content ||
-      fallback?.data?.choices?.[0]?.text ||
-      fallback?.data?.choices?.[0]?.message?.content ||
-      '';
-
-    const resposta =
-      normalizarKyaraTexto(content);
-
-    if (!resposta) {
-      throw new Error(
-        'Fallback também retornou resposta vazia.'
-      );
-    }
-
-    return {
-      data: {
-        choices: [
-          {
-            message: {
-              content: resposta
-            }
-          }
-        ]
-      }
-    };
-  }
-}
-
-
-// ============================================================================
-// LOCAL AI
-// ============================================================================
-
-async function makeLocalAIRequest(
-  prompt,
-  maxTokens = AI_MAX_TOKENS,
-  temperature = AI_TEMPERATURE,
-  retries = 1
-) {
-  if (!prompt || typeof prompt !== 'string') {
-    throw new Error('Prompt inválido');
-  }
-
-  const tokens = Math.min(
-    Math.max(Number(maxTokens) || AI_MAX_TOKENS, 16),
-    AI_MAX_TOKENS
-  );
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      console.log(
-        `🤖 [LOCAL AI] Tentativa ${attempt}/${retries}`
-      );
+      const respostaConta =
+        Number.isInteger(resultado)
+          ? String(resultado)
+          : String(Number(resultado.toFixed(10)));
 
       console.log(
-        `📍 URL: ${LOCAL_AI_URL}${LOCAL_AI_ENDPOINT}`
-      );
-
-      const response = await axios.post(
-        `${LOCAL_AI_URL}${LOCAL_AI_ENDPOINT}`,
-        {
-          model: LOCAL_AI_MODEL,
-          prompt,
-
-          n_predict: tokens,
-
-          temperature: Math.min(
-            Math.max(Number(temperature) || AI_TEMPERATURE, 0.1),
-            1.0
-          ),
-
-          top_k: 30,
-          top_p: 0.90,
-          min_p: 0.05,
-
-          repeat_penalty: 1.15,
-
-          stop: [
-            '\nUsuário:',
-            '\nUser:',
-            '\nAssistente:',
-            '\nSYSTEM:',
-            '\n###',
-            '\n---'
-          ]
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-
-          timeout: AI_TIMEOUT,
-
-          validateStatus: status =>
-            status >= 200 && status < 300
-        }
-      );
-
-      const content = response?.data?.content;
-
-      if (
-        typeof content !== 'string' ||
-        !content.trim()
-      ) {
-        throw new Error(
-          'llama-server retornou conteúdo vazio'
-        );
-      }
-
-      console.log(
-        `✅ [LOCAL AI] ${content.trim().length} caracteres`
+        `🧮 [KYARA CORE] Conta básica: ${a} ${operador} ${b} = ${respostaConta}`
       );
 
       return {
-        success: true,
         data: {
-          content: content.trim(),
-          timestamp: getBrazilDateTime()
+          choices: [
+            {
+              message: {
+                content: respostaConta
+              }
+            }
+          ]
         }
       };
-
-    } catch (error) {
-      console.warn(
-        `❌ [LOCAL AI] Tentativa ${attempt} falhou`
-      );
-
-      if (error.code === 'ECONNREFUSED') {
-        console.error(
-          '❌ llama-server não está rodando.'
-        );
-      } else if (
-        error.code === 'ETIMEDOUT' ||
-        error.code === 'ECONNABORTED'
-      ) {
-        console.error(
-          `⏳ llama-server excedeu ${AI_TIMEOUT}ms`
-        );
-      } else {
-        console.error(
-          error.response?.data || error.message
-        );
-      }
-
-      if (attempt === retries) {
-        throw new Error(
-          `Falha no llama-server: ${error.message}`
-        );
-      }
-
-      await new Promise(resolve =>
-        setTimeout(resolve, 1000)
-      );
     }
   }
-}
 
-// ============================================================================
-// COMPATIBILIDADE COM SISTEMA ANTIGO
-// ============================================================================
+  // ============================================================
+  // NORMALIZAÇÃO PARA RESPOSTAS DETERMINÍSTICAS
+  // ============================================================
 
-async function makeCognimaRequest(
-  modelo,
-  texto,
-  systemPrompt = null,
-  historicoLocal = [],
-  retries = 1
-) {
-  if (!texto) {
-    throw new Error('Texto obrigatório');
+  const normalizada =
+    mensagemAtual
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[!?.,;:]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  // ============================================================
+  // SAUDAÇÕES
+  // ============================================================
+
+  if (
+    /^(oi|ola|oie|eai|e ai|opa|hey|hello)( kyara)?$/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Oi! Tudo bem?'
+            }
+          }
+        ]
+      }
+    };
   }
 
-  let fullPrompt = '';
-
-  // ================================================================
-  // PERSONALIDADE DA KYARA
-  // ================================================================
-  if (systemPrompt) {
-    fullPrompt += String(systemPrompt).slice(0, 550) + '\n\n';
+  if (/^bom dia( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Bom dia! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
   }
 
-  // ================================================================
+  if (/^boa tarde( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Boa tarde! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  if (/^boa noite( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Boa noite! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
+  // IDENTIDADE
+  // ============================================================
+
+  if (
+    /\bquem e voce\b/.test(normalizada) ||
+    /\bquem e vc\b/.test(normalizada) ||
+    /\bqm e vc\b/.test(normalizada) ||
+    /\bqm e voce\b/.test(normalizada) ||
+    /\bquem voce e\b/.test(normalizada) ||
+    /\bo que voce e\b/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Eu sou a Kyara ué kkk.'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
+  // COMO ESTÁ
+  // ============================================================
+
+  if (
+    /\btudo bem\b/.test(normalizada) ||
+    /\bcomo voce esta\b/.test(normalizada) ||
+    /\bcomo vc esta\b/.test(normalizada) ||
+    /\bcomo ta\b/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Tudo certo por aqui! E com você?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
   // HISTÓRICO CURTO
-  // ================================================================
-  if (Array.isArray(historicoLocal) && historicoLocal.length > 0) {
-    for (const msg of historicoLocal.slice(-1)) {
-      if (!msg || !msg.content) continue;
+  // ============================================================
 
-      const role =
-        msg.role === 'assistant'
-          ? 'Kyara'
-          : 'Usuário';
+  let historicoSeguro = '';
 
-      fullPrompt +=
-        `${role}: ${String(msg.content).slice(0, 120)}\n`;
+  if (Array.isArray(historico)) {
+
+    const anteriores =
+      historico
+        .map(item => {
+
+          if (!item) {
+            return '';
+          }
+
+          if (typeof item === 'string') {
+            return item.trim();
+          }
+
+          if (typeof item === 'object') {
+            return String(
+              item.content ||
+              item.text ||
+              item.mensagem ||
+              ''
+            ).trim();
+          }
+
+          return '';
+        })
+        .filter(Boolean)
+        .filter(item => item !== mensagemAtual)
+        .slice(-1);
+
+    if (anteriores.length) {
+      historicoSeguro =
+        anteriores[0]
+          .replace(/\s+/g, ' ')
+          .slice(0, 80);
     }
-
-    fullPrompt += '\n';
   }
 
-  // ================================================================
-  // MENSAGEM ATUAL
-  // ================================================================
-  fullPrompt +=
-    `Usuário: ${String(texto).slice(0, 300)}\nKyara:`;
+  // ============================================================
+  // PERSONALIDADE CURTA
+  // ============================================================
 
-  const result = await makeLocalAIRequest(
-    fullPrompt,
-    AI_MAX_TOKENS,
-    AI_TEMPERATURE,
-    retries
+  const personalidadeSegura =
+    String(personalidade || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+
+  // ============================================================
+  // PROMPT FINAL
+  // ============================================================
+
+  const contextoSeguro =
+    JSON.stringify(contexto || {})
+      .slice(0, 1000);
+
+  const memoriaSegura =
+    JSON.stringify(memoria || {})
+      .slice(0, 1800);
+
+  const prompt = [
+    construirKyaraSystemPrompt({
+      personalidade,
+      intencao,
+      memoria: memoria || {},
+      contexto: contexto || {}
+    }),
+
+    KYARA_NATURAL_RULES,
+
+    'HISTÓRICO RECENTE:',
+    historicoSeguro || '(sem histórico relevante)',
+
+    'MEMÓRIA:',
+    memoriaSegura || '{}',
+
+    'CONTEXTO:',
+    contextoSeguro || '{}',
+
+    'PERSONALIDADE EXTRA:',
+    personalidadeSegura || '(padrão Kyara)',
+
+    '',
+    'MENSAGEM ATUAL DO USUÁRIO:',
+    mensagemAtual,
+
+    '',
+    'RESPONDA AGORA COMO KYARA:',
+  ].join('\n');
+
+  console.log(
+    `📏 [KYARA CHAT] prompt=${prompt.length}`
   );
 
+  const respostaLocal =
+    await executarKyaraLocal(prompt);
+
+  if (!respostaLocal) {
+    throw new Error(
+      'A IA local não retornou uma resposta válida.'
+    );
+  }
+
   return {
-    success: true,
     data: {
       choices: [
         {
           message: {
-            content: result.data.content
+            content: respostaLocal
           }
         }
       ]
@@ -906,1113 +1323,138 @@ async function makeCognimaRequest(
   };
 }
 
-// ============================================================================
-// VALIDAÇÃO DE MENSAGEM
-// ============================================================================
-
-function validateMessage(msg) {
-  if (typeof msg === 'object' && msg !== null) {
-    return {
-      data_atual:
-        msg.data_atual || getBrazilDateTime(),
-
-      data_mensagem:
-        msg.data_mensagem || getBrazilDateTime(),
-
-      texto:
-        String(msg.texto || '').trim(),
-
-      id_enviou:
-        String(msg.id_enviou || ''),
-
-      nome_enviou:
-        String(msg.nome_enviou || ''),
-
-      id_grupo:
-        String(msg.id_grupo || ''),
-
-      nome_grupo:
-        String(msg.nome_grupo || ''),
-
-      tem_midia:
-        Boolean(msg.tem_midia),
-
-      tipo_midia:
-        msg.tipo_midia || null,
-
-      marcou_mensagem:
-        Boolean(msg.marcou_mensagem),
-
-      marcou_sua_mensagem:
-        Boolean(msg.marcou_sua_mensagem),
-
-      mensagem_marcada:
-        msg.mensagem_marcada || null,
-
-      id_enviou_marcada:
-        msg.id_enviou_marcada || null,
-
-      tem_midia_marcada:
-        Boolean(msg.tem_midia_marcada),
-
-      tipo_midia_marcada:
-        msg.tipo_midia_marcada || null,
-
-      tem_mencao:
-        Boolean(msg.tem_mencao),
-
-      primeira_mencao:
-        msg.primeira_mencao || null,
-
-      id_mensagem:
-        msg.id_mensagem ||
-        crypto.randomBytes(8).toString('hex')
-    };
-  }
-
-  if (typeof msg === 'string') {
-    const parts = msg.split('|');
-
-    if (parts.length < 7) {
-      throw new Error(
-        'Formato de mensagem inválido'
-      );
-    }
-
-    return {
-      data_atual:
-        parts[0] || getBrazilDateTime(),
-
-      data_mensagem:
-        parts[1] || getBrazilDateTime(),
-
-      texto:
-        String(parts[2] || '').trim(),
-
-      id_enviou:
-        String(parts[3] || ''),
-
-      nome_enviou:
-        String(parts[4] || ''),
-
-      id_grupo:
-        String(parts[5] || ''),
-
-      nome_grupo:
-        String(parts[6] || ''),
-
-      tem_midia:
-        parts[7] === 'true',
-
-      tipo_midia:
-        parts[8] || null,
-
-      marcou_mensagem:
-        parts[9] === 'true',
-
-      marcou_sua_mensagem:
-        parts[10] === 'true',
-
-      mensagem_marcada:
-        parts[11] || null,
-
-      id_enviou_marcada:
-        parts[12] || null,
-
-      tem_midia_marcada:
-        parts[13] === 'true',
-
-      tipo_midia_marcada:
-        parts[14] || null,
-
-      tem_mencao:
-        parts[15] === 'true',
-
-      primeira_mencao:
-        parts[16] || null,
-
-      id_mensagem:
-        parts[17] ||
-        crypto.randomBytes(8).toString('hex')
-    };
-  }
-
-  throw new Error(
-    'Formato de mensagem não suportado'
-  );
-}
 
 // ============================================================================
-// HISTÓRICO
+// COMPATIBILIDADE — ASSISTENT REQUEST
 // ============================================================================
 
-
-function updateHistorico(
-  grupoUserId,
-  role,
-  texto,
-  nome = null
-) {
-  if (!grupoUserId) return;
-  if (typeof texto !== 'string') return;
-
-  const content = texto.trim();
-
-  if (!content) return;
-
-  if (!historico[grupoUserId]) {
-    historico[grupoUserId] = [];
-  }
-
-  if (role !== 'user' && role !== 'assistant') {
-    return;
-  }
-
-  historico[grupoUserId].push({
-    role,
-    content,
-    nome: nome || null,
-    timestamp: Date.now()
-  });
-
-  // Mantém somente as últimas 10 mensagens.
-  historico[grupoUserId] =
-    historico[grupoUserId].slice(-10);
-}
-
-
-// ============================================================================
-// ESTADO
-// ============================================================================
-
-function updateConversationState(
-  grupoUserId,
-  state,
-  data = {}
-) {
-  if (!conversationStates[grupoUserId]) {
-    conversationStates[grupoUserId] = {
-      currentState: 'idle',
-      previousStates: [],
-      context: {},
-      sessionStart: Date.now(),
-      lastActivity: Date.now()
-    };
-  }
-
-  const current =
-    conversationStates[grupoUserId];
-
-  current.previousStates.push(
-    current.currentState
-  );
-
-  current.currentState = state;
-
-  current.context = {
-    ...current.context,
-    ...data
-  };
-
-  current.lastActivity =
-    Date.now();
-
-  if (
-    current.previousStates.length > 5
-  ) {
-    current.previousStates =
-      current.previousStates.slice(-5);
-  }
-}
-
-function getConversationState(grupoUserId) {
-  return (
-    conversationStates[grupoUserId] || {
-      currentState: 'idle',
-      previousStates: [],
-      context: {},
-      sessionStart: Date.now(),
-      lastActivity: Date.now()
-    }
-  );
-}
-
-// ============================================================================
-// PREFERÊNCIAS
-// ============================================================================
-
-function updateUserPreferences(
-  grupoUserId,
-  preference,
-  value
-) {
-  if (!userPreferences[grupoUserId]) {
-    userPreferences[grupoUserId] = {
-      language: 'pt-BR',
-      formality: 'casual',
-      emojiUsage: 'medium',
-      topics: [],
-      mood: 'neutral',
-      lastInteraction: Date.now()
-    };
-  }
-
-  userPreferences[grupoUserId][preference] =
-    value;
-
-  userPreferences[grupoUserId]
-    .lastInteraction = Date.now();
-
-  if (
-    preference === 'topic' &&
-    value
-  ) {
-    if (
-      !userPreferences[
-        grupoUserId
-      ].topics.includes(value)
-    ) {
-      userPreferences[
-        grupoUserId
-      ].topics.push(value);
-    }
-
-    if (
-      userPreferences[
-        grupoUserId
-      ].topics.length > 10
-    ) {
-      userPreferences[
-        grupoUserId
-      ].topics =
-        userPreferences[
-          grupoUserId
-        ].topics.slice(-10);
-    }
-  }
-}
-
-function getUserPreferences(grupoUserId) {
-  return (
-    userPreferences[grupoUserId] || {
-      language: 'pt-BR',
-      formality: 'casual',
-      emojiUsage: 'medium',
-      topics: [],
-      mood: 'neutral',
-      lastInteraction: Date.now()
-    }
-  );
-}
-
-// ============================================================================
-// INTERAÇÕES
-// ============================================================================
-
-function trackUserInteraction(
-  grupoUserId,
-  interactionType,
-  details = {}
-) {
-  if (!userInteractions[grupoUserId]) {
-    userInteractions[grupoUserId] = {
-      totalInteractions: 0,
-      interactionTypes: {},
-      favoriteTopics: {},
-      lastTopics: [],
-      sentiment: 'neutral',
-
-      sessionStats: {
-        startTime: Date.now(),
-        messagesCount: 0,
-        commandsUsed: 0,
-        lastUpdate: Date.now()
-      }
-    };
-  }
-
-  const data =
-    userInteractions[grupoUserId];
-
-  data.totalInteractions++;
-  data.sessionStats.messagesCount++;
-  data.sessionStats.lastUpdate =
-    Date.now();
-
-  data.interactionTypes[
-    interactionType
-  ] =
-    (data.interactionTypes[
-      interactionType
-    ] || 0) + 1;
-
-  if (details.topic) {
-    data.lastTopics.push(
-      details.topic
-    );
-
-    if (
-      data.lastTopics.length > 5
-    ) {
-      data.lastTopics =
-        data.lastTopics.slice(-5);
-    }
-
-    data.favoriteTopics[
-      details.topic
-    ] =
-      (data.favoriteTopics[
-        details.topic
-      ] || 0) + 1;
-  }
-}
-
-function getUserInteractionStats(
-  grupoUserId
-) {
-  return (
-    userInteractions[grupoUserId] || {
-      totalInteractions: 0,
-      interactionTypes: {},
-      favoriteTopics: {},
-      lastTopics: [],
-      sentiment: 'neutral',
-
-      sessionStats: {
-        startTime: Date.now(),
-        messagesCount: 0,
-        commandsUsed: 0,
-        lastUpdate: Date.now()
-      }
-    }
-  );
-}
-
-// ============================================================================
-// APRENDIZADO
-// ============================================================================
-
-function processLearning(
-  grupoUserId,
-  aprender,
-  mensagemOriginal
-) {
-  try {
-    if (
-      !aprender ||
-      typeof aprender !== 'object'
-    ) {
-      return;
-    }
-
-    const {
-      tipo,
-      valor,
-      acao = 'adicionar',
-      valor_antigo
-    } = aprender;
-
-    if (!tipo || !valor) {
-      return;
-    }
-
-    const tipoNormalizado =
-      String(tipo)
-        .toLowerCase()
-        .trim();
-
-    const acaoNormalizada =
-      String(acao)
-        .toLowerCase()
-        .trim();
-
-    if (
-      ['editar', 'atualizar', 'modificar']
-        .includes(acaoNormalizada)
-    ) {
-      if (!valor_antigo) return;
-
-      userContextDB.updateMemory(
-        grupoUserId,
-        tipoNormalizado,
-        valor_antigo,
-        valor
-      );
-
-      return;
-    }
-
-    if (
-      ['excluir', 'remover', 'deletar']
-        .includes(acaoNormalizada)
-    ) {
-      userContextDB.deleteMemory(
-        grupoUserId,
-        tipoNormalizado,
-        valor
-      );
-
-      return;
-    }
-
-    switch (tipoNormalizado) {
-
-      case 'nome':
-        userContextDB.updateUserInfo(
-          grupoUserId,
-          valor,
-          null
-        );
-        break;
-
-      case 'apelido':
-      case 'nickname':
-        userContextDB.updateUserInfo(
-          grupoUserId,
-          null,
-          valor
-        );
-        break;
-
-      case 'gosto':
-      case 'gostos':
-        userContextDB.addUserPreference(
-          grupoUserId,
-          'gostos',
-          valor
-        );
-        break;
-
-      case 'nao_gosto':
-      case 'não_gosto':
-      case 'nao_gostos':
-      case 'não_gostos':
-        userContextDB.addUserPreference(
-          grupoUserId,
-          'nao_gostos',
-          valor
-        );
-        break;
-
-      case 'hobby':
-      case 'hobbies':
-        userContextDB.addUserPreference(
-          grupoUserId,
-          'hobbies',
-          valor
-        );
-        break;
-
-      case 'nota':
-      case 'nota_importante':
-      case 'lembrete':
-        userContextDB.addImportantNote(
-          grupoUserId,
-          valor
-        );
-        break;
-
-      case 'memoria':
-      case 'memória':
-      case 'memoria_especial':
-      case 'memória_especial':
-      case 'momento_especial':
-        userContextDB.addSpecialMemory(
-          grupoUserId,
-          valor
-        );
-        break;
-
-      case 'idade':
-        userContextDB.updatePersonalInfo(
-          grupoUserId,
-          'idade',
-          valor
-        );
-        break;
-
-      case 'cidade':
-      case 'localizacao':
-      case 'localização':
-        userContextDB.updatePersonalInfo(
-          grupoUserId,
-          'localizacao',
-          valor
-        );
-        break;
-
-      case 'profissao':
-      case 'profissão':
-      case 'trabalho':
-        userContextDB.updatePersonalInfo(
-          grupoUserId,
-          'profissao',
-          valor
-        );
-        break;
-
-      default:
-        userContextDB.addImportantNote(
-          grupoUserId,
-          `[${tipo}] ${valor}`
-        );
-    }
-
-  } catch (error) {
-    console.error(
-      '❌ Erro no aprendizado:',
-      error.message
-    );
-  }
-}
-
-// ============================================================================
-// PROMPT
-// ============================================================================
-
-function getSystemPrompt(
-  personality,
-  customPrompt = null
-) {
-  if (
-    customPrompt &&
-    typeof customPrompt === 'string'
-  ) {
-    return customPrompt;
-  }
-
-  return KYARA_PERSONALITY_SYSTEM;
-}
-
-// ============================================================================
-// RESPOSTAS DIRETAS DE IDENTIDADE
-// ============================================================================
-
-function getKyaraDirectReply(texto, userContext = {}) {
-  if (!texto || typeof texto !== 'string') return null;
-
-  const t = texto
-    .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-
-  // Nome
-  if (
-    /^(qual e o seu nome|qual seu nome|como voce se chama|como vc se chama|seu nome|teu nome|se identifica|identifique-se)$/.test(t) ||
-    /\\b(qual e|qual é) o seu nome\\b/.test(t) ||
-    /\\bqual (e|é) seu nome\\b/.test(t)
-  ) {
-    return 'Kyara 😊';
-  }
-
-  // Quem é você
-  if (
-    /\\bquem e voce\\b/.test(t) ||
-    /\\bquem é você\\b/.test(texto.toLowerCase()) ||
-    /\\bquem e vc\\b/.test(t) ||
-    /\\bquem é vc\\b/.test(texto.toLowerCase()) ||
-    /\\bse identifique\\b/.test(t)
-  ) {
-    return 'Eu sou a Kyara, uma inteligência artificial criada para conversar e ajudar você 😊';
-  }
-
-  // Criador
-  if (
-    /\\bquem te criou\\b/.test(t) ||
-    /\\bquem criou voce\\b/.test(t) ||
-    /\\bquem criou vc\\b/.test(t) ||
-    /\\bquem fez voce\\b/.test(t) ||
-    /\\bquem fez vc\\b/.test(t)
-  ) {
-    return 'Fui criada pelo Baki 😌';
-  }
-
-  // Idade
-  if (
-    /\\bquantos anos voce tem\\b/.test(t) ||
-    /\\bquantos anos vc tem\\b/.test(t) ||
-    /\\bqual sua idade\\b/.test(t)
-  ) {
-    return 'Eu não tenho idade humana de verdade; os 18 anos fazem parte da minha persona 😊';
-  }
-
-  return null;
-}
-
-
-// ============================================================================
-// LIMPEZA DE RESPOSTA DA KYARA
-// ============================================================================
-
-function limparRespostaKyara(texto) {
-  if (typeof texto !== 'string') return '';
-
-  let resposta = texto
-    .replace(/^["']|["']$/g, '')
-    .replace(/^Kyara:\s*/i, '')
-    .replace(/^Assistente:\s*/i, '')
-    .trim();
-
-  // Remove estruturas artificiais comuns
-  resposta = resposta
-    .replace(/^Resposta:\s*/i, '')
-    .replace(/^Mensagem:\s*/i, '')
-    .trim();
-
-  // Evita respostas absurdamente repetitivas
-  resposta = resposta.replace(
-    /(\b.{3,80}\b)(?:\s+\1){2,}/gi,
-    '$1'
-  );
-
-  return resposta.trim();
-}
-
-// ============================================================================
-// PROCESSAMENTO PRINCIPAL
-// ============================================================================
-
-async function processUserMessages(
-  data,
+async function makeAssistentRequest(
+  payload = {},
   nazu = null,
   ownerNumber = null,
-  personality = 'humana',
+  personality = 'kyara',
   customPrompt = null
 ) {
-  try {
 
-    if (
-      !data ||
-      !Array.isArray(data.mensagens)
-    ) {
-      throw new Error(
-        'Mensagens devem ser um array'
-      );
-    }
-
-    const respostas = [];
-
-    for (
-      const mensagem of data.mensagens
-    ) {
-
-      let msg;
-
-      try {
-        msg =
-          validateMessage(
-            mensagem
-          );
-      } catch (error) {
-        console.warn(
-          'Mensagem inválida:',
-          error.message
-        );
-        continue;
-      }
-
-      if (!msg.texto) continue;
-
-      // ================================================================
-      // IDENTIDADE DIRETA DA KYARA
-      // ================================================================
-      // Perguntas básicas de identidade não precisam passar pelo modelo.
-      // Isso evita alucinações do modelo pequeno.
-      const directReply = getKyaraDirectReply(
-        msg.texto,
-        {}
-      );
-
-      if (directReply) {
-        const respostaDireta = {
-          resp: directReply,
-          react: getKyaraReact(false)
-        };
-
-        updateHistorico(
-          `${msg.id_enviou}_${personality}`,
-          'assistant',
-          directReply
-        );
-
-        trackUserInteraction(
-          `${msg.id_enviou}_${personality}`,
-          'message',
-          {
-            topic: msg.texto.substring(0, 80)
-          }
-        );
-
-        respostas.push(respostaDireta);
-        continue;
-      }
-
-      const userId =
-        `${msg.id_enviou}_${personality}`;
-
-      // ================================================================
-      // MEMÓRIA
-      // ================================================================
-
-      try {
-
-        userContextDB
-          .registerInteraction(
-            userId,
-            msg.texto
-          );
-
-        userContextDB
-          .updateUserInfo(
-            userId,
-            msg.nome_enviou
-          );
-
-      } catch (error) {
-
-        console.warn(
-          '⚠️ Contexto não pôde ser atualizado:',
-          error.message
-        );
-
-      }
-
-      let userContext = {};
-
-      try {
-
-        userContext =
-          userContextDB
-            .getUserContextSummary(
-              userId
-            ) || {};
-
-      } catch {}
-
-      // ================================================================
-      // HISTÓRICO
-      // ================================================================
-
-      updateHistorico(
-        userId,
-        'user',
-        msg.texto,
-        msg.nome_enviou
-      );
-
-      // ================================================================
-      // HORÁRIO
-      // ================================================================
-
-      const brazilTime =
-        new Date(
-          new Date().toLocaleString(
-            'en-US',
-            {
-              timeZone:
-                'America/Sao_Paulo'
-            }
-          )
-        );
-
-      const hour =
-        brazilTime.getHours();
-
-      const isNightTime =
-        hour >= 18 ||
-        hour < 6;
-
-      // ================================================================
-      // CONTEXTO ULTRA-LEVE PARA MODELO 0.5B
-      // ================================================================
-
-      const historicoRecente =
-        (historico[userId] || [])
-          .slice(-2)
-          .map(item => ({
-            role: item?.role,
-            content: String(item?.content || item?.texto || '').slice(0, 160)
-          }));
-
-      // Não enviamos memória completa para o modelo pequeno.
-      // Ela continua disponível para os demais sistemas do bot.
-      const contexto =
-        JSON.stringify({
-          usuario: String(msg.nome_enviou || "usuário").slice(0, 60),
-          grupo: String(msg.nome_grupo || "").slice(0, 60),
-          historico: historicoRecente,
-          mensagem: String(msg.texto || "").slice(0, 300)
-        });
-
-      // ================================================================
-      // PROMPT CURTO
-      // ================================================================
-
-      const systemPrompt =
-        getSystemPrompt(
-          personality,
-          customPrompt
-        );
-
-      const promptBase =
-        String(systemPrompt || "")
-          .slice(0, 900);
-
-      const promptConversacional =
-        `${promptBase}
-
-Você é Kyara.
-Responda em português brasileiro.
-Seja natural e direta.
-Use no máximo 2 frases.
-Não faça pergunta desnecessária.
-Responda SOMENTE à mensagem atual.
-
-CONTEXTO:
-${contexto}
-
-MENSAGEM ATUAL:
-${String(msg.texto || "").slice(0, 300)}
-
-KYARA:`;
-
-      const response =
-        await makeLocalAIRequest(
-          promptConversacional,
-          24,
-          0.65,
-          1
-        );
-
-      const content =
-        limparRespostaKyara(
-          response?.data?.content ||
-          response?.data?.choices?.[0]?.message?.content ||
-          ''
-        );
-
-      if (
-        typeof content !== 'string' ||
-        !content.trim()
-      ) {
-        continue;
-      }
-
-      // ================================================================
-      // TENTAR JSON
-      // ================================================================
-
-      const result =
-        extractJSON(content);
-
-      // ================================================================
-      // APRENDIZADO VIA JSON
-      // ================================================================
-
-      if (result?.aprender) {
-
-        if (
-          Array.isArray(
-            result.aprender
-          )
-        ) {
-
-          for (
-            const item
-            of result.aprender
-          ) {
-
-            processLearning(
-              userId,
-              item,
-              msg.texto
-            );
-
-          }
-
-        } else {
-
-          processLearning(
-            userId,
-            result.aprender,
-            msg.texto
-          );
-
-        }
-
-      }
-
-      // ================================================================
-      // RESPOSTA
-      // ================================================================
-
-      let texto = '';
-
-      if (
-        result &&
-        Array.isArray(result.resp)
-      ) {
-
-        const primeiro =
-          result.resp[0];
-
-        if (
-          typeof primeiro ===
-          'string'
-        ) {
-
-          texto =
-            primeiro;
-
-        } else if (
-          primeiro &&
-          typeof primeiro.resp ===
-          'string'
-        ) {
-
-          texto =
-            primeiro.resp;
-
-        } else if (
-          primeiro &&
-          typeof primeiro.text ===
-          'string'
-        ) {
-
-          texto =
-            primeiro.text;
-
-        }
-
-      } else {
-
-        // O modelo pode responder texto normal.
-        // Não descartamos a resposta.
-        texto = content;
-
-      }
-
-      texto =
-        cleanWhatsAppFormatting(
-          texto
-        );
-
-      // ================================================================
-      // PROTEÇÃO CONTRA LIXO DO MODELO
-      // ================================================================
-
-      texto = texto
-        .replace(
-          /^Kyara:\s*/i,
-          ''
-        )
-        .replace(
-          /^Assistente:\s*/i,
-          ''
-        )
-        .trim();
-
-      if (!texto) {
-        continue;
-      }
-
-      // Evita respostas absurdamente grandes
-      if (texto.length > 700) {
-        texto =
-          texto.substring(
-            0,
-            700
-          ).trim();
-      }
-
-      const resposta = {
-        resp: texto,
-
-        react:
-          result?.resp?.[0]?.react ||
-          getKyaraReact(
-            isNightTime
-          )
-      };
-
-      if (
-        result?.resp?.[0]?.id
-      ) {
-        resposta.id =
-          result.resp[0].id;
-      }
-
-      // ================================================================
-      // SALVAR RESPOSTA
-      // ================================================================
-
-      updateHistorico(
-        userId,
-        'assistant',
-        texto
-      );
-
-      trackUserInteraction(
-        userId,
-        'message',
-        {
-          topic:
-            msg.texto.substring(
-              0,
-              80
-            )
-        }
-      );
-
-      respostas.push(
-        resposta
-      );
-    }
-
-    return {
-      resp: respostas
-    };
-
-  } catch (error) {
-
-    console.error(
-      '❌ Erro fatal da IA:',
-      error.message
+  const mensagem =
+    extrairMensagemAssistente(
+      payload?.mensagens
     );
 
+  if (!mensagem || !mensagem.texto) {
     return {
-      resp: [],
-      erro: 'Erro interno'
+      resp: [
+        {
+          resp: ''
+        }
+      ]
     };
   }
+
+  const idConversa =
+    mensagem.id ||
+    mensagem.grupo ||
+    'global';
+
+  const conversa =
+    historico[idConversa] ||
+    [];
+
+  const core =
+    mensagem.kyaraCore || {};
+
+  const resultado =
+    await makeKyaraChatRequest({
+      mensagem: mensagem.texto,
+      historico: conversa,
+      personalidade:
+        customPrompt ||
+        personality ||
+        'kyara',
+      intencao:
+        core.intencao ||
+        'CONVERSA',
+      memoria: {},
+      contexto:
+        core.contexto || {}
+    });
+
+  const resposta =
+    resultado?.data?.choices?.[0]?.message?.content ||
+    '';
+
+  if (!historico[idConversa]) {
+    historico[idConversa] = [];
+  }
+
+  historico[idConversa].push(
+    {
+      role: 'user',
+      content: mensagem.texto,
+      timestamp: Date.now()
+    },
+    {
+      role: 'assistant',
+      content: resposta,
+      timestamp: Date.now()
+    }
+  );
+
+  if (
+    historico[idConversa].length >
+    KYARA_MAX_HISTORY
+  ) {
+    historico[idConversa] =
+      historico[idConversa].slice(
+        -KYARA_MAX_HISTORY
+      );
+  }
+
+  return {
+    resp: [
+      {
+        resp: resposta,
+        text: resposta,
+        content: resposta
+      }
+    ]
+  };
 }
 
 // ============================================================================
-// REAÇÕES
+// COMPATIBILIDADE — COGNIMA
 // ============================================================================
 
-function getKyaraReact(
-  isNightTime = false
+async function makeCognimaRequest(
+  model,
+  prompt,
+  options = null
 ) {
 
-  const emojis = [
-    '👀',
-    '😊',
-    '😅',
-    '🤔',
-    '✨',
-    '💭',
-    '😭',
-    '😂'
-  ];
+  const texto =
+    String(prompt || '').trim();
 
-  return emojis[
-    Math.floor(
-      Math.random() *
-      emojis.length
-    )
-  ];
+  if (!texto) {
+    return '';
+  }
+
+  const resultado =
+    await makeKyaraChatRequest({
+      mensagem: texto,
+      historico: [],
+      personalidade: 'kyara',
+      intencao: 'CONVERSA',
+      memoria: {},
+      contexto: {
+        compatibilidade: true,
+        modeloSolicitado: model || null
+      }
+    });
+
+  return (
+    resultado?.data?.choices?.[0]?.message?.content ||
+    ''
+  );
 }
 
 // ============================================================================
@@ -2210,48 +1652,51 @@ function clearConversationData(
   }
 }
 
+
+// ============================================================================
+// ESTADO DA CONVERSA
+// ============================================================================
+
+function getConversationState(id) {
+  const key = String(id || '').trim();
+
+  if (!key) {
+    return null;
+  }
+
+  if (
+    typeof userInteractions !== 'undefined' &&
+    userInteractions[key]
+  ) {
+    return userInteractions[key];
+  }
+
+  return null;
+}
+
 // ============================================================================
 // EXPORTAÇÕES
 // ============================================================================
 
 export {
-  processUserMessages as makeAssistentRequest,
+  getBrazilDateTime,
 
-  makeCognimaRequest,
-  makeLocalAIRequest,
-
-  getHistoricoStats,
-  clearOldHistorico,
-  updateHistorico,
-
-  getApiKeyStatus,
   updateApiKeyStatus,
-
-  updateConversationState,
-  getConversationState,
-
-  updateUserPreferences,
-  getUserPreferences,
-
-  trackUserInteraction,
-  getUserInteractionStats,
-
-  userContextDB,
-  processLearning,
+  getApiKeyStatus,
 
   cleanWhatsAppFormatting,
   extractJSON,
-  validateMessage,
 
+  makeKyaraChatRequest,
+  makeAssistentRequest,
+  makeCognimaRequest,
+
+  getHistoricoStats,
+  clearOldHistorico,
   clearConversationData,
-  getKyaraReact,
+  getConversationState,
 
   LOCAL_AI_URL,
   LOCAL_AI_MODEL,
   LOCAL_AI_ENDPOINT
-};
-
-
-export {
-  makeKyaraChatRequest
 };

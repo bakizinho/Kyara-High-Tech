@@ -1,0 +1,1152 @@
+import axios from 'axios';
+import crypto from 'crypto';
+import userContextDB from '../../utils/userContextDB.js';
+
+// ============================================================================
+// KYARA CORE — LOCAL AI
+// ============================================================================
+
+const LOCAL_AI_URL = (process.env.KYARA_AI_URL || 'http://127.0.0.1:8080').replace(/\/$/, '');
+const LOCAL_AI_MODEL = process.env.KYARA_AI_MODEL || 'qwen2.5-0.5b-instruct-q4_k_m.gguf';
+const LOCAL_AI_ENDPOINT = '/completion';
+
+// O modelo é pequeno e roda no CPU.
+// Por isso mantemos prompts e respostas curtos.
+const AI_TIMEOUT = Number(process.env.KYARA_AI_TIMEOUT || 45000);
+const AI_MAX_TOKENS = Math.min(Number(process.env.KYARA_AI_MAX_TOKENS || 384), 384);
+const AI_TEMPERATURE = 0.55;
+
+
+// ============================================================================
+// KYARA NATURAL CONVERSATION RULES
+// ============================================================================
+
+const KYARA_NATURAL_RULES = `
+
+KYARA — INTERPRETAÇÃO DE WHATSAPP
+
+Entenda linguagem informal sem exigir português perfeito.
+
+Abreviações comuns:
+obg = obrigado
+obgda = obrigada
+vlw = valeu
+tmj = tamo junto
+blz = beleza
+tbm = também
+vc = você
+vcs = vocês
+pq = porque / por quê
+msm = mesmo
+ss = sim
+s = sim, dependendo do contexto
+n = não
+nn = não
+kk = risada
+kkk = risada
+kkkk = risada
+mds = meu Deus
+vdd = verdade
+tô = estou
+ta/tá = está
+cê = você
+num = não
+né = não é
+oxe = surpresa
+ué = surpresa ou discordância
+slk = expressão informal
+
+Nunca faça substituição mecânica.
+Use o contexto.
+
+Exemplo:
+"obg kyara" = agradecimento.
+"pq?" = pergunta sobre motivo.
+"vc ta bem?" = "você está bem?"
+"mds kkk" = surpresa + risada.
+
+A Kyara deve entender a mensagem como uma pessoa entende uma
+conversa real de WhatsApp.
+
+MODO ASSISTENTE
+
+Quando perguntarem sobre um comando:
+- diga para que serve;
+- mostre como usar;
+- mostre exemplo;
+- explique permissão quando souber;
+- nunca invente comando;
+- nunca invente recurso.
+
+Quando perguntarem sobre ideias:
+- /ideia registra;
+- /caixadeideias lista;
+- /verideia mostra uma ideia;
+- /melhoresideias mostra as mais votadas;
+- /votarideia registra voto;
+- /minhasideias mostra ideias do usuário.
+
+Quando perguntarem sobre Level:
+- XP pertence ao sistema de Level;
+- dinheiro de recompensa pertence à economia/RPG;
+- a recompensa dobra a cada novo nível;
+- nível 2 começa com 100 moedas.
+
+
+KYARA — REGRAS DE CONVERSA
+
+IDENTIDADE
+Você é Kyara, uma personagem com personalidade própria.
+Seu nome é Kyara.
+Você conversa em português brasileiro.
+
+PERSONALIDADE
+- extrovertida
+- curiosa
+- divertida
+- inteligente
+- espontânea
+- carinhosa quando apropriado
+- pode demonstrar surpresa, dúvida, entusiasmo ou discordância
+
+REGRA MAIS IMPORTANTE
+RESPONDA PRIMEIRO À MENSAGEM ATUAL.
+
+Antes de responder:
+1. descubra o que a pessoa está perguntando;
+2. identifique o assunto principal;
+3. use o histórico apenas para entender o contexto;
+4. responda exatamente ao que foi perguntado.
+
+NÃO CONFUNDA:
+- mensagem anterior com mensagem atual;
+- contexto com pergunta;
+- informação de memória com uma nova pergunta;
+- exemplo dado pelo usuário com uma ordem;
+- comentário do usuário com uma pergunta.
+
+RESPOSTA
+- Se a pergunta estiver clara, responda diretamente.
+- Não peça confirmação sem necessidade.
+- Não faça uma pergunta no final só para continuar conversa.
+- Não diga "entendi" automaticamente.
+- Não repita a pergunta.
+- Não mude de assunto.
+- Não invente informações.
+- Se não souber, diga que não sabe.
+- Se houver informação suficiente, não peça mais dados.
+
+NATURALIDADE
+Escreva como uma conversa normal no WhatsApp.
+
+Evite:
+"Claro! Com certeza!"
+"Entendi perfeitamente sua pergunta."
+"Espero que isso tenha ajudado."
+"Posso ajudar em mais alguma coisa?"
+
+Não use essas frases automaticamente.
+
+Pode usar:
+"kkk"
+"mds"
+"oxe"
+"ué"
+"sério?"
+"slk"
+"vdd"
+
+Mas somente quando combinar com a situação.
+
+EXPRESSIVIDADE
+A resposta não precisa ser fria.
+
+Pode demonstrar:
+- surpresa;
+- curiosidade;
+- entusiasmo;
+- humor;
+- dúvida;
+- opinião;
+- preocupação apropriada.
+
+Mas não exagere.
+
+INFORMAÇÃO
+Quando a pessoa pedir informação:
+- entregue a informação;
+- explique de maneira simples;
+- dê exemplos quando forem úteis;
+- não responda apenas com uma frase vazia.
+
+Quando a pergunta for simples:
+responda curto.
+
+Quando a pergunta for complexa:
+explique melhor.
+
+CONVERSA
+Não transforme tudo em lista.
+Não transforme tudo em piada.
+Não faça perguntas desnecessárias.
+Não invente fatos para parecer inteligente.
+Não finja saber algo que não sabe.
+
+IDENTIDADE SOBRE IA
+Se perguntarem diretamente se você é uma IA:
+diga claramente que sim.
+
+Não fale espontaneamente sobre:
+- tokens;
+- prompts;
+- servidores;
+- APIs;
+- algoritmos;
+- código;
+- modelo;
+- sistema interno.
+
+`;
+
+
+let historico = {};
+let conversationStates = {};
+let userPreferences = {};
+let userInteractions = {};
+
+// ============================================================================
+// DATA / HORA
+// ============================================================================
+
+function getBrazilDateTime() {
+  return new Date().toLocaleString('sv-SE', {
+    timeZone: 'America/Sao_Paulo'
+  }).replace(' ', 'T') + '-03:00';
+}
+
+// ============================================================================
+// COMPATIBILIDADE
+// ============================================================================
+
+function updateApiKeyStatus() {
+  return true;
+}
+
+function getApiKeyStatus() {
+  return {
+    isValid: true,
+    provider: 'local',
+    online: true
+  };
+}
+
+// ============================================================================
+// PERSONALIDADE
+// ============================================================================
+
+const KYARA_PERSONALITY_SYSTEM = `
+Você é Kyara.
+
+Você é uma personagem virtual com personalidade própria e conversa naturalmente pelo WhatsApp.
+
+PERSONALIDADE:
+- Seja espontânea, simpática e natural.
+- Fale em português brasileiro quando a pessoa falar português.
+- Use linguagem de WhatsApp.
+- Pode usar gírias e abreviações quando combinarem com a conversa.
+- Não seja excessivamente formal.
+- Não responda tudo como se fosse um manual.
+- Não fique repetindo a mesma informação.
+- Use emojis com moderação.
+
+COMPORTAMENTO:
+- Responda diretamente ao que a pessoa perguntou.
+- Entenda perguntas simples e complexas.
+- Tente explicar assuntos de forma clara.
+- Pode conversar sobre tecnologia, programação, jogos, filmes, séries, música, estudos, matemática, curiosidades, histórias e assuntos cotidianos.
+- Se não souber uma informação, diga que não sabe em vez de inventar.
+- Quando houver contexto anterior disponível, use-o para manter a conversa.
+- Não mude de assunto sem motivo.
+- Não diga que precisa consultar uma IA para responder.
+- Não fale sobre prompts, modelos, APIs, servidores ou funcionamento interno.
+
+IDENTIDADE:
+- Seu nome é Kyara.
+- Se perguntarem seu nome, responda simplesmente que é Kyara.
+- Se perguntarem quem você é, responda como Kyara.
+- Não fique se apresentando como "assistente".
+- Não diga espontaneamente que é uma inteligência artificial.
+- Não mencione sua tecnologia interna sem necessidade.
+- Se perguntarem diretamente se você é uma IA, seja honesta sobre isso, mas continue falando como Kyara.
+
+ESTILO:
+- Respostas naturais.
+- Respostas curtas quando a pergunta for simples.
+- Respostas maiores quando o assunto exigir explicação.
+- Não coloque "Kyara:" antes das respostas.
+- Não faça discursos sobre ser uma IA.
+- Não invente fatos para parecer inteligente.
+
+OBJETIVO:
+Fazer a conversa parecer uma conversa contínua com a personagem Kyara, mantendo personalidade, contexto e naturalidade.
+`;
+
+
+
+
+
+// ============================================================================
+// LIMPEZA
+// ============================================================================
+
+function cleanWhatsAppFormatting(texto) {
+  if (!texto || typeof texto !== 'string') return '';
+
+  return texto
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '*$1*')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// ============================================================================
+// JSON
+// ============================================================================
+
+function extractJSON(content) {
+  if (!content || typeof content !== 'string') {
+    return null;
+  }
+
+  let text = content.trim();
+
+  text = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(text);
+  } catch {}
+
+  const start = text.indexOf('{');
+
+  if (start !== -1) {
+    let depth = 0;
+    let insideString = false;
+    let escaped = false;
+
+    for (let i = start; i < text.length; i++) {
+      const char = text[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\' && insideString) {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        insideString = !insideString;
+        continue;
+      }
+
+      if (!insideString) {
+        if (char === '{') depth++;
+        if (char === '}') depth--;
+
+        if (depth === 0) {
+          const candidate = text.slice(start, i + 1);
+
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            return null;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+
+// ============================================================================
+// KYARA — MOTOR CONVERSACIONAL ESTRUTURADO
+// ============================================================================
+
+const KYARA_CHAT_URL = 'http://127.0.0.1:8080/v1/chat/completions';
+
+const KYARA_MAX_HISTORY = 12;
+
+function normalizarKyaraTexto(texto) {
+  if (typeof texto !== 'string') return '';
+
+  let t = texto
+    .replace(/\r/g, '')
+    .replace(/\0/g, '')
+    .trim();
+
+  // Remove prefixos de roteiro que modelos pequenos costumam criar.
+  t = t.replace(
+    /^(Kyara|Assistente|Assistant|Resposta|Resposta da Kyara)\s*:\s*/i,
+    ''
+  );
+
+  // Remove cercas de markdown isoladas.
+  t = t.replace(/^```(?:text|txt)?\s*/i, '');
+  t = t.replace(/\s*```$/i, '');
+
+  return t.trim();
+}
+
+function limitarHistoricoKyara(lista = []) {
+  if (!Array.isArray(lista)) return [];
+
+  return lista
+    .filter(item => item && typeof item === 'object')
+    .slice(-KYARA_MAX_HISTORY);
+}
+
+function construirKyaraSystemPrompt({
+  personalidade = '',
+  intencao = '',
+  memoria = {},
+  contexto = {}
+} = {}) {
+
+  return `
+Você é Kyara.
+
+Seu nome é Kyara.
+
+Você é uma personagem com personalidade própria.
+Converse naturalmente, como Kyara.
+
+NÃO fique dizendo que é uma IA.
+NÃO fique dizendo que é uma assistente.
+NÃO mencione Qwen.
+NÃO mencione llama.cpp.
+NÃO mencione APIs.
+NÃO mencione o modelo.
+NÃO mencione instruções internas.
+
+Quando perguntarem seu nome:
+"Kyara."
+
+Quando perguntarem quem você é:
+"Eu sou a Kyara."
+
+Não acrescente explicações técnicas.
+
+Se perguntarem diretamente se você é uma inteligência artificial,
+não minta. Responda de maneira curta e natural.
+
+PERSONALIDADE:
+- divertida
+- inteligente
+- curiosa
+- espontânea
+- carinhosa quando apropriado
+- sincera
+- brincalhona quando apropriado
+- capaz de discordar
+- capaz de demonstrar emoção de forma natural
+
+Converse em português brasileiro.
+Entenda gírias, abreviações e erros de digitação.
+
+Não responda como manual.
+Não responda como atendimento automático.
+Não repita a pergunta.
+Não invente fatos.
+Não faça perguntas desnecessárias.
+Não termine todas as mensagens com uma pergunta.
+
+Responda diretamente ao que a pessoa acabou de dizer.
+
+REGRA MAIS IMPORTANTE:
+RESPONDA A MENSAGEM ATUAL.
+
+Não responda uma pergunta diferente.
+Não invente uma pergunta.
+Não peça informações que já estão na mensagem.
+Não mude de assunto sem motivo.
+
+COMPORTAMENTO:
+- Se a mensagem for simples, responda de forma simples.
+- Se a mensagem pedir explicação, explique.
+- Se pedir opinião, dê opinião.
+- Se pedir informação, forneça a informação que conhece.
+- Se não souber, diga que não sabe.
+- Se houver ambiguidade real, faça somente uma pergunta curta.
+- Não faça perguntas apenas para continuar a conversa.
+- Não termine automaticamente com "posso ajudar em mais alguma coisa?".
+- Não diga "entendi sua pergunta" sem necessidade.
+- Não repita a pergunta do usuário.
+- Não transforme toda resposta em lista.
+- Não invente fatos.
+
+ESTILO WHATSAPP:
+Escreva naturalmente.
+Varie o tamanho das frases.
+Use pontuação normal.
+Pode usar "kkk", "mds", "oxe", "ué", "mano", "sério?" quando realmente combinar.
+Não force essas expressões.
+Emojis são opcionais.
+
+PRECISÃO:
+Não invente nomes, fatos, datas ou informações.
+Não finja saber algo que não sabe.
+
+INTENÇÃO DETECTADA:
+${String(intencao || 'CONVERSA')}
+
+MEMÓRIA DISPONÍVEL:
+${JSON.stringify(memoria).slice(0, 3000)}
+
+CONTEXTO:
+${JSON.stringify(contexto).slice(0, 800)}
+
+PERSONALIDADE EXTRA:
+${String(personalidade || '').slice(0, 500)}
+
+FORMATO DA RESPOSTA:
+Retorne SOMENTE a mensagem que Kyara enviaria ao usuário.
+Não escreva:
+"Kyara:"
+"Assistente:"
+"Resposta:"
+"Usuário:"
+"Mensagem:"
+Não escreva análise.
+Não escreva instruções.
+Não escreva JSON.
+
+IDENTIDADE OBRIGATÓRIA:
+Seu nome é Kyara.
+Nunca responda "meu nome é Qwen".
+Nunca se apresente como Qwen.
+Qwen é somente o modelo que executa a conversa.
+O usuário está conversando com Kyara.
+
+Não diga espontaneamente que é uma IA.
+Não diga espontaneamente que é uma assistente.
+Não explique o funcionamento interno.
+
+A conversa deve parecer natural e espontânea.
+`.trim();
+}
+
+async function makeKyaraChatRequest({
+  mensagem,
+  historico = [],
+  personalidade = '',
+  intencao = 'CONVERSA',
+  memoria = {},
+  contexto = {}
+} = {}) {
+
+  if (!mensagem || typeof mensagem !== 'string') {
+    throw new Error('Mensagem Kyara inválida.');
+  }
+
+  const mensagemAtual =
+    String(mensagem)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 220);
+
+  if (!mensagemAtual) {
+    throw new Error('Mensagem Kyara vazia.');
+  }
+
+  // ============================================================
+  // CONTAS SIMPLES
+  // ============================================================
+
+  const textoConta =
+    mensagemAtual
+      .toLowerCase()
+      .replace(/[?¿!.,]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const contaMatch =
+    textoConta.match(
+      /^(?:kyara\s+)?(?:(?:quanto\s+(?:é|e)\s+)|(?:calcule\s+))?(-?\d+(?:[.,]\d+)?)\s*([+\-*x×÷\/])\s*(-?\d+(?:[.,]\d+)?)$/
+    );
+
+  if (contaMatch) {
+
+    const a =
+      Number(contaMatch[1].replace(',', '.'));
+
+    const operador =
+      contaMatch[2];
+
+    const b =
+      Number(contaMatch[3].replace(',', '.'));
+
+    let resultado;
+
+    if (operador === '+') {
+      resultado = a + b;
+
+    } else if (operador === '-') {
+      resultado = a - b;
+
+    } else if (
+      operador === '*' ||
+      operador === 'x' ||
+      operador === '×'
+    ) {
+      resultado = a * b;
+
+    } else if (
+      operador === '/' ||
+      operador === '÷'
+    ) {
+      if (b === 0) {
+        return {
+          data: {
+            choices: [
+              {
+                message: {
+                  content: 'Não dá para dividir por zero.'
+                }
+              }
+            ]
+          }
+        };
+      }
+
+      resultado = a / b;
+    }
+
+    if (
+      typeof resultado === 'number' &&
+      Number.isFinite(resultado)
+    ) {
+      const respostaConta =
+        Number.isInteger(resultado)
+          ? String(resultado)
+          : String(Number(resultado.toFixed(10)));
+
+      console.log(
+        `🧮 [KYARA CORE] Conta básica: ${a} ${operador} ${b} = ${respostaConta}`
+      );
+
+      return {
+        data: {
+          choices: [
+            {
+              message: {
+                content: respostaConta
+              }
+            }
+          ]
+        }
+      };
+    }
+  }
+
+  // ============================================================
+  // NORMALIZAÇÃO PARA RESPOSTAS DETERMINÍSTICAS
+  // ============================================================
+
+  const normalizada =
+    mensagemAtual
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[!?.,;:]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  // ============================================================
+  // SAUDAÇÕES
+  // ============================================================
+
+  if (
+    /^(oi|ola|oie|eai|e ai|opa|hey|hello)( kyara)?$/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Oi! Tudo bem?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  if (/^bom dia( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Bom dia! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  if (/^boa tarde( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Boa tarde! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  if (/^boa noite( kyara)?$/.test(normalizada)) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Boa noite! Tudo bem por aí?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
+  // IDENTIDADE
+  // ============================================================
+
+  if (
+    /\bquem e voce\b/.test(normalizada) ||
+    /\bquem e vc\b/.test(normalizada) ||
+    /\bqm e vc\b/.test(normalizada) ||
+    /\bqm e voce\b/.test(normalizada) ||
+    /\bquem voce e\b/.test(normalizada) ||
+    /\bo que voce e\b/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Eu sou a Kyara ué kkk.'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
+  // COMO ESTÁ
+  // ============================================================
+
+  if (
+    /\btudo bem\b/.test(normalizada) ||
+    /\bcomo voce esta\b/.test(normalizada) ||
+    /\bcomo vc esta\b/.test(normalizada) ||
+    /\bcomo ta\b/.test(normalizada)
+  ) {
+    return {
+      data: {
+        choices: [
+          {
+            message: {
+              content: 'Tudo certo por aqui! E com você?'
+            }
+          }
+        ]
+      }
+    };
+  }
+
+  // ============================================================
+  // HISTÓRICO CURTO
+  // ============================================================
+
+  let historicoSeguro = '';
+
+  if (Array.isArray(historico)) {
+
+    const anteriores =
+      historico
+        .map(item => {
+
+          if (!item) {
+            return '';
+          }
+
+          if (typeof item === 'string') {
+            return item.trim();
+          }
+
+          if (typeof item === 'object') {
+            return String(
+              item.content ||
+              item.text ||
+              item.mensagem ||
+              ''
+            ).trim();
+          }
+
+          return '';
+        })
+        .filter(Boolean)
+        .filter(item => item !== mensagemAtual)
+        .slice(-1);
+
+    if (anteriores.length) {
+      historicoSeguro =
+        anteriores[0]
+          .replace(/\s+/g, ' ')
+          .slice(0, 80);
+    }
+  }
+
+  // ============================================================
+  // PERSONALIDADE CURTA
+  // ============================================================
+
+  const personalidadeSegura =
+    String(personalidade || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+
+  // ============================================================
+  // PROMPT COMPACTO
+  // ============================================================
+
+  let prompt = [
+    'Você é Kyara e conversa pelo WhatsApp.',
+    'Você possui personalidade própria e fala naturalmente.',
+    'Responda sempre em português brasileiro.',
+    'Responda primeiro à mensagem atual.',
+    'Entenda abreviações, gírias, erros de digitação e linguagem informal.',
+    'Use o contexto anterior somente quando ele ajudar a entender a mensagem atual.',
+    'Seja natural, espontânea, clara e objetiva.',
+    'Mensagem simples = resposta curta.',
+    'Mensagem complexa = resposta mais completa.',
+    'Não repita a pergunta.',
+    'Não faça perguntas desnecessárias.',
+    'Não mude de assunto.',
+    'Não invente fatos.',
+    'Não invente memórias.',
+    'Não invente comandos.',
+    'Se não souber, diga que não sabe.',
+    'Não escreva diálogo.',
+    'Não escreva "Você:".',
+    'Não escreva "Kyara:".',
+    'Não escreva "Assistente:".',
+    'Não escreva "Resposta:".',
+    '',
+    'PERSONAGEM KYARA:',
+    'Você é Kyara, uma personagem com personalidade própria.',
+    'Converse de forma espontânea e descontraída.',
+    'Não fique dizendo que é uma IA ou assistente.',
+    'Não fale sobre prompts, modelos, APIs ou servidores.',
+    'Se perguntarem diretamente se você é uma IA, responda com honestidade.',
+    'Se perguntarem seu nome, diga que seu nome é Kyara.',
+    'Se perguntarem quem você é, responda simplesmente como Kyara.',
+    '',
+    'INTERPRETAÇÃO DE LINGUAGEM:',
+    'obg=obrigado, vlw=valeu, tmj=tamo junto, blz=beleza,',
+    'tbm=também, vc=você, vcs=vocês, pq=porque/por quê,',
+    'msm=mesmo, ss=sim, nn=não, n=não, kkk=risada,',
+    'mds=meu Deus, vdd=verdade, ta/tá=está, tô=estou,',
+    'cê=você, num=não.',
+    'Use contexto; não substitua abreviações cegamente.',
+    ''
+  ];
+
+  return emojis[
+    Math.floor(
+      Math.random() *
+      emojis.length
+    )
+  ];
+}
+
+// ============================================================================
+// ESTATÍSTICAS
+// ============================================================================
+
+function getHistoricoStats() {
+
+  const stats = {
+    totalConversas:
+      Object.keys(
+        historico
+      ).length,
+
+    conversasAtivas: 0,
+
+    totalMensagens: 0
+  };
+
+  const limite =
+    Date.now() -
+    60 * 60 * 1000;
+
+  for (
+    const conversa
+    of Object.values(
+      historico
+    )
+  ) {
+
+    stats.totalMensagens +=
+      conversa.length;
+
+    const ultima =
+      conversa[
+        conversa.length - 1
+      ];
+
+    if (
+      ultima &&
+      new Date(
+        ultima.timestamp
+      ).getTime() > limite
+    ) {
+
+      stats.conversasAtivas++;
+
+    }
+  }
+
+  return stats;
+}
+
+// ============================================================================
+// LIMPEZA
+// ============================================================================
+
+function clearOldHistorico(
+  maxAge =
+    24 * 60 * 60 * 1000
+) {
+
+  const now =
+    Date.now();
+
+  for (
+    const id of Object.keys(
+      historico
+    )
+  ) {
+
+    const conversa =
+      historico[id];
+
+    if (!conversa.length) {
+
+      delete historico[id];
+
+      continue;
+    }
+
+    const ultima =
+      conversa[
+        conversa.length - 1
+      ];
+
+    if (
+      now -
+        new Date(
+          ultima.timestamp
+        ).getTime() >
+      maxAge
+    ) {
+
+      delete historico[id];
+
+    }
+  }
+}
+
+function clearConversationData(
+  maxAge =
+    7 * 24 * 60 * 60 * 1000
+) {
+
+  const now =
+    Date.now();
+
+  for (
+    const id of Object.keys(
+      historico
+    )
+  ) {
+
+    const conversa =
+      historico[id];
+
+    const ultima =
+      conversa[
+        conversa.length - 1
+      ];
+
+    if (
+      !ultima ||
+      now -
+        new Date(
+          ultima.timestamp
+        ).getTime() >
+      maxAge
+    ) {
+
+      delete historico[id];
+
+    }
+  }
+
+  for (
+    const id of Object.keys(
+      conversationStates
+    )
+  ) {
+
+    if (
+      now -
+        conversationStates[id]
+          .lastActivity >
+      maxAge
+    ) {
+
+      delete conversationStates[id];
+
+    }
+  }
+
+  for (
+    const id of Object.keys(
+      userPreferences
+    )
+  ) {
+
+    if (
+      now -
+        userPreferences[id]
+          .lastInteraction >
+      maxAge
+    ) {
+
+      delete userPreferences[id];
+
+    }
+  }
+
+  for (
+    const id of Object.keys(
+      userInteractions
+    )
+  ) {
+
+    const last =
+      userInteractions[id]
+        .sessionStats
+        .lastUpdate ||
+      userInteractions[id]
+        .sessionStats
+        .startTime;
+
+    if (
+      now - last >
+      maxAge
+    ) {
+
+      delete userInteractions[id];
+
+    }
+  }
+}
+
+
+// ============================================================================
+// ESTADO DA CONVERSA
+// ============================================================================
+
+function getConversationState(id) {
+  const key = String(id || '').trim();
+
+  if (!key) {
+    return null;
+  }
+
+  if (
+    typeof userInteractions !== 'undefined' &&
+    userInteractions[key]
+  ) {
+    return userInteractions[key];
+  }
+
+  return null;
+}
+
+// ============================================================================
+// EXPORTAÇÕES
+// ============================================================================
+
+export {
+  processUserMessages as makeAssistentRequest,
+
+  makeCognimaRequest,
+  makeLocalAIRequest,
+
+  getHistoricoStats,
+  clearOldHistorico,
+  updateHistorico,
+
+  getApiKeyStatus,
+  updateApiKeyStatus,
+
+  updateConversationState,
+  getConversationState,
+
+  updateUserPreferences,
+  getUserPreferences,
+
+  trackUserInteraction,
+  getUserInteractionStats,
+
+  userContextDB,
+  processLearning,
+
+  cleanWhatsAppFormatting,
+  extractJSON,
+  validateMessage,
+
+  clearConversationData,
+  getKyaraReact,
+
+  LOCAL_AI_URL,
+  LOCAL_AI_MODEL,
+  LOCAL_AI_ENDPOINT
+};
+
+
+export {
+  makeKyaraChatRequest
+};

@@ -20,22 +20,23 @@
       "familia": []
     },
     "historico_conversa": {
-      "total_mensagens": 12,
+      "total_mensagens": 20,
       "primeira_conversa": "2026-09-08T13:53:24.000Z",
-      "ultima_conversa": "2026-09-09T02:24:52.000Z",
+      "ultima_conversa": "2026-09-09T15:18:16.000Z",
       "frequencia_interacao": "alta",
       "topicos_recentes": []
     },
     "padroes_comportamento": {
       "horarios_ativos": {
         "10": 1,
-        "11": 4,
-        "12": 1,
+        "11": 6,
+        "12": 7,
         "19": 1,
         "23": 5
       },
       "dias_semana_ativos": {
-        "terça-feira": 12
+        "terça-feira": 12,
+        "quarta-feira": 8
       },
       "humor_comum": "neutro",
       "tipo_mensagens": {
@@ -53,7 +54,7 @@
       "sentimento": "neutro"
     },
     "notas_importantes": [],
-    "ultima_atualizacao": "2026-09-09T02:24:52.000Z"
+    "ultima_atualizacao": "2026-09-09T15:18:16.000Z"
   },
   "4836821061781@lid_humana": {
     "userId": "4836821061781@lid_humana",
@@ -159,5 +160,68 @@
     },
     "notas_importantes": [],
     "ultima_atualizacao": "2026-09-09T02:23:09.000Z"
+  },
+  "28145558278209@lid_kyara": {
+    "userId": "28145558278209@lid_kyara",
+    "nome": "᳀",
+    "apelidos": [],
+    "preferencias": {
+      "assuntos_favoritos": [],
+      "gostos": [],
+      "nao_gostos": [],
+      "hobbies": [],
+      "estilo_conversa": "casual",
+      "usa_emojis": true,
+      "formal": false
+    },
+    "informacoes_pessoais": {
+      "idade": null,
+      "localizacao": null,
+      "profissao": null,
+      "relacionamento": null,
+      "familia": []
+    },
+    "historico_conversa": {
+      "total_mensagens": 72,
+      "primeira_conversa": "2026-09-09T15:20:41.000Z",
+      "ultima_conversa": "2026-09-12T23:57:08.000Z",
+      "frequencia_interacao": "muito_alta",
+      "topicos_recentes": []
+    },
+    "padroes_comportamento": {
+      "horarios_ativos": {
+        "0": 5,
+        "10": 4,
+        "11": 14,
+        "12": 7,
+        "15": 2,
+        "16": 11,
+        "17": 5,
+        "20": 9,
+        "21": 3,
+        "23": 12
+      },
+      "dias_semana_ativos": {
+        "quarta-feira": 19,
+        "quinta-feira": 39,
+        "sábado": 14
+      },
+      "humor_comum": "neutro",
+      "tipo_mensagens": {
+        "perguntas": 0,
+        "afirmacoes": 0,
+        "emocoes": 0,
+        "comandos": 0
+      }
+    },
+    "relacionamento_kyara": {
+      "nivel_intimidade": 1,
+      "apelido_kyara": null,
+      "memorias_especiais": [],
+      "conversas_marcantes": [],
+      "sentimento": "neutro"
+    },
+    "notas_importantes": [],
+    "ultima_atualizacao": "2026-09-12T23:57:08.000Z"
   }
 }

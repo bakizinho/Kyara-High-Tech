@@ -22,6 +22,7 @@ ${middleBorder}
 ${middleBorder}${menuItemIcon}${prefix}ban
 ${middleBorder}${menuItemIcon}${prefix}roletaban
 ${middleBorder}${menuItemIcon}${prefix}ban2
+${middleBorder}${menuItemIcon}${prefix}figban lista
 ${middleBorder}${menuItemIcon}${prefix}enquete
 ${middleBorder}${menuItemIcon}${prefix}bam (ban fake)
 ${middleBorder}${menuItemIcon}${prefix}setbammsg

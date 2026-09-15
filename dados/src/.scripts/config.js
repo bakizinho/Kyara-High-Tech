@@ -249,11 +249,9 @@ async function main() {
         numerodono: '',
         nomebot: '',
         prefixo: '!',
-        site_vex: 'https://vexapi.com.br',
-        apikey_vex: 'SUAKEY',
 
-        github_ofc: 'https://github.com/DevTokyoVx/kyara',
-        autor: 'DevTokyoVx',
+        github_ofc: 'https://github.com/bakizinho/BKkyara-',
+        autor: 'baki',
         repositorio: 'kyara',
         modoaluguel: off,
 
@@ -276,7 +274,6 @@ async function main() {
     config.nomebot = await promptInput(rl, '🤖 Nome do bot', config.nomebot);
     config.prefixo = await promptInput(rl, '🔣 Prefixo do bot (1 caractere)', config.prefixo, (v) => v.length === 1);
 
-    config.apikey_vex = await promptInput(rl, '🔑 Api-key do site https://vexapi.com.br', config.apikey_vex);
 
     await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true });
     await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));

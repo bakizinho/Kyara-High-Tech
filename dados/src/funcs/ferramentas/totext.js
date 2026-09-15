@@ -1,133 +1,326 @@
-import https from 'https'
-import fs from 'fs'
-import verificarAPI from '../API.js'
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import crypto from 'crypto';
+import { spawn } from 'child_process';
 
-const CONFIG_FILE = JSON.parse(
-  fs.readFileSync(new URL('../../config.json', import.meta.url), 'utf8')
-)
+const WHISPER_BIN =
+  process.env.KYARA_WHISPER_BIN ||
+  path.join(
+    os.homedir(),
+    'whisper.cpp',
+    'build',
+    'bin',
+    'whisper-cli'
+  );
 
-const cache = new Map()
-const CACHE_TTL = 60 * 60 * 1000
+const WHISPER_MODEL =
+  process.env.KYARA_WHISPER_MODEL ||
+  path.join(
+    os.homedir(),
+    'whisper.cpp',
+    'models',
+    'ggml-small.bin'
+  );
+
+const FFMPEG_BIN =
+  process.env.KYARA_FFMPEG_BIN || 'ffmpeg';
+
+const CACHE_TTL = 60 * 60 * 1000;
+
+const cache = new Map();
 
 function getCached(key) {
-  const item = cache.get(key)
+  const item = cache.get(key);
 
-  if (!item) return null
-
-  if (Date.now() - item.ts > CACHE_TTL) {
-    cache.delete(key)
-    return null
+  if (!item) {
+    return null;
   }
 
-  return item.val
+  if (Date.now() - item.time > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+
+  return item.value;
 }
 
-function setCache(key, val) {
-  if (cache.size >= 1000) {
-    const oldest = cache.keys().next().value
-    cache.delete(oldest)
-  }
-
+function setCached(key, value) {
   cache.set(key, {
-    val,
-    ts: Date.now()
-  })
+    time: Date.now(),
+    value
+  });
 }
 
-function request(url) {
+function executar(comando, args) {
   return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      let data = ''
+    const proc = spawn(comando, args, {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
 
-      res.on('data', chunk => {
-        data += chunk
-      })
+    let stdout = '';
+    let stderr = '';
 
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data))
-        } catch {
-          reject(new Error('Resposta inválida da API'))
-        }
-      })
-    }).on('error', reject)
-  })
+    proc.stdout.on('data', data => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', data => {
+      stderr += data.toString();
+    });
+
+    proc.on('error', reject);
+
+    proc.on('close', code => {
+      if (code === 0) {
+        resolve({
+          stdout,
+          stderr
+        });
+      } else {
+        const erro = new Error(
+          `Processo terminou com código ${code}`
+        );
+
+        erro.stdout = stdout;
+        erro.stderr = stderr;
+
+        reject(erro);
+      }
+    });
+  });
 }
 
-async function totext(url) {
+async function converterParaWav(inputBuffer, wavPath) {
+  const tempInput = `${wavPath}.input`;
 
-  const checkAPI = await verificarAPI()
-
-  if (checkAPI !== true) {
-    return {
-      ok: false,
-      msg: checkAPI
-    }
-  }
+  await fs.promises.writeFile(
+    tempInput,
+    inputBuffer
+  );
 
   try {
+    await executar(FFMPEG_BIN, [
+      '-y',
+      '-i',
+      tempInput,
+      '-vn',
+      '-ac',
+      '1',
+      '-ar',
+      '16000',
+      '-sample_fmt',
+      's16',
+      wavPath
+    ]);
+  } finally {
+    try {
+      await fs.promises.unlink(tempInput);
+    } catch {}
+  }
+}
 
-    if (!url) {
+async function executarWhisper(wavPath, outputDir) {
+  const args = [
+    '-m',
+    WHISPER_MODEL,
+
+    '-f',
+    wavPath,
+
+    '-l',
+    'pt',
+
+    '-otxt',
+
+    '-of',
+    path.join(outputDir, 'resultado'),
+
+    '-nt',
+
+    '-np'
+  ];
+
+  const resultado = await executar(
+    WHISPER_BIN,
+    args
+  );
+
+  const txtPath =
+    path.join(outputDir, 'resultado.txt');
+
+  let texto = '';
+
+  try {
+    texto = await fs.promises.readFile(
+      txtPath,
+      'utf8'
+    );
+  } catch {
+    texto = resultado.stdout || '';
+  }
+
+  return texto
+    .replace(/\r/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function verificarInstalacao() {
+  try {
+    await fs.promises.access(
+      WHISPER_BIN,
+      fs.constants.X_OK
+    );
+
+    await fs.promises.access(
+      WHISPER_MODEL,
+      fs.constants.R_OK
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function totext(audioBuffer) {
+  if (!Buffer.isBuffer(audioBuffer)) {
+    return {
+      ok: false,
+      msg: '❌ O áudio recebido não é um Buffer válido.'
+    };
+  }
+
+  if (audioBuffer.length < 100) {
+    return {
+      ok: false,
+      msg: '❌ O áudio está vazio ou inválido.'
+    };
+  }
+
+  const instalado =
+    await verificarInstalacao();
+
+  if (!instalado) {
+    return {
+      ok: false,
+      msg:
+        '❌ Whisper local não está instalado corretamente.\n\n' +
+        `Binário: ${WHISPER_BIN}\n` +
+        `Modelo: ${WHISPER_MODEL}`
+    };
+  }
+
+  const hash = crypto
+    .createHash('sha1')
+    .update(audioBuffer)
+    .digest('hex');
+
+  const cacheKey = `totext:${hash}`;
+
+  const cached = getCached(cacheKey);
+
+  if (cached) {
+    return {
+      ok: true,
+      ...cached,
+      cached: true
+    };
+  }
+
+  const tempDir =
+    await fs.promises.mkdtemp(
+      path.join(
+        os.tmpdir(),
+        'kyara-totext-'
+      )
+    );
+
+  const inputWav =
+    path.join(tempDir, 'audio.wav');
+
+  try {
+    console.log(
+      '[TOTEXT LOCAL] 🎙️ Áudio recebido:',
+      audioBuffer.length,
+      'bytes'
+    );
+
+    console.log(
+      '[TOTEXT LOCAL] 🔄 Convertendo para WAV 16 kHz mono...'
+    );
+
+    await converterParaWav(
+      audioBuffer,
+      inputWav
+    );
+
+    console.log(
+      '[TOTEXT LOCAL] 🧠 Iniciando Whisper local...'
+    );
+
+    const texto =
+      await executarWhisper(
+        inputWav,
+        tempDir
+      );
+
+    if (!texto) {
       return {
         ok: false,
-        msg: 'URL inválida'
-      }
+        msg:
+          '❌ Não foi possível reconhecer nenhuma fala.'
+      };
     }
 
-    const cached = getCached(`totext:${url}`)
+    console.log(
+      '[TOTEXT LOCAL] ✅ Transcrição concluída.'
+    );
 
-    if (cached) {
-      return {
-        ok: true,
-        ...cached,
-        cached: true
-      }
-    }
+    const resultado = {
+      texto,
+      codigo: 200,
+      message: 'Transcrição local concluída.'
+    };
 
-    const { apikey_vex, site_vex } = CONFIG_FILE
-
-    const api =
-      `${site_vex}/api/ias/transcrever?apikey=${apikey_vex}&query=${encodeURIComponent(url)}`
-
-    const data = await request(api)
-
-    const checkAfter = await verificarAPI(data)
-
-    if (checkAfter !== true) {
-      return {
-        ok: false,
-        msg: checkAfter
-      }
-    }
-
-    if (!data?.status || !data?.texto) {
-      return {
-        ok: false,
-        msg: 'Não foi possível transcrever o áudio'
-      }
-    }
-
-    const result = {
-      texto: data.texto,
-      codigo: data.codigo || 200,
-      message: data.message || 'sucesso'
-    }
-
-    setCache(`totext:${url}`, result)
+    setCached(
+      cacheKey,
+      resultado
+    );
 
     return {
       ok: true,
-      ...result
-    }
+      ...resultado
+    };
 
-  } catch (err) {
+  } catch (error) {
+    console.error(
+      '[TOTEXT LOCAL] ❌ Erro:',
+      error
+    );
 
     return {
       ok: false,
-      msg: err.message
-    }
+      msg:
+        '❌ Erro na transcrição local: ' +
+        (error?.message || error)
+    };
 
+  } finally {
+    try {
+      await fs.promises.rm(
+        tempDir,
+        {
+          recursive: true,
+          force: true
+        }
+      );
+    } catch {}
   }
 }
 
-export { totext }
+export {
+  totext
+};

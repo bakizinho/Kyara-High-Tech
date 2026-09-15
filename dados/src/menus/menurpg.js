@@ -96,7 +96,6 @@ ${middleBorder}${menuItemIcon}${prefix}mine
 ${middleBorder}${menuItemIcon}${prefix}fish
 ${middleBorder}${menuItemIcon}${prefix}coletar
 ${middleBorder}${menuItemIcon}${prefix}colher
-${middleBorder}${menuItemIcon}${prefix}caçar
 ${middleBorder}${menuItemIcon}${prefix}plantar <planta>
 ${middleBorder}${menuItemIcon}${prefix}cultivar <planta>
 ${middleBorder}${menuItemIcon}${prefix}plantacao
@@ -265,5 +264,12 @@ ${middleBorder}${menuItemIcon}${prefix}rpgremoveitem @user <item> <qtd>
 ${middleBorder}${menuItemIcon}${prefix}rpgresetplayer @user
 ${middleBorder}${menuItemIcon}${prefix}rpgresetglobal confirmar
 ${middleBorder}${menuItemIcon}${prefix}rpgstats
-${bottomBorder}`
+${bottomBorder}
+${middleBorder}${menuItemIcon}${prefix}ideia <sua ideia>
+${middleBorder}${menuItemIcon}${prefix}caixadeideias
+${middleBorder}${menuItemIcon}${prefix}melhoresideias
+${middleBorder}${menuItemIcon}${prefix}votarideia <id>
+${middleBorder}${menuItemIcon}${prefix}verideia <id>
+${middleBorder}${menuItemIcon}${prefix}minhasideias
+`
 }

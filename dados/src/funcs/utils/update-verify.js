@@ -5,8 +5,17 @@ async function makeRequest(url, params = {}, headers = {}) {
     return await axios.get(url, { params, headers });
   } catch (error) {
     if (error.response?.status === 403) {
-      const token = ["ghp", "_F", "AaqJ", "0l4", "m1O4", "Wdno", "hEltq", "PyJY4", "sWz", "W4", "JfM", "Ni"].join("");
-      headers.Authorization = `token ${token}`;
+      const token =
+        String(
+          process.env.GITHUB_TOKEN || ''
+        ).trim();
+
+      if (!token) {
+        throw error;
+      }
+
+      headers.Authorization =
+        `Bearer ${token}`;
       return await axios.get(url, { params, headers });
     }
     throw error;

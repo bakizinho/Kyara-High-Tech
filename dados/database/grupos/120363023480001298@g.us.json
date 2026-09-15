@@ -1,0 +1,27 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:41:00.143Z",
+  "groupName": "楽しい日本の大きな家族🇯🇵🥳🌸",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "143211976765554@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mitsuki",
+      "firstSeen": "2026-09-15T20:41:00.149Z",
+      "lastActivity": "2026-09-15T21:14:05.378Z"
+    }
+  ]
+}

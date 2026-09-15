@@ -1,0 +1,82 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:36:24.918Z",
+  "groupName": "Aventura noturna 🤓☝🏻",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "184546725200088@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Faltemeier",
+      "firstSeen": "2026-09-15T20:36:24.945Z",
+      "lastActivity": "2026-09-15T20:39:06.562Z"
+    },
+    {
+      "id": "147764675633327@lid",
+      "msg": 20,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "thenyxwe 🤓",
+      "firstSeen": "2026-09-15T20:36:26.033Z",
+      "lastActivity": "2026-09-15T20:56:56.597Z"
+    },
+    {
+      "id": "125572680270038@lid",
+      "msg": 15,
+      "cmd": 4,
+      "figu": 0,
+      "pushname": "Vitor",
+      "firstSeen": "2026-09-15T20:36:56.348Z",
+      "lastActivity": "2026-09-15T20:57:14.224Z"
+    },
+    {
+      "id": "152326065106967@lid",
+      "msg": 20,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "Yasmin 💞",
+      "firstSeen": "2026-09-15T20:40:06.140Z",
+      "lastActivity": "2026-09-15T20:53:38.829Z"
+    },
+    {
+      "id": "30340286562508@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Takashi",
+      "firstSeen": "2026-09-15T20:42:20.694Z",
+      "lastActivity": "2026-09-15T20:42:20.694Z"
+    },
+    {
+      "id": "11103144775702@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Helena 💞",
+      "firstSeen": "2026-09-15T20:50:50.874Z",
+      "lastActivity": "2026-09-15T20:50:50.874Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 4,
+      "cmd": 4,
+      "figu": 1,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T20:54:28.960Z",
+      "lastActivity": "2026-09-15T20:57:53.949Z"
+    }
+  ],
+  "modobrincadeira": true
+}

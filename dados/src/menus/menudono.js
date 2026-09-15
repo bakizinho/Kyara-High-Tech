@@ -1,225 +1,473 @@
-async function menuDono(prefix, botName = "MeuBot", userName = "Usuário", {
-    header = `╭┈⊰ 🌸 『 *${botName}* 』\n┊Olá, #user#!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
-    menuTopBorder = "╭┈",
-    bottomBorder = "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
-    menuTitleIcon = "🍧ฺꕸ▸",
-    menuItemIcon = "•.̇𖥨֗💜⭟",
-    separatorIcon = "❁",
-    middleBorder = "┊",
-    botConfigMenuTitle = "🤖 CONFIGURAÇÕES DO BOT",
-    menuDesignMenuTitle = "🎨 DESIGN & APARÊNCIA",
-    automationMenuTitle = "⚙️ SISTEMA & AUTOMAÇÃO",
-   menuAssistenteMenuTitle = "🤡⚙️PERSONALIDADE DA ASSISTENTE",
-    commandCustomMenuTitle = "🛠️ PERSONALIZAÇÃO DE COMANDOS",
-    commandLimitingMenuTitle = "🚫 LIMITAÇÃO DE COMANDOS",
-    userManagementMenuTitle = "👥 GERENCIAMENTO DE USUÁRIOS",
-    rentalSystemMenuTitle = "💰 SISTEMA DE ALUGUEL",
-    subBotsMenuTitle = "🤖 GERENCIAMENTO DE SUB-BOTS",
-    vipSystemMenuTitle = "💎 SISTEMA VIP/PREMIUM",
-    botControlMenuTitle = "⚡ CONTROLE & MANUTENÇÃO",
-    monitoringMenuTitle = "📊 MONITORAMENTO & ANÁLISE",
-    broadcastMenuTitle = "📡 TRANSMISSÕES"
-} = {}) {
-    const formattedHeader = header.replace(/#user#/g, userName);
-    return `${formattedHeader}
+import os from 'os'
 
-${menuTopBorder}${separatorIcon} *📚 INÍCIO*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}tutorial
-${bottomBorder}
+function uptimeText() {
+    const total = Math.floor(process.uptime())
 
-${menuTopBorder}${separatorIcon} *${botConfigMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}prefixo
-${middleBorder}${menuItemIcon}${prefix}numerodono
-${middleBorder}${menuItemIcon}${prefix}nomedono
-${middleBorder}${menuItemIcon}${prefix}nomebot
-${middleBorder}${menuItemIcon}${prefix}configcmdnotfound
-${middleBorder}${menuItemIcon}${prefix}setcmdmsg
-${middleBorder}${menuItemIcon}${prefix}fotobot
-${middleBorder}${menuItemIcon}${prefix}fotomenu
-${middleBorder}${menuItemIcon}${prefix}videomenu
-${middleBorder}${menuItemIcon}${prefix}audiomenu
-${middleBorder}${menuItemIcon}${prefix}lermais
-${middleBorder}${menuItemIcon}${prefix}personalizargrupo
-${bottomBorder}
+    const days = Math.floor(total / 86400)
+    const hours = Math.floor((total % 86400) / 3600)
+    const minutes = Math.floor((total % 3600) / 60)
+    const seconds = total % 60
 
-${menuTopBorder}${separatorIcon} *${menuAssistenteMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}setpersonalidade
-${middleBorder}${menuItemIcon}${prefix}criarpers
-${middleBorder}${menuItemIcon}${prefix}novapers
-${bottomBorder}
+    const parts = []
 
-${menuTopBorder}${separatorIcon} *${menuDesignMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}designmenu
-${middleBorder}${menuItemIcon}${prefix}setborda
-${middleBorder}${menuItemIcon}${prefix}setbordafim
-${middleBorder}${menuItemIcon}${prefix}setbordameio
-${middleBorder}${menuItemIcon}${prefix}setitem
-${middleBorder}${menuItemIcon}${prefix}setseparador
-${middleBorder}${menuItemIcon}${prefix}settitulo
-${middleBorder}${menuItemIcon}${prefix}setheader
-${middleBorder}${menuItemIcon}${prefix}resetdesign
-${bottomBorder}
+    if (days > 0) parts.push(`${days}d`)
+    if (hours > 0) parts.push(`${hours}h`)
+    if (minutes > 0) parts.push(`${minutes}m`)
 
-${menuTopBorder}${separatorIcon} *${automationMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addauto
-${middleBorder}${menuItemIcon}${prefix}addautomidia
-${middleBorder}${menuItemIcon}${prefix}listauto
-${middleBorder}${menuItemIcon}${prefix}delauto
-${middleBorder}${menuItemIcon}${prefix}addreact
-${middleBorder}${menuItemIcon}${prefix}listreact
-${middleBorder}${menuItemIcon}${prefix}delreact
-${middleBorder}${menuItemIcon}${prefix}addnopref
-${middleBorder}${menuItemIcon}${prefix}listnopref
-${middleBorder}${menuItemIcon}${prefix}delnopref
-${bottomBorder}
+    parts.push(`${seconds}s`)
 
-${menuTopBorder}${separatorIcon} *${commandCustomMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addcmd
-${middleBorder}${menuItemIcon}${prefix}addcmdmidia
-${middleBorder}${menuItemIcon}${prefix}listcmd
-${middleBorder}${menuItemIcon}${prefix}delcmd
-${middleBorder}${menuItemIcon}${prefix}testcmd
-${middleBorder}${menuItemIcon}${prefix}addcmd-subdono
-${middleBorder}${menuItemIcon}${prefix}removecmd-subdono
-${middleBorder}${menuItemIcon}${prefix}listcmd-subdono
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addalias
-${middleBorder}${menuItemIcon}${prefix}listalias
-${middleBorder}${menuItemIcon}${prefix}delalias
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addblackglobal
-${middleBorder}${menuItemIcon}${prefix}listblackglobal
-${middleBorder}${menuItemIcon}${prefix}rmblackglobal
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${commandLimitingMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}cmdlimitar
-${middleBorder}${menuItemIcon}${prefix}cmddeslimitar
-${middleBorder}${menuItemIcon}${prefix}cmdlimites
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${userManagementMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addsubdono
-${middleBorder}${menuItemIcon}${prefix}delsubdono
-${middleBorder}${menuItemIcon}${prefix}listasubdonos
-${middleBorder}${menuItemIcon}${prefix}addpremium
-${middleBorder}${menuItemIcon}${prefix}delpremium
-${middleBorder}${menuItemIcon}${prefix}listprem
-${middleBorder}${menuItemIcon}${prefix}resetgold
-${middleBorder}
-${middleBorder}${menuTitleIcon} *INDICAÇÕES* ${menuTitleIcon}
-${middleBorder}${menuItemIcon}${prefix}addindicacao
-${middleBorder}${menuItemIcon}${prefix}topindica
-${middleBorder}${menuItemIcon}${prefix}delindicacao
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}bangp
-${middleBorder}${menuItemIcon}${prefix}unbangp
-${middleBorder}${menuItemIcon}${prefix}listbangp
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${rentalSystemMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}modoaluguel
-${middleBorder}${menuItemIcon}${prefix}addaluguel
-${middleBorder}${menuItemIcon}${prefix}gerarcod
-${middleBorder}${menuItemIcon}${prefix}listaraluguel
-${middleBorder}${menuItemIcon}${prefix}infoaluguel
-${middleBorder}${menuItemIcon}${prefix}estenderaluguel
-${middleBorder}${menuItemIcon}${prefix}removeraluguel
-${middleBorder}${menuItemIcon}${prefix}listaluguel
-${middleBorder}${menuItemIcon}${prefix}limparaluguel
-${middleBorder}${menuItemIcon}${prefix}dayfree
-${middleBorder}${menuItemIcon}${prefix}setdiv
-${middleBorder}${menuItemIcon}${prefix}divulgar
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${subBotsMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addsubbot
-${middleBorder}${menuItemIcon}${prefix}removesubbot
-${middleBorder}${menuItemIcon}${prefix}listarsubbots
-${middleBorder}${menuItemIcon}${prefix}conectarsubbot
-${middleBorder}
-${middleBorder}🔑 Sub-bot use: ${prefix}gerarcodigo
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${vipSystemMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}addcmdvip
-${middleBorder}${menuItemIcon}${prefix}removecmdvip
-${middleBorder}${menuItemIcon}${prefix}listcmdvip
-${middleBorder}${menuItemIcon}${prefix}togglecmdvip
-${middleBorder}${menuItemIcon}${prefix}statsvip
-${middleBorder}${menuItemIcon}${prefix}menuvip
-${middleBorder}${menuItemIcon}${prefix}infovip
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${botControlMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}atualizar
-${middleBorder}${menuItemIcon}${prefix}reiniciar
-${middleBorder}${menuItemIcon}${prefix}entrar
-${middleBorder}${menuItemIcon}${prefix}sairgp
-${middleBorder}${menuItemIcon}${prefix}seradm
-${middleBorder}${menuItemIcon}${prefix}sermembro
-${middleBorder}${menuItemIcon}${prefix}blockcmdg
-${middleBorder}${menuItemIcon}${prefix}unblockcmdg
-${middleBorder}${menuItemIcon}${prefix}blockuserg
-${middleBorder}${menuItemIcon}${prefix}unblockuserg
-${middleBorder}${menuItemIcon}${prefix}listblocks
-${middleBorder}${menuItemIcon}${prefix}antibanmarcar
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${monitoringMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}listagp
-${middleBorder}${menuItemIcon}${prefix}antipv
-${middleBorder}${menuItemIcon}${prefix}antipv2
-${middleBorder}${menuItemIcon}${prefix}antipv3
-${middleBorder}${menuItemIcon}${prefix}antipv4
-${middleBorder}${menuItemIcon}${prefix}antipvmsg
-${middleBorder}${menuItemIcon}${prefix}antispamcmd
-${middleBorder}${menuItemIcon}${prefix}viewmsg
-${middleBorder}${menuItemIcon}${prefix}cases
-${middleBorder}${menuItemIcon}${prefix}getcase
-${middleBorder}${menuItemIcon}${prefix}modoliteglobal
-${middleBorder}${menuItemIcon}${prefix}iaclear
-${middleBorder}${menuItemIcon}${prefix}limpardb
-${middleBorder}${menuItemIcon}${prefix}limparrankg
-${middleBorder}${menuItemIcon}${prefix}reviverqr
-${middleBorder}${menuItemIcon}${prefix}nuke
-${middleBorder}${menuItemIcon}${prefix}msgprefix
-${bottomBorder}
-
-${menuTopBorder}${separatorIcon} *${broadcastMenuTitle}*
-${middleBorder}
-${middleBorder}${menuTitleIcon} *Transmissão em Grupos:*
-${middleBorder}${menuItemIcon}${prefix}tm
-${middleBorder}
-${middleBorder}${menuTitleIcon} *Transmissão Privada:*
-${middleBorder}${menuItemIcon}${prefix}tm2
-${middleBorder}${menuItemIcon}${prefix}statustm
-${middleBorder}
-${middleBorder}📝 Usuários inscrevem com:
-${middleBorder}   ${prefix}inscrevertm (no PV)
-${middleBorder}
-${middleBorder}${menuTitleIcon} *Divulgação do Dono (novo):*
-${middleBorder}${menuItemIcon}${prefix}divdono add
-${middleBorder}${menuItemIcon}${prefix}divdono rem
-${middleBorder}${menuItemIcon}${prefix}divdono list
-${middleBorder}${menuItemIcon}${prefix}divdono msg
-${middleBorder}${menuItemIcon}${prefix}divdono send
-${middleBorder}${menuItemIcon}${prefix}divdono time
-${middleBorder}${menuItemIcon}${prefix}divdono status
-${bottomBorder}
-`;
+    return parts.join(' ')
 }
-export default menuDono;
+
+function memoryText() {
+    const mem = process.memoryUsage()
+
+    return `${(mem.rss / 1024 / 1024).toFixed(1)} MB`
+}
+
+function heapText() {
+    const mem = process.memoryUsage()
+
+    return `${(mem.heapUsed / 1024 / 1024).toFixed(1)} MB`
+}
+
+function cpuText() {
+    try {
+        return os
+            .loadavg()
+            .map(value => Number(value).toFixed(2))
+            .join(' / ')
+    } catch {
+        return 'N/D'
+    }
+}
+
+function greeting() {
+    const hour = new Date().getHours()
+
+    if (hour >= 5 && hour < 12) {
+        return 'Bom dia'
+    }
+
+    if (hour >= 12 && hour < 18) {
+        return 'Boa tarde'
+    }
+
+    return 'Boa noite'
+}
+
+function section(title, lines, {
+    prefix,
+    itemIcon = '╰─›',
+    bottom = '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
+} = {}) {
+    return [
+        `╭━━━〔 ${title} 〕`,
+        ...lines.map(line => `┃ ${itemIcon} ${prefix}${line}`),
+        `┃`,
+        bottom
+    ].join('\n')
+}
+
+async function menuDono(
+    prefix,
+    botName = 'MeuBot',
+    userName = 'Usuário',
+    {
+        header,
+        menuTopBorder = '╭━━━〔',
+        bottomBorder = '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+        menuItemIcon = '╰─›',
+        separatorIcon = '👑',
+        middleBorder = '┃'
+    } = {}
+) {
+
+    const safePrefix = prefix || '.'
+    const safeBotName = botName || 'MeuBot'
+    const safeUserName = userName || 'Dono'
+
+    const customHeader = header
+        ? header.replace(/#user#/g, safeUserName)
+        : `${greeting()}, ${safeUserName}! 👑`
+
+    const status = [
+        `┃ 🔐 Acesso: OWNER`,
+        `┃ 🤖 Bot: ${safeBotName}`,
+        `┃ 🟢 Estado: ONLINE`,
+        `┃ ⏱️ Uptime: ${uptimeText()}`,
+        `┃ 🧠 RAM: ${memoryText()}`,
+        `┃ 📦 Heap: ${heapText()}`,
+        `┃ ⚙️ CPU: ${cpuText()}`,
+        `┃ 🟦 Node: ${process.version}`,
+        `┃ 🆔 PID: ${process.pid}`,
+        `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+    ].join('\n')
+
+    const inicio = section(
+        '📚 INÍCIO',
+        [
+            'tutorial'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const config = section(
+        '🤖 CONFIGURAÇÕES DO BOT',
+        [
+            'prefixo',
+            'numerodono',
+            'nomedono',
+            'nomebot',
+            'configcmdnotfound',
+            'setcmdmsg',
+            'fotobot',
+            'fotomenu',
+            'videomenu',
+            'audiomenu',
+            'lermais',
+            'personalizargrupo'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const personalidade = section(
+        '🧠 PERSONALIDADE DA ASSISTENTE',
+        [
+            'setpersonalidade',
+            'criarpers',
+            'novapers'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const design = section(
+        '🎨 DESIGN & APARÊNCIA',
+        [
+            'designmenu',
+            'setborda',
+            'setbordafim',
+            'setbordameio',
+            'setitem',
+            'setseparador',
+            'settitulo',
+            'setheader',
+            'resetdesign'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const automacao = section(
+        '⚙️ SISTEMA & AUTOMAÇÃO',
+        [
+            'addauto',
+            'addautomidia',
+            'listauto',
+            'delauto',
+            'addreact',
+            'listreact',
+            'delreact',
+            'addnopref',
+            'listnopref',
+            'delnopref'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const comandos = section(
+        '🛠️ PERSONALIZAÇÃO DE COMANDOS',
+        [
+            'addcmd',
+            'addcmdmidia',
+            'listcmd',
+            'delcmd',
+            'testcmd',
+            'addcmd-subdono',
+            'removecmd-subdono',
+            'listcmd-subdono',
+            'addalias',
+            'listalias',
+            'delalias',
+            'addblackglobal',
+            'listblackglobal',
+            'rmblackglobal'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const limitacao = section(
+        '🚫 LIMITAÇÃO DE COMANDOS',
+        [
+            'cmdlimitar',
+            'cmddeslimitar',
+            'cmdlimites'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const usuarios = section(
+        '👥 GERENCIAMENTO DE USUÁRIOS',
+        [
+            'addsubdono',
+            'delsubdono',
+            'listasubdonos',
+            'addpremium',
+            'delpremium',
+            'listprem',
+            'resetgold',
+            'addindicacao',
+            'topindica',
+            'delindicacao',
+            'bangp',
+            'unbangp',
+            'listbangp'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const aluguel = section(
+        '💰 SISTEMA DE ALUGUEL',
+        [
+            'modoaluguel',
+            'addaluguel',
+            'gerarcod',
+            'listaraluguel',
+            'infoaluguel',
+            'estenderaluguel',
+            'removeraluguel',
+            'listaluguel',
+            'limparaluguel',
+            'dayfree',
+            'setdiv',
+            'divulgar'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const subbots = section(
+        '🤖 GERENCIAMENTO DE SUB-BOTS',
+        [
+            'addsubbot',
+            'removesubbot',
+            'listarsubbots',
+            'conectarsubbot'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const vip = section(
+        '💎 SISTEMA VIP / PREMIUM',
+        [
+            'addcmdvip',
+            'removecmdvip',
+            'listcmdvip',
+            'togglecmdvip',
+            'statsvip',
+            'menuvip',
+            'infovip'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+
+    const figban = section(
+        '🎴 FIGBAN • CONTROLE',
+        [
+            'figban lista',
+            'figban painel'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const ajustes = section(
+        '🧪 COMANDOS EM AJUSTE',
+        [
+            'menuajustes',
+            'cmdajuste lista',
+            'cmdajuste buscar <termo>',
+            'cmdajuste marcar <comando>',
+            'cmdajuste desmarcar <comando>',
+            'cmdajuste limpar',
+            'ajuda <comando>',
+            'caixadeideias'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const controle = section(
+        '⚡ CONTROLE & MANUTENÇÃO',
+        [
+            'atualizar',
+            'reiniciar',
+            'entrar',
+            'sairgp',
+            'seradm',
+            'sermembro',
+            'blockcmdg',
+            'unblockcmdg',
+            'blockuserg',
+            'unblockuserg',
+            'listblocks',
+            'antibanmarcar'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const monitoramento = section(
+        '📊 MONITORAMENTO & ANÁLISE',
+        [
+            'listagp',
+            'antipv',
+            'antipv2',
+            'antipv3',
+            'antipv4',
+            'antipvmsg',
+            'antispamcmd',
+            'viewmsg',
+            'cases',
+            'getcase',
+            'modoliteglobal',
+            'iaclear',
+            'limpardb',
+            'limparrankg',
+            'reviverqr',
+            'nuke',
+            'msgprefix'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    const transmissao = section(
+        '📡 TRANSMISSÕES',
+        [
+            'tm',
+            'tm2',
+            'statustm',
+            'inscrevertm',
+            'divdono add',
+            'divdono rem',
+            'divdono list',
+            'divdono msg',
+            'divdono send',
+            'divdono time',
+            'divdono status'
+        ],
+        {
+            prefix: safePrefix,
+            itemIcon: menuItemIcon,
+            bottom: bottomBorder
+        }
+    )
+
+    return [
+        `${menuTopBorder} ${separatorIcon} *KYARA OWNER OS* 〕`,
+        `┃`,
+        `┃ ${customHeader}`,
+        `┃`,
+        status,
+        `┃`,
+        `┃ 🛡️ *PAINEL RESTRITO AO DONO*`,
+        `┃`,
+        `┃ Escolha uma categoria abaixo.`,
+        bottomBorder,
+        ``,
+        inicio,
+        ``,
+        config,
+        ``,
+        personalidade,
+        ``,
+        design,
+        ``,
+        automacao,
+        ``,
+        comandos,
+        ``,
+        limitacao,
+        ``,
+        usuarios,
+        ``,
+        aluguel,
+        ``,
+        subbots,
+        ``,
+        vip,
+        ``,
+        controle,
+        ``,
+        monitoramento,
+        ``,
+        transmissao,
+        ``,
+        figban,
+        ``,
+        ajustes,
+        ``,
+        `╭━━━〔 👑 KYARA OWNER 〕`,
+        `┃ 🔒 Área exclusiva do proprietário`,
+        `┃ ⚠️ Execute os comandos somente quando necessário.`,
+        `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+    ].join('\n')
+}
+
+export default menuDono

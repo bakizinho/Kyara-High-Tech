@@ -1,0 +1,91 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:37:22.906Z",
+  "groupName": "♱⛧ ⸸[𝚙𝚛𝚘𝚓𝚎𝚝𝚘 𝚕𝚒𝚋𝚎𝚛𝚍𝚊𝚍𝚎] ⸸⛧♱",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "109203922383012@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "Rafael",
+      "firstSeen": "2026-09-15T20:37:22.913Z",
+      "lastActivity": "2026-09-15T20:49:04.327Z"
+    },
+    {
+      "id": "186711455883361@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝆬‧₊˚𝓜 ɑׁׁׅׅ 𝐲.ᶜᵒᵒ⋆⁰²",
+      "firstSeen": "2026-09-15T20:39:23.054Z",
+      "lastActivity": "2026-09-15T20:39:34.984Z"
+    },
+    {
+      "id": "126156695167110@lid",
+      "msg": 13,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝕿𝖆𝖙𝖊 𝖑𝖔𝖓𝖌𝖉𝖔𝖓🥴",
+      "firstSeen": "2026-09-15T20:39:58.612Z",
+      "lastActivity": "2026-09-15T20:47:02.114Z"
+    },
+    {
+      "id": "81149565136987@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "🐇† ♠︎ CASSY (CY)♠︎ †🃏",
+      "firstSeen": "2026-09-15T20:40:57.477Z",
+      "lastActivity": "2026-09-15T20:41:44.119Z"
+    },
+    {
+      "id": "130181213774031@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 15,
+      "pushname": "RS",
+      "firstSeen": "2026-09-15T20:41:18.021Z",
+      "lastActivity": "2026-09-15T20:48:42.747Z"
+    },
+    {
+      "id": "139956576075801@lid",
+      "msg": 22,
+      "cmd": 0,
+      "figu": 7,
+      "pushname": "Mr Michael Efremova",
+      "firstSeen": "2026-09-15T20:42:13.420Z",
+      "lastActivity": "2026-09-15T20:48:42.831Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 3,
+      "cmd": 3,
+      "figu": 1,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T20:51:28.611Z",
+      "lastActivity": "2026-09-15T21:03:49.451Z"
+    },
+    {
+      "id": "45935312765024@lid",
+      "msg": 0,
+      "cmd": 2,
+      "figu": 0,
+      "pushname": "Robert",
+      "firstSeen": "2026-09-15T21:03:31.873Z",
+      "lastActivity": "2026-09-15T21:03:34.921Z"
+    }
+  ],
+  "modobrincadeira": true
+}

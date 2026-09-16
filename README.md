@@ -1,203 +1,250 @@
 <div align="center">
 
+<a href="https://github.com/bakizinho/Kyara-High-Tech">
+
 <img src="./assets/kyara-high-tech.svg" width="100%" alt="KYARA HIGH-TECH">
+
+</a>
 
 <br>
 
-<img src="./dados/midias/menu.jpg" width="520" alt="KYARA HIGH-TECH">
+<img src="./dados/midias/menu.jpg" width="650" alt="KYARA HIGH-TECH">
+
+<br><br>
 
 # 🌸 KYARA HIGH-TECH
 
-### WhatsApp Bot • AI • Media • RPG • Economy • Groups
+### `WHATSAPP • AI • MEDIA • RPG • ECONOMY • NATIVE FLOW`
 
 <p>
-  <img src="https://img.shields.io/badge/VERSION-10.2.1-8a2be2?style=for-the-badge">
+  <img src="https://img.shields.io/badge/KYARA-v10.2.1-8a2be2?style=for-the-badge">
   <img src="https://img.shields.io/badge/NODE.JS-20%2B-00d9ff?style=for-the-badge&logo=node.js">
   <img src="https://img.shields.io/badge/WHATSAPP-BOT-25d366?style=for-the-badge&logo=whatsapp">
-  <img src="https://img.shields.io/badge/TERMUX-SUPPORTED-000000?style=for-the-badge&logo=termux">
-  <img src="https://img.shields.io/badge/OPEN_SOURCE-YES-00ff9d?style=for-the-badge">
+  <img src="https://img.shields.io/badge/TERMUX-READY-000000?style=for-the-badge&logo=termux">
+  <img src="https://img.shields.io/badge/OPEN_SOURCE-YES-ff69b4?style=for-the-badge">
 </p>
 
-### ✨ Mais que um bot. Um ecossistema.
+<br>
+
+### ✦ UM BOT. VÁRIOS SISTEMAS. UMA ÚNICA EXPERIÊNCIA. ✦
 
 </div>
 
 ---
 
-# 🧭 ÍNDICE
+<div align="center">
 
-- [🌸 Sobre](#-sobre)
-- [⚡ Recursos](#-recursos)
-- [🏗️ Arquitetura](#️-arquitetura)
-- [📋 Requisitos](#-requisitos)
-- [🚀 Instalação](#-instalação)
-- [📱 Primeira execução](#-primeira-execução)
-- [▶️ Iniciar a Kyara](#️-iniciar-a-kyara)
-- [📦 Scripts NPM](#-scripts-npm)
-- [📋 Comandos](#-comandos)
-- [📥 Downloads](#-downloads)
-- [🆙 Sistema de Level](#-sistema-de-level)
-- [🎮 RPG](#-rpg)
-- [👥 Grupos](#-grupos)
-- [⚡ Native Flow](#-native-flow)
-- [🌐 API](#-api)
-- [📁 Estrutura](#-estrutura)
-- [🔄 Atualização](#-atualização)
-- [🛠️ Diagnóstico](#️-diagnóstico)
-- [🔐 Segurança](#-segurança)
-- [🤝 Desenvolvimento](#-desenvolvimento)
-- [❤️ Créditos](#️-créditos)
+## 🛰️ KYARA // HIGH-TECH ECOSYSTEM
+
+`CORE` `COMMANDS` `MEDIA` `AI` `RPG` `ECONOMY` `LEVEL` `GROUPS` `NATIVE FLOW`
+
+</div>
 
 ---
 
-# 🌸 SOBRE
+# 🌸 SOBRE O PROJETO
 
-A **KYARA HIGH-TECH** é um bot modular para WhatsApp desenvolvido em **Node.js**.
+A **KYARA HIGH-TECH** é uma plataforma modular para WhatsApp construída em **Node.js**, projetada para reunir diferentes sistemas em uma arquitetura organizada e expansível.
 
-A proposta do projeto é reunir diferentes sistemas dentro de uma única arquitetura, mantendo os recursos separados em módulos para facilitar manutenção, evolução e expansão.
+A ideia não é simplesmente adicionar centenas de comandos.
 
-### 🧩 Ecossistema
-
-| Sistema | Função |
-|---|---|
-| 📱 WhatsApp | Comunicação e processamento de mensagens |
-| ⚡ Commands | Execução de comandos |
-| 🌐 Native Flow | Menus e interfaces interativas |
-| 📥 Media | Recursos de mídia e downloads |
-| 🤖 IA | Recursos inteligentes |
-| 👥 Groups | Ferramentas para grupos |
-| 🛡️ Admin | Administração |
-| 🎮 RPG | Entretenimento |
-| 💰 Economy | Sistema de economia |
-| 🆙 Level | XP e progressão |
-
----
-
-# ⚡ RECURSOS
-
-### 📥 Mídia
-
-- 🎵 YouTube
-- 🎧 YouTube MP3
-- 🎬 YouTube MP4
-- 🎵 TikTok
-- 📸 Instagram
-- 📘 Facebook
-- 🎞️ Kwai
-- 🐦 Twitter/X
-- 📌 Pinterest
-
-### 👥 Comunidades
-
-- Administração
-- Controle de grupo
-- Ferramentas de interação
-- Sistemas de entretenimento
-- Level e XP
-
-### 🎮 Entretenimento
-
-- RPG
-- Economia
-- Sistemas de progressão
-- Recursos interativos
-
-### 🌐 Interface
-
-- Native Flow
-- Menus interativos
-- Botões
-- Fluxos de navegação
-- Ações automatizadas
-
----
-
-# 🏗️ ARQUITETURA
-
-A Kyara utiliza uma arquitetura modular para separar o processamento principal das funcionalidades.
+A Kyara foi estruturada para que cada sistema tenha sua própria responsabilidade.
 
 ```text
                          🌸 KYARA
                             │
                             ▼
-                   ┌─────────────────┐
-                   │     WHATSAPP    │
-                   │    CONNECTION   │
-                   └────────┬────────┘
+                    ┌───────────────┐
+                    │    WHATSAPP   │
+                    └───────┬───────┘
                             │
                             ▼
-                   ┌─────────────────┐
-                   │ MESSAGE ENGINE  │
-                   └────────┬────────┘
+                    ┌───────────────┐
+                    │ MESSAGE CORE  │
+                    └───────┬───────┘
                             │
-              ┌─────────────┼─────────────┐
-              │             │             │
-              ▼             ▼             ▼
-          COMMANDS       FEATURES     NATIVE FLOW
-              │             │             │
-              └─────────────┼─────────────┘
+             ┌──────────────┼──────────────┐
+             │              │              │
+             ▼              ▼              ▼
+         COMMANDS        FEATURES      NATIVE FLOW
+             │              │              │
+             └──────────────┼──────────────┘
                             │
-              ┌─────────────┼─────────────┐
-              │             │             │
-              ▼             ▼             ▼
-            MEDIA          RPG          GROUPS
-              │             │             │
-              └─────────────┼─────────────┘
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+        MEDIA              RPG              GROUPS
+          │                 │                 │
+          └─────────────────┼─────────────────┘
                             ▼
                          RESPONSE
 ```
 
-### 🔄 Fluxo de processamento
+---
+
+# ⚡ ECOSSISTEMA
+
+<table>
+<tr>
+<td width="50%">
+
+### 🤖 CORE
+
+Núcleo responsável pelo processamento da aplicação.
+
+</td>
+
+<td width="50%">
+
+### ⚡ COMMANDS
+
+Sistema responsável pela interpretação dos comandos.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+### 📥 MEDIA
+
+Recursos relacionados a mídia e downloads.
+
+</td>
+
+<td>
+
+### 🌐 NATIVE FLOW
+
+Menus e interfaces interativas dentro do WhatsApp.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+### 🎮 RPG
+
+Sistemas de entretenimento e progressão.
+
+</td>
+
+<td>
+
+### 💰 ECONOMY
+
+Sistema econômico e recursos relacionados.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+### 🆙 LEVEL
+
+Experiência, XP e progressão individual.
+
+</td>
+
+<td>
+
+### 👥 GROUPS
+
+Ferramentas destinadas aos grupos.
+
+</td>
+</tr>
+</table>
+
+---
+
+# 🧬 ARQUITETURA
+
+A arquitetura da Kyara é organizada em camadas.
 
 ```text
-MESSAGE
-   │
-   ▼
-DETECT
-   │
-   ▼
-COMMAND
-   │
-   ▼
-HANDLER
-   │
-   ├── MEDIA
-   ├── GROUP
-   ├── RPG
-   ├── LEVEL
-   ├── ECONOMY
-   └── NATIVE FLOW
-   │
-   ▼
-RESPONSE
+┌─────────────────────────────────────────────┐
+│                  WHATSAPP                   │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│                CONNECTION                   │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│              MESSAGE ENGINE                 │
+└──────────────────────┬──────────────────────┘
+                       │
+              ┌────────┼────────┐
+              │        │        │
+              ▼        ▼        ▼
+          COMMANDS  FEATURES  FLOW
+              │        │        │
+              └────────┼────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+        MEDIA         RPG         GROUPS
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+                    RESPONSE
 ```
+
+---
+
+# 🧩 PRINCÍPIO MODULAR
+
+```text
+                  MODULE
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+       INPUT      PROCESS      OUTPUT
+          │          │          │
+          └──────────┼──────────┘
+                     ▼
+                  RESULT
+```
+
+Cada recurso pode ser desenvolvido e mantido de forma independente.
+
+Isso ajuda a:
+
+- reduzir duplicação;
+- separar responsabilidades;
+- facilitar manutenção;
+- adicionar novos recursos;
+- corrigir funcionalidades específicas;
+- manter o núcleo organizado.
 
 ---
 
 # 📋 REQUISITOS
 
-| Requisito | Necessário |
-|---|---|
-| Android | ✅ |
-| Termux | ✅ |
-| Node.js | 20+ |
-| npm | 9+ |
-| Git | ✅ |
-| FFmpeg | Recomendado para mídia |
-| WhatsApp | ✅ |
+| Recurso | Requisito |
+|:---|:---:|
+| 📱 Android | ✅ |
+| 📲 Termux | ✅ |
+| 🟢 Node.js | `20+` |
+| 📦 npm | `9+` |
+| 🐙 Git | ✅ |
+| 🎬 FFmpeg | Recomendado |
+| 💬 WhatsApp | ✅ |
 
 ---
 
-# 🚀 INSTALAÇÃO
+# 🚀 INSTALAÇÃO NO TERMUX
 
-A instalação abaixo é destinada ao **Termux**.
+> **Todos os comandos executáveis estão em blocos `bash` separados.**
+>
+> No GitHub, cada bloco terá o botão **📋 Copiar**.
 
-> 📱 Cada comando possui seu próprio bloco `bash`.  
-> No GitHub, use o botão **📋 Copiar** de cada bloco para copiar diretamente para o Termux.
-
----
-
-## 1️⃣ Atualizar o Termux
+## 01 — Atualizar pacotes
 
 ```bash
 pkg update -y
@@ -209,7 +256,7 @@ pkg upgrade -y
 
 ---
 
-## 2️⃣ Instalar Git
+## 02 — Instalar Git
 
 ```bash
 pkg install -y git
@@ -217,7 +264,7 @@ pkg install -y git
 
 ---
 
-## 3️⃣ Instalar Node.js
+## 03 — Instalar Node.js
 
 ```bash
 pkg install -y nodejs-lts
@@ -225,7 +272,7 @@ pkg install -y nodejs-lts
 
 ---
 
-## 4️⃣ Instalar FFmpeg
+## 04 — Instalar FFmpeg
 
 ```bash
 pkg install -y ffmpeg
@@ -233,19 +280,19 @@ pkg install -y ffmpeg
 
 ---
 
-## 5️⃣ Liberar armazenamento
+## 05 — Liberar armazenamento
 
-Execute apenas na primeira configuração:
+Execute somente na primeira configuração:
 
 ```bash
 termux-setup-storage
 ```
 
-Quando o Android solicitar permissão, selecione **Permitir**.
+Depois permita o acesso solicitado pelo Android.
 
 ---
 
-## 6️⃣ Entrar no armazenamento
+## 06 — Entrar no armazenamento
 
 ```bash
 cd ~/storage
@@ -253,7 +300,7 @@ cd ~/storage
 
 ---
 
-## 7️⃣ Baixar a Kyara
+## 07 — Clonar a Kyara
 
 ```bash
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
@@ -261,7 +308,7 @@ git clone https://github.com/bakizinho/Kyara-High-Tech.git
 
 ---
 
-## 8️⃣ Entrar na pasta
+## 08 — Entrar no projeto
 
 ```bash
 cd ~/storage/Kyara-High-Tech
@@ -269,7 +316,7 @@ cd ~/storage/Kyara-High-Tech
 
 ---
 
-## 9️⃣ Instalar dependências
+## 09 — Instalar dependências
 
 ```bash
 npm install
@@ -277,7 +324,7 @@ npm install
 
 ---
 
-## 🔟 Iniciar
+## 10 — Iniciar
 
 ```bash
 npm start
@@ -285,9 +332,9 @@ npm start
 
 ---
 
-# ⚡ INSTALAÇÃO RÁPIDA
+# ⚡ INSTALAÇÃO EXPRESS
 
-Para quem já sabe utilizar o Termux:
+Para uma instalação nova:
 
 ```bash
 pkg update -y
@@ -337,17 +384,15 @@ npm start
 
 # 📱 PRIMEIRA EXECUÇÃO
 
-Depois de executar:
+Depois de iniciar:
 
 ```bash
 npm start
 ```
 
-a Kyara iniciará o processo de conexão.
+siga as instruções exibidas no Termux.
 
-Siga as instruções exibidas no próprio Termux.
-
-Após a conexão:
+Fluxo:
 
 ```text
 TERMUX
@@ -356,20 +401,23 @@ TERMUX
 KYARA START
    │
    ▼
-WHATSAPP CONNECTION
+CONNECTION
    │
    ▼
 AUTHENTICATION
    │
    ▼
-BOT ONLINE
+WHATSAPP
+   │
+   ▼
+🌸 KYARA ONLINE
 ```
 
-> ⚠️ Mantenha o processo do Termux aberto enquanto quiser manter a Kyara executando.
+> ⚠️ Mantenha o processo do Termux aberto enquanto quiser manter o bot funcionando.
 
 ---
 
-# ▶️ INICIAR A KYARA
+# ▶️ INICIAR NOVAMENTE
 
 Se a Kyara já estiver instalada:
 
@@ -377,63 +425,41 @@ Se a Kyara já estiver instalada:
 cd ~/storage/Kyara-High-Tech
 ```
 
-Depois:
-
 ```bash
 npm start
 ```
 
-Não é necessário executar `git clone` novamente.
+Não execute `git clone` novamente.
 
 ---
 
 # 📦 SCRIPTS NPM
 
-Os scripts disponíveis no projeto são:
-
-| Script | Função |
-|---|---|
-| `npm start` | Inicia a Kyara |
-| `npm run dev` | Desenvolvimento |
-| `npm run config` | Configuração |
-| `npm run config:install` | Instalação/configuração |
-| `npm run update` | Atualização |
-
----
-
-## ▶️ Iniciar
+### ▶️ Start
 
 ```bash
 npm start
 ```
 
----
-
-## 🛠️ Desenvolvimento
+### 🛠️ Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
----
-
-## ⚙️ Configuração
+### ⚙️ Configuração
 
 ```bash
 npm run config
 ```
 
----
-
-## 📥 Configuração de instalação
+### 📥 Configuração de instalação
 
 ```bash
 npm run config:install
 ```
 
----
-
-## 🔄 Atualizador
+### 🔄 Atualização
 
 ```bash
 npm run update
@@ -441,15 +467,13 @@ npm run update
 
 ---
 
-# 📋 COMANDOS
+# 📋 COMANDOS DA KYARA
 
-A Kyara utiliza:
+## Prefixo
 
 ```text
 /
 ```
-
-como prefixo principal.
 
 ### Menu
 
@@ -459,37 +483,31 @@ como prefixo principal.
 
 ---
 
-# 📥 DOWNLOADS
+# 📥 MEDIA CENTER
 
 ## 🎵 YouTube
-
-Pesquisar:
 
 ```text
 /play nome da música
 ```
 
-Áudio:
+## 🎧 Áudio
 
 ```text
 /playaudio nome da música
 ```
 
-Vídeo:
+## 🎬 Vídeo
 
 ```text
 /playvideo nome do vídeo
 ```
 
----
-
-## 🎧 YouTube MP3
+## 🎵 YouTube MP3
 
 ```text
 /ytmp3 link
 ```
-
----
 
 ## 🎬 YouTube MP4
 
@@ -497,15 +515,11 @@ Vídeo:
 /ytmp4 link
 ```
 
----
-
 ## 🎵 TikTok
 
 ```text
 /tiktok link
 ```
-
----
 
 ## 📸 Instagram
 
@@ -513,15 +527,11 @@ Vídeo:
 /instagram link
 ```
 
----
-
 ## 📘 Facebook
 
 ```text
 /facebook link
 ```
-
----
 
 ## 🎞️ Kwai
 
@@ -529,21 +539,17 @@ Vídeo:
 /kwai link
 ```
 
----
-
-## 🐦 Twitter / X
+## 🐦 Twitter
 
 ```text
 /twitter link
 ```
 
-ou:
+## 𝕏 X
 
 ```text
 /x link
 ```
-
----
 
 ## 📌 Pinterest
 
@@ -567,23 +573,23 @@ URL:
 
 ---
 
-# 🆙 SISTEMA DE LEVEL
+# 🆙 LEVEL SYSTEM
 
-A Kyara possui um sistema de **XP e níveis**.
+A Kyara possui um sistema de experiência e progressão.
 
-Consultar:
+### Consultar
 
 ```text
 /level
 ```
 
-Ativar:
+### Ativar
 
 ```text
 /level on
 ```
 
-Desativar:
+### Desativar
 
 ```text
 /level off
@@ -591,12 +597,17 @@ Desativar:
 
 ### 💾 Persistência
 
-Ao desativar o sistema:
+Desativar o Level não significa apagar os dados.
 
-- o Level não é apagado;
-- o XP não é apagado;
-- os dados existentes são preservados;
-- a configuração é individual por usuário.
+```text
+LEVEL OFF
+   │
+   ├── XP PRESERVADO
+   ├── LEVEL PRESERVADO
+   └── DADOS PRESERVADOS
+```
+
+A configuração é individual por usuário.
 
 O proprietário da Kyara não participa do sistema de Level.
 
@@ -604,76 +615,75 @@ O proprietário da Kyara não participa do sistema de Level.
 
 # 🎮 RPG
 
-A Kyara possui estrutura para sistemas de RPG e entretenimento.
-
-Os recursos disponíveis podem variar conforme a versão e configuração instalada.
-
-Para consultar os recursos disponíveis:
+O ecossistema possui estrutura destinada a recursos de RPG e entretenimento.
 
 ```text
-/menu
+PLAYER
+  │
+  ├── XP
+  ├── LEVEL
+  ├── ECONOMY
+  └── RPG
 ```
+
+Os recursos disponíveis podem variar conforme a versão instalada.
 
 ---
 
-# 👥 GRUPOS
+# 👥 GROUP SYSTEM
 
-A Kyara possui funcionalidades destinadas a grupos do WhatsApp.
+A Kyara possui sistemas destinados a grupos.
 
 ### Categorias
 
-- 🛡️ Administração
-- 🔗 Controle de links
-- 👥 Gerenciamento
-- ⚙️ Configurações
-- 🎮 Entretenimento
-- 🆙 Level
-- 💰 Economia
-
-A disponibilidade de cada recurso depende da configuração atual.
+| Sistema | Área |
+|---|---|
+| 🛡️ Administração | Controle |
+| 🔗 Links | Segurança |
+| 👥 Membros | Gerenciamento |
+| 🎮 Entretenimento | Interação |
+| 🆙 Level | Progressão |
+| 💰 Economy | Economia |
 
 ---
 
-# ⚡ NATIVE FLOW
+# 🌐 NATIVE FLOW
 
-O Native Flow é utilizado para criar uma experiência mais visual dentro do WhatsApp.
+O Native Flow transforma a navegação do bot em uma experiência mais visual.
 
 ```text
                          🌸 MENU
                             │
-            ┌───────────────┼───────────────┐
-            │               │               │
-            ▼               ▼               ▼
-        DOWNLOADS          RPG             ADMIN
-            │               │               │
-      ┌─────┼─────┐         │          ┌────┼────┐
-      │     │     │         │          │    │    │
-      ▼     ▼     ▼         ▼          ▼    ▼    ▼
-     YT   TIKTOK  IG       RPG        LINK  GROUP ADMIN
-      │
-      ▼
-   PINTEREST
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+      DOWNLOADS            RPG              ADMIN
+          │                 │                 │
+     ┌────┼────┐            │          ┌──────┼──────┐
+     ▼    ▼    ▼            ▼          ▼      ▼      ▼
+    YT   TIKTOK  IG         RPG       GROUP   LINK   TOOLS
+     │
+     ▼
+ PINTEREST
 ```
 
-### Componentes
+Arquitetura:
 
 ```text
 dados/src/core/nativeFlow/
 ```
 
-A camada Native Flow permite organizar menus, ações e navegação sem concentrar toda a lógica em um único módulo.
-
 ---
 
 # 🌐 API
 
-A Kyara possui uma camada de API dentro de:
+A camada auxiliar da aplicação está localizada em:
 
 ```text
 dados/api/
 ```
 
-Entre os componentes do projeto estão:
+Componentes:
 
 ```text
 dados/api/server.mjs
@@ -687,11 +697,9 @@ dados/api/kyara-browser.html
 dados/api/kyara-tube.html
 ```
 
-A API funciona como camada auxiliar para recursos que dependem de serviços internos do projeto.
-
 ---
 
-# 📁 ESTRUTURA DO PROJETO
+# 📁 ESTRUTURA
 
 ```text
 Kyara-High-Tech/
@@ -711,11 +719,8 @@ Kyara-High-Tech/
 │   └── src/
 │       │
 │       ├── .scripts/
-│       │
 │       ├── core/
-│       │
 │       ├── features/
-│       │
 │       └── ...
 │
 ├── .gitignore
@@ -725,70 +730,33 @@ Kyara-High-Tech/
 
 ---
 
-# 🧩 ORGANIZAÇÃO INTERNA
-
-A estrutura interna separa diferentes responsabilidades.
-
-```text
-CORE
- │
- ├── CONNECTION
- ├── MESSAGE PROCESSING
- └── NATIVE FLOW
-
-FEATURES
- │
- ├── COMMANDS
- ├── MEDIA
- ├── LEVEL
- ├── RPG
- ├── GROUPS
- └── SYSTEMS
-
-DATABASE
- │
- └── PERSISTENT DATA
-
-API
- │
- └── AUXILIARY SERVICES
-
-MEDIA
- │
- └── BOT ASSETS
-```
-
----
-
 # 🔄 ATUALIZAÇÃO
 
-Para atualizar uma instalação existente:
-
-## 1️⃣ Entrar no projeto
+Entre no projeto:
 
 ```bash
 cd ~/storage/Kyara-High-Tech
 ```
 
-## 2️⃣ Verificar alterações locais
+Confira o estado:
 
 ```bash
 git status
 ```
 
-## 3️⃣ Atualizar o código
+Atualize o código:
 
 ```bash
 git pull
 ```
 
-## 4️⃣ Atualizar dependências
+Atualize as dependências:
 
 ```bash
 npm install
 ```
 
-## 5️⃣ Iniciar novamente
+Inicie:
 
 ```bash
 npm start
@@ -796,55 +764,7 @@ npm start
 
 ---
 
-# 🛠️ DIAGNÓSTICO
-
-Se algo não funcionar, primeiro confira o ambiente.
-
-### Diretório atual
-
-```bash
-pwd
-```
-
-### Arquivos do diretório
-
-```bash
-ls
-```
-
-### Node.js
-
-```bash
-node -v
-```
-
-### npm
-
-```bash
-npm -v
-```
-
-### Git
-
-```bash
-git --version
-```
-
-### FFmpeg
-
-```bash
-ffmpeg -version
-```
-
-### Estado do projeto
-
-```bash
-git status
-```
-
----
-
-# 🧰 REINSTALAR DEPENDÊNCIAS
+# 🧹 REINSTALAÇÃO DE DEPENDÊNCIAS
 
 Entre no projeto:
 
@@ -858,13 +778,13 @@ Limpe o cache:
 npm cache clean --force
 ```
 
-Instale novamente:
+Reinstale:
 
 ```bash
 npm install
 ```
 
-Depois:
+Inicie:
 
 ```bash
 npm start
@@ -872,53 +792,85 @@ npm start
 
 ---
 
-# 🐛 ERROS COMUNS
+# 🔎 DIAGNÓSTICO
 
-## Git não encontrado
+## Diretório
+
+```bash
+pwd
+```
+
+## Arquivos
+
+```bash
+ls
+```
+
+## Node.js
+
+```bash
+node -v
+```
+
+## npm
+
+```bash
+npm -v
+```
+
+## Git
+
+```bash
+git --version
+```
+
+## FFmpeg
+
+```bash
+ffmpeg -version
+```
+
+## Git Status
+
+```bash
+git status
+```
+
+---
+
+# 🐛 SOLUÇÃO RÁPIDA
+
+### Git ausente
 
 ```bash
 pkg install -y git
 ```
 
-## Node.js não encontrado
+### Node.js ausente
 
 ```bash
 pkg install -y nodejs-lts
 ```
 
-## FFmpeg não encontrado
+### FFmpeg ausente
 
 ```bash
 pkg install -y ffmpeg
 ```
 
-## Projeto não encontrado
-
-Confira o armazenamento:
+### Projeto não encontrado
 
 ```bash
 ls ~/storage
 ```
 
-Entre na pasta:
+### Entrar no projeto
 
 ```bash
 cd ~/storage/Kyara-High-Tech
 ```
 
-## Dependências com problema
-
-```bash
-npm install
-```
-
-Se necessário:
-
-```bash
-npm cache clean --force
-```
-
-Depois:
+### Dependências
 
 ```bash
 npm install
@@ -926,32 +878,32 @@ npm install
 
 ---
 
-# 🔐 SEGURANÇA
+# 🛡️ SEGURANÇA
 
-Nunca publique informações privadas da sua sessão do WhatsApp.
+Nunca publique dados privados da sessão do WhatsApp.
 
-Não compartilhe publicamente:
+Não compartilhe:
 
-- 🔑 Tokens
-- 🔐 Credenciais
-- 📱 Dados de autenticação
-- 🗝️ Chaves privadas
-- 📂 Arquivos de sessão
-- 🛡️ Informações sensíveis
+- 🔐 credenciais;
+- 🔑 tokens;
+- 🗝️ chaves;
+- 📱 dados de autenticação;
+- 📂 arquivos de sessão;
+- 🛡️ informações privadas.
 
-Antes de publicar logs ou capturas do Termux, revise o conteúdo.
+Antes de publicar logs, revise cuidadosamente o conteúdo.
 
 ---
 
 # 🧑‍💻 DESENVOLVIMENTO
 
-Para obter o projeto:
+Clone o projeto:
 
 ```bash
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 ```
 
-Entre no projeto:
+Entre no diretório:
 
 ```bash
 cd ~/storage/Kyara-High-Tech
@@ -963,63 +915,43 @@ Instale as dependências:
 npm install
 ```
 
-Execute em desenvolvimento:
+Execute o ambiente de desenvolvimento:
 
 ```bash
 npm run dev
 ```
 
-### Princípios do projeto
-
-```text
-MODULARIDADE
-      ↓
-ORGANIZAÇÃO
-      ↓
-REUTILIZAÇÃO
-      ↓
-MANUTENIBILIDADE
-      ↓
-EXPANSÃO
-```
-
-Evite duplicar funcionalidades existentes.
-
-Antes de criar um novo sistema, procure os módulos correspondentes em `dados/src/`.
-
 ---
 
-# 📌 PREFIXO
-
-O prefixo principal da Kyara é:
+# 🧠 FILOSOFIA DE DESENVOLVIMENTO
 
 ```text
-/
+       SIMPLE
+          │
+          ▼
+       MODULAR
+          │
+          ▼
+       ORGANIZED
+          │
+          ▼
+       REUSABLE
+          │
+          ▼
+      MAINTAINABLE
+          │
+          ▼
+       HIGH-TECH
 ```
 
-Exemplo:
+### Princípios
 
-```text
-/menu
-```
-
----
-
-# 🌸 FILOSOFIA
-
-```text
-                    KYARA
-                      │
-          ┌───────────┼───────────┐
-          ▼           ▼           ▼
-       SIMPLE      MODULAR      FAST
-          │           │           │
-          └───────────┼───────────┘
-                      ▼
-                  HIGH-TECH
-```
-
-A ideia é manter a experiência simples para quem utiliza o bot e, ao mesmo tempo, manter uma estrutura organizada para quem desenvolve.
+- modularidade;
+- organização;
+- reutilização;
+- manutenção simples;
+- separação de responsabilidades;
+- expansão sem duplicação desnecessária.
 
 ---
 
@@ -1027,40 +959,40 @@ A ideia é manter a experiência simples para quem utiliza o bot e, ao mesmo tem
 
 Contribuições são bem-vindas.
 
-Antes de modificar o projeto:
+Antes de enviar alterações:
 
-1. mantenha a arquitetura modular;
-2. evite duplicação de código;
-3. preserve funcionalidades existentes;
-4. teste suas alterações;
-5. não envie credenciais;
-6. mantenha a documentação organizada.
-
----
-
-# 🌐 PROJETO
-
-<div align="center">
-
-### 🌸 KYARA HIGH-TECH
-
-**WhatsApp • Node.js • Termux • JavaScript**
-
-</div>
+- mantenha a arquitetura organizada;
+- evite duplicar funcionalidades;
+- preserve recursos existentes;
+- teste suas alterações;
+- não envie informações privadas;
+- atualize a documentação quando necessário.
 
 ---
 
-# ❤️ CRÉDITOS
-
 <div align="center">
+
+# 🌸 KYARA HIGH-TECH
 
 <img src="./assets/kyara-high-tech.svg" width="70%" alt="KYARA HIGH-TECH">
 
-### 🌸 KYARA HIGH-TECH
+<br>
 
-**Desenvolvido por Baki**
+### `WHATSAPP • NODE.JS • TERMUX • JAVASCRIPT`
 
-### ✨ MAIS QUE UM BOT. UM ECOSSISTEMA.
+<br>
+
+<a href="https://github.com/bakizinho/Kyara-High-Tech">
+
+<img src="https://img.shields.io/badge/⭐_STAR_ON_GITHUB-8a2be2?style=for-the-badge">
+
+</a>
+
+<br><br>
+
+### ✦ MAIS QUE UM BOT. UM ECOSSISTEMA. ✦
+
+<br>
 
 **KYARA HIGH-TECH © 2026**
 

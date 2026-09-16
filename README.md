@@ -1,54 +1,90 @@
-🌸 KYARA HIGH-TECH
-
-WhatsApp Bot • AI • Media • RPG • Economy • Groups
-
-<p align="center">
-  <strong>Mais que um bot. Um ecossistema.</strong>
-</p>---
-
 🚀 INSTALAÇÃO NO TERMUX
 
-1. Atualize o Termux
+1️⃣ Atualize os pacotes
 
-Abra o Termux e copie o comando abaixo:
+Abra o Termux e execute:
 
-pkg update -y && pkg upgrade -y
+pkg update -y
 
-2. Instale Git e Node.js
+Depois:
 
-pkg install -y git nodejs-lts
+pkg upgrade -y
 
-Confira se está tudo instalado:
+---
 
-node -v && npm -v && git --version
+2️⃣ Instale o Git
 
-3. Libere o acesso ao armazenamento
+pkg install -y git
 
-Execute apenas uma vez:
+---
+
+3️⃣ Instale o Node.js
+
+pkg install -y nodejs-lts
+
+---
+
+4️⃣ Confira as versões
+
+node -v
+
+npm -v
+
+git --version
+
+---
+
+5️⃣ Libere o armazenamento
+
+Execute este comando apenas uma vez:
 
 termux-setup-storage
 
-Quando aparecer a solicitação de permissão, toque em Permitir.
+Quando o Android pedir permissão, toque em Permitir.
 
-4. Clone a Kyara
+---
 
-Entre na pasta "storage":
+6️⃣ Entre na pasta de armazenamento
 
 cd ~/storage
 
-Agora clone o projeto:
+---
+
+7️⃣ Baixe a Kyara
 
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 
-5. Entre na pasta da Kyara
+---
+
+8️⃣ Entre na pasta da Kyara
 
 cd ~/storage/Kyara-High-Tech
 
-6. Instale as dependências
+---
+
+9️⃣ Instale as dependências
 
 npm install
 
-7. Inicie a Kyara
+Aguarde a instalação terminar.
+
+---
+
+🔟 Inicie a Kyara
+
+npm start
+
+---
+
+🔄 INICIAR NOVAMENTE
+
+Se você já instalou tudo e fechou o Termux, não precisa repetir a instalação.
+
+Use somente:
+
+cd ~/storage/Kyara-High-Tech
+
+Depois:
 
 npm start
 
@@ -56,163 +92,42 @@ npm start
 
 ⚡ INSTALAÇÃO RÁPIDA
 
-Se você já sabe usar o Termux e quer fazer tudo de uma vez:
+Se preferir fazer a instalação usando menos etapas:
 
-pkg update -y && pkg upgrade -y && pkg install -y git nodejs-lts && termux-setup-storage && cd ~/storage && git clone https://github.com/bakizinho/Kyara-High-Tech.git && cd Kyara-High-Tech && npm install
+pkg update -y
 
-Depois:
+pkg upgrade -y
 
-cd ~/storage/Kyara-High-Tech && npm start
+pkg install -y git nodejs-lts
 
----
+termux-setup-storage
 
-🔄 INICIAR A KYARA NOVAMENTE
+cd ~/storage
 
-Depois que o projeto já estiver instalado, basta executar:
+git clone https://github.com/bakizinho/Kyara-High-Tech.git
 
-cd ~/storage/Kyara-High-Tech && npm start
+cd ~/storage/Kyara-High-Tech
 
----
+npm install
 
-🎮 COMANDOS
-
-A Kyara utiliza o prefixo:
-
-/
-
-Exemplos:
-
-/menu
-/help
-/play música
-/ytmp3 link
-/ytmp4 link
-/tiktok link
-/instagram link
-/pinterest gato
-/level
+npm start
 
 ---
 
-📥 DOWNLOADS
+🛠️ SE A KYARA JÁ ESTIVER INSTALADA
 
-YouTube
+Entre na pasta:
 
-/play nome da música
+cd ~/storage/Kyara-High-Tech
 
-/ytmp3 link
+Atualize o projeto:
 
-/ytmp4 link
+git pull
 
-TikTok
+Instale possíveis dependências novas:
 
-/tiktok link
+npm install
 
-Instagram
+Inicie:
 
-/instagram link
-
-Facebook
-
-/facebook link
-
-Kwai
-
-/kwai link
-
-Twitter / X
-
-/twitter link
-
-/x link
-
-Pinterest
-
-/pinterest pesquisa
-
-ou:
-
-/pin pesquisa
-
----
-
-🆙 SISTEMA DE LEVEL
-
-Consultar seu nível:
-
-/level
-
-Ativar o sistema para sua conta:
-
-/level on
-
-Desativar o sistema para sua conta:
-
-/level off
-
-«Seus dados de nível e XP são preservados ao desativar o sistema.»
-
----
-
-🧩 RECURSOS
-
-- 🤖 IA
-- 📥 Downloads
-- 🎵 YouTube
-- 🎬 Vídeos
-- 📱 TikTok
-- 📸 Instagram
-- 📌 Pinterest
-- 🎮 RPG
-- 💰 Economia
-- 🆙 Sistema de Level
-- 👥 Recursos para grupos
-- 🛡️ Administração
-- ⚡ Native Flow
-- 🌸 Interface Kyara
-
----
-
-📁 ESTRUTURA
-
-Kyara-High-Tech/
-├── config/
-├── dados/
-│   ├── api/
-│   ├── database/
-│   ├── midias/
-│   └── src/
-├── assets/
-├── package.json
-└── README.md
-
----
-
-🛠️ TECNOLOGIAS
-
-- Node.js
-- WhatsApp
-- JavaScript
-- Termux
-- Native Flow
-- APIs e módulos próprios
-
----
-
-🌸 KYARA
-
-KYARA HIGH-TECH
-WhatsApp Modular Ecosystem
-
-AI       // RPG       // MEDIA
-ECONOMY  // GROUPS   // DOWNLOADS
-
-SYSTEM ONLINE
-
----
-
-👨‍💻 DESENVOLVEDOR
-
-Baki
-
-🌸 KYARA HIGH-TECH © 2026
+npm start

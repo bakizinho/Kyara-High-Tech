@@ -190,13 +190,13 @@ pkg upgrade -y
 ---
 
 2️⃣ Instalar Git
-
+sh
 pkg install -y git
 
 ---
 
 3️⃣ Instalar Node.js
-
+sh
 pkg install -y nodejs-lts
 
 ---
@@ -204,7 +204,7 @@ pkg install -y nodejs-lts
 4️⃣ Instalar FFmpeg
 
 O projeto possui processamento de mídia e utiliza FFmpeg em recursos relacionados a mídia.
-
+sh
 pkg install -y ffmpeg
 
 ---

@@ -1,50 +1,183 @@
-<div align="center"><img src="./assets/kyara-high-tech.svg" width="100%" alt="KYARA HIGH-TECH"><br><img src="./dados/midias/menu.jpg" width="520" alt="KYARA HIGH-TECH">🌸 KYARA HIGH-TECH v10.2.1
+<div align="center"><img src="./assets/kyara-high-tech.svg" width="100%" alt="KYARA HIGH-TECH"><br><img src="./dados/midias/menu.jpg" width="520" alt="KYARA HIGH-TECH">🌸 KYARA HIGH-TECH
 
-WhatsApp Bot • AI • Media • RPG • Economy • Groups
+WhatsApp Automation • Media • Native Flow • RPG • Economy • Groups
 
 <p>
-  <img src="https://img.shields.io/badge/STATUS-ONLINE-00ff9d?style=for-the-badge">
-  <img src="https://img.shields.io/badge/VERSION-10.2.1-8a2be2?style=for-the-badge">
-  <img src="https://img.shields.io/badge/NODE.JS-20%2B-00d9ff?style=for-the-badge&logo=node.js">
-  <img src="https://img.shields.io/badge/WHATSAPP-BOT-25d366?style=for-the-badge&logo=whatsapp">
-  <img src="https://img.shields.io/badge/TERMUX-SUPPORTED-000000?style=for-the-badge&logo=termux">
-</p>«Mais que um bot. Um ecossistema.»
+  <img src="https://img.shields.io/badge/KYARA-v10.2.1-8a2be2?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Node.js-20%2B-00d9ff?style=for-the-badge&logo=node.js">
+  <img src="https://img.shields.io/badge/WhatsApp-Bot-25d366?style=for-the-badge&logo=whatsapp">
+  <img src="https://img.shields.io/badge/Termux-Supported-111111?style=for-the-badge&logo=termux">
+</p><p>
+  <strong>Mais que um bot. Um ecossistema.</strong>
+</p></div>---
 
-</div>---
+🧭 DOCUMENTAÇÃO
 
-🌸 KYARA HIGH-TECH
-
-A KYARA HIGH-TECH é uma plataforma modular para WhatsApp desenvolvida em Node.js, com foco em automação, mídia, entretenimento, sistemas sociais e ferramentas para grupos.
-
-A arquitetura do projeto foi organizada para permitir que novos recursos sejam adicionados de forma independente, evitando transformar toda a aplicação em um único núcleo monolítico.
-
-⚡ Ecossistema
-
-┌─────────────────────────────────────────────┐
-│              🌸 KYARA HIGH-TECH             │
-├─────────────────────────────────────────────┤
-│                                             │
-│  🤖 CORE            Motor principal        │
-│  📥 MEDIA           Downloads              │
-│  ⚡ COMMANDS        Comandos               │
-│  🌐 NATIVE FLOW     Interface interativa   │
-│  👥 GROUPS          Sistemas de grupo      │
-│  🎮 RPG             Entretenimento         │
-│  💰 ECONOMY         Economia               │
-│  🆙 LEVEL           Experiência / XP       │
-│  🛡️ ADMIN           Administração          │
-│                                             │
-└─────────────────────────────────────────────┘
+- "🌸 Sobre a Kyara" (#-sobre-a-kyara)
+- "⚡ Recursos" (#-recursos)
+- "🧱 Arquitetura" (#-arquitetura)
+- "📋 Requisitos" (#-requisitos)
+- "🚀 Instalação" (#-instalação)
+- "📱 Termux" (#-instalação-no-termux)
+- "⚙️ Configuração" (#️-configuração)
+- "🔐 Conexão com WhatsApp" (#-conexão-com-whatsapp)
+- "▶️ Inicialização" (#️-inicialização)
+- "📦 Scripts NPM" (#-scripts-npm)
+- "🔄 Atualização" (#-atualização)
+- "🧪 Desenvolvimento" (#-desenvolvimento)
+- "📁 Estrutura" (#-estrutura-do-projeto)
+- "⚡ Native Flow" (#-native-flow)
+- "📥 Sistema de mídia" (#-sistema-de-mídia)
+- "🆙 Sistema de Level" (#-sistema-de-level)
+- "👥 Sistemas de grupo" (#-sistemas-de-grupo)
+- "🔎 Diagnóstico" (#-diagnóstico)
+- "🛡️ Segurança" (#️-segurança)
+- "🤝 Contribuição" (#-contribuição)
 
 ---
 
-🚀 INSTALAÇÃO NO TERMUX
+🌸 SOBRE A KYARA
 
-«📱 Ambiente recomendado: Android + Termux atualizado.
+A KYARA HIGH-TECH é uma aplicação modular para automação no WhatsApp, construída em Node.js.
 
-📋 Importante: cada comando possui seu próprio bloco de código. No GitHub, use o botão Copiar de cada bloco.»
+O projeto foi organizado em camadas para separar conexão, processamento de mensagens, comandos, funcionalidades, mídia, sistemas de grupo e interfaces interativas.
+
+A ideia central é simples:
+
+«um núcleo organizado, módulos independentes e uma experiência de utilização visual.»
+
+🧩 O ecossistema
+
+Área| Função
+🤖 Core| Inicialização e processamento
+📱 WhatsApp| Conexão e comunicação
+⚡ Commands| Processamento de comandos
+🌐 Native Flow| Menus e interfaces interativas
+📥 Media| Processamento e downloads
+🎮 RPG| Sistemas de entretenimento
+💰 Economy| Sistemas econômicos
+🆙 Level| XP e progressão
+👥 Groups| Recursos para grupos
+🛡️ Admin| Recursos administrativos
+🌐 API| Serviços auxiliares e interface web
 
 ---
+
+⚡ RECURSOS
+
+📱 WhatsApp
+
+- conexão com WhatsApp;
+- processamento de mensagens;
+- comandos com prefixo;
+- autenticação;
+- sistema de sessão;
+- inicialização automatizada.
+
+⚡ Interface
+
+- Native Flow;
+- menus interativos;
+- botões;
+- fluxos específicos;
+- roteamento de ações;
+- interface administrativa.
+
+📥 Mídia
+
+- YouTube;
+- TikTok;
+- Instagram;
+- Facebook;
+- Kwai;
+- Twitter/X;
+- Pinterest;
+- áudio;
+- vídeo.
+
+🎮 Sistemas
+
+- RPG;
+- economia;
+- Level/XP;
+- recursos de grupo;
+- ferramentas administrativas.
+
+---
+
+🧱 ARQUITETURA
+
+A Kyara não depende de um único arquivo gigante para controlar todo o comportamento.
+
+O fluxo principal pode ser representado assim:
+
+                    🌸 KYARA
+                       │
+                       ▼
+              ┌─────────────────┐
+              │    WHATSAPP     │
+              │    CONNECTION   │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ MESSAGE ENGINE  │
+              └────────┬────────┘
+                       │
+          ┌────────────┼────────────┐
+          │            │            │
+          ▼            ▼            ▼
+      COMMANDS      FEATURES    NATIVE FLOW
+          │            │            │
+          └────────────┼────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+      MEDIA           RPG           GROUPS
+        │              │              │
+        └──────────────┼──────────────┘
+                       ▼
+                    RESPONSE
+
+---
+
+📋 REQUISITOS
+
+Antes de instalar, tenha:
+
+- Android;
+- Termux;
+- Node.js 20 ou superior;
+- npm 9 ou superior;
+- Git;
+- WhatsApp.
+
+Os requisitos de Node.js e npm são declarados no "package.json" do projeto.
+
+Verificar Node.js
+
+node -v
+
+Verificar npm
+
+npm -v
+
+Verificar Git
+
+git --version
+
+---
+
+🚀 INSTALAÇÃO
+
+A instalação foi organizada para funcionar diretamente pelo Termux.
+
+«📋 Importante: cada comando possui seu próprio bloco. No GitHub, use o botão Copiar exibido no canto superior direito de cada bloco.»
+
+---
+
+📱 INSTALAÇÃO NO TERMUX
 
 1️⃣ Atualizar os pacotes
 
@@ -56,189 +189,286 @@ pkg upgrade -y
 
 ---
 
-2️⃣ Instalar o Git
+2️⃣ Instalar Git
 
 pkg install -y git
 
 ---
 
-3️⃣ Instalar o Node.js
+3️⃣ Instalar Node.js
 
 pkg install -y nodejs-lts
 
 ---
 
-4️⃣ Verificar o Node.js
+4️⃣ Instalar FFmpeg
 
-node -v
+O projeto possui processamento de mídia e utiliza FFmpeg em recursos relacionados a mídia.
 
-A versão necessária para a Kyara é:
-
-Node.js >= 20.0.0
+pkg install -y ffmpeg
 
 ---
 
-5️⃣ Verificar o npm
+5️⃣ Liberar armazenamento
 
-npm -v
-
-A versão mínima declarada pelo projeto é:
-
-npm >= 9.0.0
-
----
-
-6️⃣ Verificar o Git
-
-git --version
-
----
-
-7️⃣ Liberar o armazenamento do Android
-
-Execute apenas uma vez:
+Execute uma vez:
 
 termux-setup-storage
 
-Quando o Android solicitar permissão, toque em Permitir.
+Quando o Android solicitar permissão, toque em:
+
+Permitir
 
 ---
 
-8️⃣ Entrar no armazenamento
+6️⃣ Entrar no armazenamento
 
 cd ~/storage
 
 ---
 
-9️⃣ Clonar o projeto
+7️⃣ Clonar a Kyara
 
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 
 ---
 
-🔟 Entrar na Kyara
+8️⃣ Entrar no projeto
 
 cd ~/storage/Kyara-High-Tech
 
 ---
 
-1️⃣1️⃣ Instalar as dependências
+9️⃣ Instalar dependências
 
 npm install
 
-Aguarde o processo terminar antes de continuar.
+Aguarde o processo terminar.
 
 ---
 
-1️⃣2️⃣ Iniciar a Kyara
+🔟 Iniciar
 
 npm start
 
-O comando "npm start" executa o inicializador oficial definido no "package.json".
+---
+
+⚙️ CONFIGURAÇÃO INICIAL
+
+A Kyara possui um configurador próprio.
+
+Para abrir o configurador:
+
+npm run config
+
+O sistema permite configurar informações básicas do bot, incluindo:
+
+- nome do dono;
+- número do dono;
+- nome do bot;
+- prefixo.
+
+Depois da configuração, o projeto pode solicitar a instalação/verificação das dependências.
 
 ---
 
-📱 PRIMEIRA EXECUÇÃO
+📦 INSTALAÇÃO AUTOMÁTICA DE DEPENDÊNCIAS
 
-Na primeira inicialização, siga as instruções apresentadas pelo próprio projeto.
+A Kyara também possui um modo específico para instalação/verificação das dependências:
 
-Depois que o WhatsApp estiver conectado:
+npm run config:install
 
-KYARA
-  ↓
-CONEXÃO
-  ↓
-MENSAGENS
-  ↓
-PROCESSAMENTO
-  ↓
-COMANDOS / FEATURES / FLOWS
+Esse modo executa o instalador interno do projeto.
 
-Mantenha o Termux ativo enquanto quiser manter o processo da Kyara executando.
+Ele verifica dependências do sistema e dependências Node.js.
+
+O instalador possui suporte para verificar componentes como:
+
+- Git;
+- Yarn;
+- FFmpeg;
+- dependências NPM.
+
+---
+
+🔐 CONEXÃO COM WHATSAPP
+
+Depois da instalação, execute:
+
+npm start
+
+O inicializador da Kyara possui um fluxo próprio de autenticação.
+
+Quando não existe uma sessão válida, o inicializador apresenta as opções de conexão disponíveis.
+
+Métodos disponíveis
+
+📷 QR CODE
+
+🔑 CÓDIGO DE PAREAMENTO
+
+🚪 SAIR
+
+Escolha o método apresentado pelo inicializador e siga as instruções exibidas no próprio Termux.
+
+---
+
+▶️ INICIALIZAÇÃO
+
+Depois que a instalação estiver concluída:
+
+npm start
+
+A inicialização utiliza o arquivo:
+
+dados/src/.scripts/start.js
+
+O inicializador verifica a existência de uma sessão antes de iniciar o processo de conexão.
 
 ---
 
 🔄 INICIAR NOVAMENTE
 
-Se a Kyara já estiver instalada, não clone o projeto novamente.
-
-Entre na pasta:
+Se a Kyara já estiver instalada:
 
 cd ~/storage/Kyara-High-Tech
 
-Inicie:
+Depois:
 
 npm start
+
+Não é necessário executar "git clone" novamente.
 
 ---
 
 ⚡ INSTALAÇÃO RÁPIDA
 
-Para quem já conhece o Termux, as etapas podem ser executadas rapidamente.
+Para uma instalação limpa pelo Termux, execute cada bloco na ordem.
 
-Atualizar pacotes
+Atualizar
 
 pkg update -y
 
-Atualizar o sistema
+Upgrade
 
 pkg upgrade -y
 
-Instalar Git e Node.js
+Git
 
-pkg install -y git nodejs-lts
+pkg install -y git
 
-Liberar armazenamento
+Node.js
+
+pkg install -y nodejs-lts
+
+FFmpeg
+
+pkg install -y ffmpeg
+
+Armazenamento
 
 termux-setup-storage
 
-Entrar no armazenamento
+Diretório
 
 cd ~/storage
 
-Clonar a Kyara
+Projeto
 
 git clone https://github.com/bakizinho/Kyara-High-Tech.git
 
-Entrar no projeto
+Kyara
 
 cd ~/storage/Kyara-High-Tech
 
-Instalar dependências
+Dependências
 
 npm install
 
-Iniciar
+Inicialização
 
 npm start
 
 ---
 
-🧭 CICLO DE MANUTENÇÃO
+📦 SCRIPTS NPM
 
-Depois da instalação, o fluxo recomendado para atualizar o projeto é:
+Os scripts abaixo são os scripts declarados atualmente no "package.json".
 
-┌──────────────┐
-│  Git Pull    │
-└──────┬───────┘
-       ↓
-┌──────────────┐
-│ npm install  │
-└──────┬───────┘
-       ↓
-┌──────────────┐
-│  npm start   │
-└──────────────┘
+Script| Finalidade
+"npm start"| Inicialização normal
+"npm run dev"| Desenvolvimento
+"npm run config"| Configuração
+"npm run config:install"| Instalação de dependências pelo configurador
+"npm run update"| Atualizador interno
 
 ---
 
-🔄 ATUALIZAR A KYARA
+▶️ "npm start"
 
-Entre na pasta:
+Inicializa o bot:
+
+npm start
+
+Executa:
+
+node dados/src/.scripts/start.js
+
+---
+
+🛠️ "npm run dev"
+
+Modo de desenvolvimento:
+
+npm run dev
+
+Executa o inicializador através do Nodemon:
+
+nodemon dados/src/.scripts/start.js
+
+---
+
+⚙️ "npm run config"
+
+Abre o configurador:
+
+npm run config
+
+Arquivo responsável:
+
+dados/src/.scripts/config.js
+
+---
+
+📥 "npm run config:install"
+
+Executa a instalação interna:
+
+npm run config:install
+
+O configurador verifica dependências do sistema e do projeto.
+
+---
+
+🔄 "npm run update"
+
+Executa o atualizador interno:
+
+npm run update
+
+Arquivo responsável:
+
+dados/src/.scripts/update.js
+
+---
+
+🔄 ATUALIZAÇÃO
+
+Para atualizar uma instalação existente, entre no projeto:
 
 cd ~/storage/Kyara-High-Tech
 
-Verifique o estado do Git:
+Confira o estado atual:
 
 git status
 
@@ -250,183 +480,139 @@ Atualize as dependências:
 
 npm install
 
-Inicie novamente:
+Depois inicialize:
 
 npm start
 
 ---
 
-📦 SCRIPTS NPM
+🧪 DESENVOLVIMENTO
 
-«✅ Esta seção contém somente scripts realmente declarados no "package.json" atual.»
-
----
-
-▶️ "npm start"
-
-Inicializa a Kyara através do script oficial:
-
-npm start
-
-Internamente:
-
-node dados/src/.scripts/start.js
-
----
-
-🛠️ "npm run dev"
-
-Executa a Kyara utilizando Nodemon, permitindo reinicialização automática durante desenvolvimento:
+Durante o desenvolvimento, utilize:
 
 npm run dev
 
-Internamente:
-
-nodemon dados/src/.scripts/start.js
-
-«🔧 Recomendado principalmente para desenvolvimento e testes.»
+O modo de desenvolvimento utiliza Nodemon para reinicialização automática do processo quando arquivos monitorados são alterados.
 
 ---
 
-⚙️ "npm run config"
+📁 ESTRUTURA DO PROJETO
 
-Executa o sistema de configuração:
-
-npm run config
-
-Internamente:
-
-node dados/src/.scripts/config.js
-
----
-
-📥 "npm run config:install"
-
-Executa o sistema de configuração no modo de instalação:
-
-npm run config:install
-
-Internamente:
-
-node dados/src/.scripts/config.js --install
-
----
-
-🔄 "npm run update"
-
-Executa o atualizador interno do projeto:
-
-npm run update
-
-Internamente:
-
-node dados/src/.scripts/update.js
-
----
-
-📋 RESUMO DOS SCRIPTS
-
-Comando| Função
-"npm start"| Inicia a Kyara
-"npm run dev"| Desenvolvimento com Nodemon
-"npm run config"| Executa configuração
-"npm run config:install"| Instala configuração
-"npm run update"| Executa o atualizador
-
-Esses são os scripts declarados atualmente no "package.json".
-
----
-
-🧠 ARQUITETURA DO PROJETO
-
-A aplicação utiliza módulos separados para diferentes responsabilidades.
-
-                    🌸 KYARA
-                       │
-                       ▼
-                ┌──────────────┐
-                │  WHATSAPP    │
-                │  CONNECTION  │
-                └──────┬───────┘
-                       │
-                       ▼
-                ┌──────────────┐
-                │   MESSAGE    │
-                │  PROCESSOR   │
-                └──────┬───────┘
-                       │
-          ┌────────────┼────────────┐
-          │            │            │
-          ▼            ▼            ▼
-      COMMANDS      FEATURES     NATIVE FLOW
-          │            │            │
-          ├────────────┼────────────┤
-          │            │            │
-          ▼            ▼            ▼
-        MEDIA         RPG         GROUPS
-          │            │            │
-          └────────────┼────────────┘
-                       │
-                       ▼
-                    RESPONSE
-
----
-
-📁 ESTRUTURA
-
-A organização principal do projeto inclui:
+A estrutura principal da Kyara é organizada desta forma:
 
 Kyara-High-Tech/
 │
 ├── assets/
+│   ├── kyara-header.html
+│   ├── kyara-high-tech.svg
+│   └── kyara-system.svg
 │
 ├── config/
 │
 ├── dados/
+│   │
 │   ├── api/
+│   │   ├── server.mjs
+│   │   ├── kyara-browser.html
+│   │   └── kyara-tube.html
+│   │
 │   ├── database/
+│   │
 │   ├── midias/
+│   │
 │   └── src/
+│       │
+│       ├── .scripts/
+│       │   ├── start.js
+│       │   ├── config.js
+│       │   └── update.js
+│       │
+│       ├── core/
+│       │   └── nativeFlow/
+│       │
+│       └── ...
 │
-├── .gitignore
 ├── package.json
 └── README.md
 
 ---
 
+🌐 API
+
+A Kyara possui uma camada de API dentro de:
+
+dados/api/
+
+Principais componentes presentes no projeto:
+
+dados/api/server.mjs
+
+dados/api/kyara-browser.html
+
+dados/api/kyara-tube.html
+
+Essa camada funciona separadamente do núcleo de conexão do WhatsApp.
+
+---
+
 ⚡ NATIVE FLOW
 
-A Kyara possui uma camada de interface baseada em Native Flow, permitindo transformar comandos em experiências mais visuais dentro do WhatsApp.
+A Kyara possui uma camada própria para Native Flow:
 
-Exemplo conceitual:
+dados/src/core/nativeFlow/
 
-                    🌸 MENU KYARA
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-          ▼              ▼              ▼
-       📥 MEDIA       🎮 RPG        🛡️ ADMIN
-          │              │              │
-     ┌────┼────┐         │         ┌────┴────┐
-     │    │    │         │         │         │
-     ▼    ▼    ▼         ▼         ▼         ▼
-    YT  TTK  PIN        RPG      GROUP     CONFIG
+Entre os módulos presentes estão:
+
+autoButtons.js
+
+kyara-flow-adapter.js
+
+native-flow.js
+
+owner-flow-router.js
+
+owner-flow.js
+
+---
+
+🧭 FLUXO DO NATIVE FLOW
+
+                 🌸 MENU
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+       ▼            ▼            ▼
+    📥 MEDIA      🎮 RPG       🛡️ ADMIN
+       │            │            │
+       ▼            ▼            ▼
+    DOWNLOAD     SYSTEMS      CONTROLS
+       │
+   ┌───┼────┐
+   │   │    │
+   ▼   ▼    ▼
+  YT  TTK  PIN
+
+O Native Flow permite centralizar ações visuais sem precisar depender exclusivamente da digitação de comandos.
 
 ---
 
 📋 PREFIXO
 
-O prefixo principal da Kyara é:
+O prefixo configurável do bot é definido durante a configuração.
 
-/
+O valor inicial utilizado pelo configurador é:
 
-Exemplo:
+!
 
-/menu
+«Se você quiser utilizar outro prefixo, configure-o através do sistema de configuração.»
 
 ---
 
 📥 SISTEMA DE MÍDIA
+
+A estrutura de mídia da Kyara possui suporte para diferentes plataformas e formatos.
+
+---
 
 🎵 YouTube
 
@@ -508,7 +694,7 @@ URL:
 
 🆙 SISTEMA DE LEVEL
 
-Consultar:
+Consultar o Level:
 
 /level
 
@@ -520,70 +706,70 @@ Desativar:
 
 /level off
 
-Sistema individual
+🔒 Persistência
 
-Cada usuário pode controlar a participação do próprio sistema de Level.
+A desativação individual não deve ser tratada como exclusão dos dados.
 
-Ao desativar:
-
-- o Level não é apagado;
-- o XP não é apagado;
-- os dados existentes são preservados;
-- a configuração permanece individual.
+Os dados de Level/XP existentes permanecem preservados.
 
 ---
 
 👥 SISTEMAS DE GRUPO
 
-A Kyara possui uma estrutura destinada a recursos de grupos, incluindo ferramentas administrativas e sistemas de interação.
+A arquitetura da Kyara possui módulos voltados para utilização em grupos.
 
-A disponibilidade de cada recurso pode depender da configuração e da versão instalada.
+Os recursos podem incluir:
 
-Para visualizar o menu disponível:
+- administração;
+- controles de grupo;
+- ferramentas de interação;
+- sistemas de entretenimento;
+- configurações individuais;
+- sistemas automáticos.
 
-/menu
-
----
-
-🎮 RPG & ENTRETENIMENTO
-
-A estrutura da Kyara também suporta sistemas de entretenimento e RPG.
-
-O ponto de entrada principal pode ser consultado através do menu:
-
-/menu
+A disponibilidade dos comandos depende da versão e configuração do projeto.
 
 ---
 
 🤖 SISTEMA MODULAR
 
-Uma das características centrais da Kyara é a separação de responsabilidades.
+A Kyara foi estruturada para que funcionalidades possam ser isoladas em módulos.
+
+A ideia é:
 
 CORE
  │
  ├── CONNECTION
- ├── COMMAND PROCESSING
+ │
+ ├── COMMANDS
+ │
  ├── FEATURES
+ │
  ├── MEDIA
- ├── GROUP SYSTEMS
+ │
  ├── LEVEL
+ │
  ├── RPG
+ │
+ ├── GROUPS
+ │
  └── NATIVE FLOW
 
-Isso facilita:
-
-- manutenção;
-- correções;
-- expansão;
-- testes;
-- organização;
-- reutilização de módulos.
+Isso reduz a necessidade de concentrar toda a lógica em um único arquivo.
 
 ---
 
-🔍 DIAGNÓSTICO
+🔎 DIAGNÓSTICO
 
-Antes de reportar um problema, verifique o ambiente.
+Quando algo não funcionar, primeiro verifique o ambiente.
+
+Diretório atual
+
+pwd
+
+Arquivos do projeto
+
+ls
 
 Node.js
 
@@ -597,111 +783,15 @@ Git
 
 git --version
 
-Diretório atual
-
-pwd
-
-Arquivos do projeto
-
-ls
-
-Estado do Git
+Estado do projeto
 
 git status
 
 ---
 
-🧪 DESENVOLVIMENTO
+🧰 RECUPERAÇÃO BÁSICA
 
-Para executar o modo de desenvolvimento:
-
-npm run dev
-
-Esse script utiliza o Nodemon definido como dependência de desenvolvimento do projeto.
-
----
-
-⚙️ CONFIGURAÇÃO
-
-Executar o sistema de configuração:
-
-npm run config
-
-Modo de instalação:
-
-npm run config:install
-
----
-
-🔄 ATUALIZADOR INTERNO
-
-A Kyara possui um script próprio de atualização:
-
-npm run update
-
-«💡 Esse comando é diferente de "git pull": o primeiro executa o atualizador definido pelo projeto; o segundo atualiza o conteúdo versionado do repositório.»
-
----
-
-🐛 SOLUÇÃO DE PROBLEMAS
-
-"git: command not found"
-
-pkg install -y git
-
----
-
-"node: command not found"
-
-pkg install -y nodejs-lts
-
----
-
-"npm: command not found"
-
-pkg install -y nodejs-lts
-
-Depois:
-
-npm -v
-
----
-
-Node.js antigo
-
-Verifique:
-
-node -v
-
-Se estiver abaixo da versão necessária, atualize o pacote:
-
-pkg update -y
-
-Depois:
-
-pkg upgrade -y
-
-E:
-
-pkg install -y nodejs-lts
-
----
-
-Projeto não encontrado
-
-Verifique:
-
-ls ~/storage
-
-Entre no projeto:
-
-cd ~/storage/Kyara-High-Tech
-
----
-
-Dependências com problema
-
-Entre no projeto:
+Se as dependências apresentarem problemas, entre no projeto:
 
 cd ~/storage/Kyara-High-Tech
 
@@ -709,185 +799,235 @@ Limpe o cache:
 
 npm cache clean --force
 
-Instale novamente:
+Reinstale:
 
 npm install
 
-Depois:
+Execute:
 
 npm start
 
 ---
 
-🧹 MANUTENÇÃO
+🔧 CONFIGURAÇÃO DE DEPENDÊNCIAS
 
-Verificar o projeto
+A própria Kyara possui um instalador interno.
 
-git status
+Execute:
 
-Atualizar código
+npm run config:install
 
-git pull
+Esse fluxo pode verificar componentes externos e dependências necessárias ao ambiente.
 
-Atualizar dependências
+---
+
+🧠 VERIFICAÇÃO DO AMBIENTE
+
+Uma verificação rápida pode ser feita com:
+
+node -v
+
+npm -v
+
+git --version
+
+ffmpeg -version
+
+Se os comandos responderem corretamente, o ambiente básico está disponível.
+
+---
+
+🛡️ SEGURANÇA
+
+Nunca publique arquivos ou informações privadas da sua sessão.
+
+Não compartilhe:
+
+- 🔐 credenciais;
+- 🔑 tokens;
+- 🗝️ chaves privadas;
+- 📱 informações de autenticação;
+- 📂 arquivos de sessão;
+- dados pessoais presentes em logs.
+
+⚠️ Logs
+
+Antes de publicar um log para solicitar ajuda, revise o conteúdo e remova qualquer informação privada.
+
+---
+
+🧩 DEPENDÊNCIAS PRINCIPAIS
+
+O "package.json" declara componentes utilizados pelo projeto, incluindo:
+
+- Baileys;
+- Axios;
+- FFmpeg;
+- Sharp;
+- WebSocket;
+- Pino;
+- QRCode Terminal;
+- Node Cache;
+- Node Cron;
+- ferramentas relacionadas ao YouTube;
+- ferramentas de processamento de HTML;
+- Nodemon para desenvolvimento.
+
+A instalação deve ser feita pelo gerenciador do projeto:
 
 npm install
-
-Iniciar
-
-npm start
-
----
-
-🔐 SEGURANÇA
-
-Nunca publique dados privados da conexão do WhatsApp.
-
-Não compartilhe publicamente:
-
-🔐 Sessões
-🔑 Tokens
-🗝️ Chaves privadas
-📱 Credenciais
-📂 Dados de autenticação
-
-Antes de enviar logs para outras pessoas, revise se não existem informações sensíveis.
-
----
-
-🧩 DEPENDÊNCIAS
-
-O projeto declara dependências para componentes como:
-
-- WhatsApp/Baileys
-- HTTP
-- busca no YouTube
-- processamento de mídia
-- WebSocket
-- cache
-- cron
-- QR Code
-- logging
-
-A instalação deve ser feita pelo próprio gerenciador do projeto:
-
-npm install
-
----
-
-📐 REQUISITOS
-
-Componente| Requisito
-Sistema| Android
-Ambiente| Termux
-Node.js| ">= 20.0.0"
-npm| ">= 9.0.0"
-Git| Necessário para instalação via repositório
-WhatsApp| Necessário para utilização do bot
-
-Os requisitos de Node.js e npm são declarados diretamente no "package.json".
 
 ---
 
 🏗️ FLUXO DE EXECUÇÃO
 
-┌─────────────────────┐
-│      WHATSAPP       │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│     CONNECTION      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│  MESSAGE PROCESSOR  │
-└──────────┬──────────┘
-           │
-     ┌─────┼─────┐
-     ▼     ▼     ▼
- COMMAND FEATURE FLOW
-     │     │     │
-     └─────┼─────┘
-           ▼
-┌─────────────────────┐
-│      RESPONSE       │
-└─────────────────────┘
+┌───────────────────┐
+│      TERMUX       │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│    npm start      │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│    START.JS       │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  SESSION CHECK    │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│    CONNECT.JS     │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│     WHATSAPP      │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│ MESSAGE PROCESSOR │
+└─────────┬─────────┘
+          │
+     ┌────┴────┐
+     ▼         ▼
+ COMMANDS    FLOWS
+     │         │
+     └────┬────┘
+          ▼
+       RESPONSE
 
 ---
 
-🧑‍💻 PARA DESENVOLVEDORES
+🧪 CHECKLIST DE INSTALAÇÃO
 
-Clone o projeto:
+Depois da instalação, confirme:
 
-git clone https://github.com/bakizinho/Kyara-High-Tech.git
+node -v
 
-Entre no diretório:
+npm -v
+
+git --version
+
+Depois:
 
 cd ~/storage/Kyara-High-Tech
 
-Instale as dependências:
+Instale:
 
 npm install
 
-Execute em desenvolvimento:
+E execute:
+
+npm start
+
+---
+
+🔄 CHECKLIST DE ATUALIZAÇÃO
+
+Para atualizar uma instalação existente:
+
+cd ~/storage/Kyara-High-Tech
+
+git status
+
+git pull
+
+npm install
+
+npm start
+
+---
+
+🧑‍💻 CONTRIBUIÇÃO
+
+Antes de modificar o projeto:
+
+1. entenda o módulo que será alterado;
+2. evite duplicar funcionalidades existentes;
+3. mantenha a separação de responsabilidades;
+4. preserve as interfaces existentes quando possível;
+5. teste a alteração antes de enviá-la;
+6. não envie credenciais ou arquivos de sessão.
+
+Fluxo básico
+
+git clone https://github.com/bakizinho/Kyara-High-Tech.git
+
+cd ~/storage/Kyara-High-Tech
+
+npm install
 
 npm run dev
 
 ---
 
-🔧 PRINCÍPIOS DO PROJETO
-
-A evolução da Kyara segue alguns princípios:
+📐 PRINCÍPIOS DA KYARA
 
 MODULARIDADE
+     ↓
+ORGANIZAÇÃO
      ↓
 REUTILIZAÇÃO
      ↓
 MANUTENIBILIDADE
      ↓
-BAIXA DUPLICAÇÃO
-     ↓
-EXPANSÃO CONTÍNUA
+ESCALABILIDADE
 
-Ao adicionar uma funcionalidade, prefira reutilizar módulos existentes em vez de duplicar lógica.
+Objetivos
 
----
-
-📊 VISÃO DO ECOSSISTEMA
-
-                 🌸 KYARA HIGH-TECH
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-        ▼                ▼                ▼
-     AUTOMATION         MEDIA          SOCIAL
-        │                │                │
-        ├── COMMANDS     ├── YOUTUBE      ├── GROUPS
-        ├── FLOWS        ├── TIKTOK       ├── ADMIN
-        └── CORE         ├── INSTAGRAM    └── LEVEL
-                         ├── FACEBOOK
-                         ├── KWAI
-                         └── PINTEREST
+- código organizado;
+- módulos independentes;
+- menor duplicação;
+- manutenção simplificada;
+- evolução contínua;
+- experiência de utilização moderna.
 
 ---
 
 🌐 REPOSITÓRIO
 
-Projeto oficial:
+<div align="center">KYARA HIGH-TECH
+
+Projeto:
 
 https://github.com/bakizinho/Kyara-High-Tech
 
----
+</div>---
 
 ❤️ CRÉDITOS
 
-<div align="center">🌸 KYARA HIGH-TECH
-
-WhatsApp • Node.js • Termux • JavaScript
+<div align="center"><img src="./assets/kyara-high-tech.svg" width="70%" alt="KYARA">🌸 KYARA HIGH-TECH
 
 Desenvolvido por Baki
+
+WhatsApp • Node.js • Termux • JavaScript
 
 ---
 

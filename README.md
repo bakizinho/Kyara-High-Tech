@@ -192,6 +192,7 @@ pkg upgrade -y
 2️⃣ Instalar Git
 sh
 pkg install -y git
+.....
 
 ---
 

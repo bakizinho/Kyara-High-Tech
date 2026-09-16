@@ -42,3 +42,27 @@ dados/midias/temp_*/
 
 # Arquivos de mídia temporários
 .tmp-youtube/
+
+# ============================================================
+# KYARA — BACKUPS LOCAIS / ARQUIVOS TEMPORÁRIOS
+# Nunca enviar backups para o GitHub
+# ============================================================
+
+# Backups por extensão
+*.bak
+*.backup
+*.backup-*
+*.old
+*~
+
+# Backups por nome/pasta
+backup/
+backups/
+**/backup/
+**/backups/
+
+# Arquivos de backup com nome embutido
+*backup*
+*Backup*
+*BACKUP*
+

@@ -1,3 +1,5 @@
+import { filterMenuCommands } from '../features/commandMaintenance.js';
+
 export default async function menuadm(prefix, botName = "MeuBot", userName = "Usuário", {
     header = `╭┈⊰ 🌸 『 *${botName}* 』\n┊Olá, #user#!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
     menuTopBorder = "╭┈",
@@ -15,7 +17,7 @@ export default async function menuadm(prefix, botName = "MeuBot", userName = "Us
     settingsMenuTitle = "🎨 CONFIGURAÇÕES"
 } = {}) {
     const formattedHeader = header.replace(/#user#/g, userName);
-    return `${formattedHeader}
+    const rendered = `${formattedHeader}
 
 ${menuTopBorder}${separatorIcon} *${adminMenuTitle}*
 ${middleBorder}
@@ -179,4 +181,6 @@ ${middleBorder}${menuItemIcon}${prefix}nomegp
 ${middleBorder}${menuItemIcon}${prefix}infoperso
 ${bottomBorder}
 `;
+
+    return filterMenuCommands(rendered, prefix, menuItemIcon);
 }

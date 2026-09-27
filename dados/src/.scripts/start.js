@@ -69,12 +69,13 @@ function showCursor() {
 ================================================================ */
 
 const LOGO = [
-    '██╗  ██╗██╗   ██╗ █████╗ ██████╗  █████╗',
-    '██║ ██╔╝╚██╗ ██╔╝██╔══██╗██╔══██╗██╔══██╗',
-    '█████╔╝  ╚████╔╝ ███████║██████╔╝███████║',
-    '██╔═██╗   ╚██╔╝  ██╔══██║██╔══██╗██╔══██║',
-    '██║  ██╗   ██║   ██║  ██║██║  ██║██║  ██║',
-    '╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝'
+    '╭────────────────────────────────────────────────────────────╮',
+    '│                                                            │',
+    '│                    🌸  K Y A R A  O S                     │',
+    '│                                                            │',
+    '│              WhatsApp Bot • Terminal Normal               │',
+    '│                                                            │',
+    '╰────────────────────────────────────────────────────────────╯'
 ];
 
 /* ================================================================
@@ -82,36 +83,40 @@ const LOGO = [
 ================================================================ */
 
 async function logoAnimation() {
+
     clear();
     hideCursor();
 
     console.log();
 
     for (let i = 0; i < LOGO.length; i++) {
-        const shade =
-            i % 2 === 0
-                ? A.cyan
-                : A.magenta;
 
-        console.log(c(LOGO[i], shade));
+        const color =
+            i === 2
+                ? A.magenta
+                : A.cyan;
 
-        await sleep(35);
+        console.log(
+            c(
+                LOGO[i],
+                color
+            )
+        );
+
+        await sleep(18);
     }
 
     console.log();
 
     console.log(
-        c(
-            '                 ⚡ WHATSAPP AUTOMATION CORE',
-            A.white
-        )
-    );
-
-    console.log(
-        c(
-            `                 v${VERSION}  •  ${os.platform()}  •  Node ${process.version}`,
-            A.gray
-        )
+        '  ' +
+        c('v' + VERSION, A.white) +
+        c('  •  ', A.gray) +
+        c(NAME, A.magenta) +
+        c('  •  ', A.gray) +
+        c(process.platform, A.gray) +
+        c('  •  ', A.gray) +
+        c('Node ' + process.version, A.gray)
     );
 
     console.log();
@@ -337,39 +342,48 @@ function statusLine(label, value, ok = true) {
 function dashboard(session) {
 
     const width = terminalWidth();
+    const inner = width - 4;
+    const line = '─'.repeat(inner);
+
+    const title =
+        '🌸 KYARA OS';
+
+    const subtitle =
+        'SYSTEM STATUS';
 
     console.log(
-        c(
-            `╭${'─'.repeat(width - 2)}╮`,
-            A.cyan
-        )
+        c('╭' + line + '╮', A.cyan)
     );
 
     console.log(
-        c('│ ', A.cyan) +
-        c('KYARA', A.white) +
-        c(`  v${VERSION}`, A.gray) +
-        safePad(
-            `KYARA  v${VERSION}`,
-            width - 4
+        c('│', A.cyan) +
+        '  ' +
+        c(title, A.bold + A.white) +
+        '  ' +
+        c(subtitle, A.gray) +
+        ' '.repeat(
+            Math.max(
+                1,
+                inner -
+                title.length -
+                subtitle.length -
+                4
+            )
         ) +
         c('│', A.cyan)
     );
 
     console.log(
-        c(
-            `├${'─'.repeat(width - 2)}┤`,
-            A.gray
-        )
+        c('├' + line + '┤', A.gray)
     );
 
     statusLine(
-        'CORE ENGINE',
+        'CORE',
         'ONLINE'
     );
 
     statusLine(
-        'NODE RUNTIME',
+        'NODE',
         process.version
     );
 
@@ -380,15 +394,14 @@ function dashboard(session) {
 
     statusLine(
         'SESSION',
-        session ? 'FOUND' : 'NOT FOUND',
+        session
+            ? 'FOUND'
+            : 'NOT FOUND',
         Boolean(session)
     );
 
     console.log(
-        c(
-            `╰${'─'.repeat(width - 2)}╯`,
-            A.cyan
-        )
+        c('╰' + line + '╯', A.cyan)
     );
 
     console.log();
@@ -610,39 +623,40 @@ async function autoBoot(session) {
 
     await loader(
         'Validando sessão',
-        450
+        300
     );
 
     await loader(
         'Inicializando Core',
-        450
+        300
     );
 
     console.log();
 
     console.log(
-        `  ${c('●', A.green)} ` +
-        c(
-            'SESSION FOUND',
-            A.green
-        )
+        '  ' +
+        c('✓', A.green) +
+        ' ' +
+        c('Sessão encontrada', A.white)
     );
 
     console.log(
-        `  ${c('⚡', A.cyan)} ` +
-        c(
-            'AUTO CONNECT',
-            A.white
-        ) +
-        c(
-            '  •  conexão automática',
-            A.gray
-        )
+        '  ' +
+        c('✓', A.green) +
+        ' ' +
+        c('Core preparado', A.white)
+    );
+
+    console.log(
+        '  ' +
+        c('→', A.cyan) +
+        ' ' +
+        c('Conectando automaticamente...', A.gray)
     );
 
     console.log();
 
-    await sleep(450);
+    await sleep(250);
 
     startConnect('auto');
 }
@@ -660,8 +674,11 @@ async function firstBoot() {
     dashboard(null);
 
     console.log(
+        '  ' +
+        c('⚠', A.yellow) +
+        ' ' +
         c(
-            '  Nenhuma sessão foi encontrada.',
+            'Nenhuma sessão encontrada.',
             A.yellow
         )
     );
@@ -678,7 +695,10 @@ async function firstBoot() {
                     '  ➜ ',
                     A.cyan
                 ) +
-                'Método: '
+                c(
+                    'Escolha: ',
+                    A.white
+                )
             );
 
         console.log();
@@ -687,28 +707,24 @@ async function firstBoot() {
 
             await loader(
                 'Preparando QR Code',
-                700
+                450
             );
 
             console.log();
 
             console.log(
+                '  ' +
+                c('📷', A.cyan) +
+                ' ' +
                 c(
-                    '  📷 QR CODE MODE',
-                    A.cyan
-                )
-            );
-
-            console.log(
-                c(
-                    '  O código será exibido pelo sistema.',
-                    A.gray
+                    'QR Code será exibido pelo sistema.',
+                    A.white
                 )
             );
 
             console.log();
 
-            await sleep(400);
+            await sleep(250);
 
             startConnect('qr');
 
@@ -719,21 +735,24 @@ async function firstBoot() {
 
             await loader(
                 'Preparando pareamento',
-                700
+                450
             );
 
             console.log();
 
             console.log(
+                '  ' +
+                c('🔑', A.magenta) +
+                ' ' +
                 c(
-                    '  🔑 PHONE PAIRING MODE',
-                    A.magenta
+                    'Código de pareamento será solicitado.',
+                    A.white
                 )
             );
 
             console.log();
 
-            await sleep(400);
+            await sleep(250);
 
             startConnect('pairing');
 
@@ -743,9 +762,12 @@ async function firstBoot() {
         if (option === '3') {
 
             console.log(
+                '  ' +
+                c('✓', A.green) +
+                ' ' +
                 c(
-                    '  ✓ Kyara encerrado.',
-                    A.green
+                    'Kyara encerrado.',
+                    A.white
                 )
             );
 
@@ -755,8 +777,11 @@ async function firstBoot() {
         }
 
         console.log(
+            '  ' +
+            c('⚠', A.yellow) +
+            ' ' +
             c(
-                '  ⚠ Escolha 1, 2 ou 3.',
+                'Escolha 1, 2 ou 3.',
                 A.yellow
             )
         );

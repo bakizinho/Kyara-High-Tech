@@ -3435,7 +3435,179 @@ const getMenuLerMaisText = () => {
   return '‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎‎\n';
 };
 
+
+// =========================================================
+// SISTEMA DE RESTRIÇÕES POR GRUPO
+// Créditos: Baki
+//
+// Estrutura:
+// {
+//   "ID_DO_GRUPO": {
+//     "anti-payment": true
+//   }
+// }
+//
+// As funções abaixo são usadas pelo comando
+// #anti-payment e pelo detector automático.
+// =========================================================
+
+const GROUP_RESTRICTIONS_FILE = new URL(
+  "../data/group-restrictions.json",
+  import.meta.url,
+);
+
+function loadGroupRestrictions() {
+  try {
+    const dataDirectory = new URL(
+      "../data/",
+      import.meta.url,
+    );
+
+    if (!fs.existsSync(dataDirectory)) {
+      fs.mkdirSync(
+        dataDirectory,
+        {
+          recursive: true,
+        },
+      );
+    }
+
+    if (!fs.existsSync(GROUP_RESTRICTIONS_FILE)) {
+      fs.writeFileSync(
+        GROUP_RESTRICTIONS_FILE,
+        "{}",
+        "utf8",
+      );
+
+      return {};
+    }
+
+    const raw = fs
+      .readFileSync(
+        GROUP_RESTRICTIONS_FILE,
+        "utf8",
+      )
+      .trim();
+
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      return {};
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error(
+      "[DATABASE] Falha ao carregar restrições:",
+      error?.message || error,
+    );
+
+    return {};
+  }
+}
+
+function saveGroupRestrictions(data) {
+  try {
+    const dataDirectory = new URL(
+      "../data/",
+      import.meta.url,
+    );
+
+    if (!fs.existsSync(dataDirectory)) {
+      fs.mkdirSync(
+        dataDirectory,
+        {
+          recursive: true,
+        },
+      );
+    }
+
+    fs.writeFileSync(
+      GROUP_RESTRICTIONS_FILE,
+      JSON.stringify(
+        data,
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    return true;
+  } catch (error) {
+    console.error(
+      "[DATABASE] Falha ao salvar restrições:",
+      error?.message || error,
+    );
+
+    return false;
+  }
+}
+
+function normalizeRestrictionValue(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function isActiveGroupRestriction(
+  remoteJid,
+  restriction,
+) {
+  const groupId = String(remoteJid ?? "").trim();
+  const restrictionName =
+    normalizeRestrictionValue(restriction);
+
+  if (!groupId || !restrictionName) {
+    return false;
+  }
+
+  const data = loadGroupRestrictions();
+
+  return data?.[groupId]?.[restrictionName] === true;
+}
+
+function updateIsActiveGroupRestriction(
+  remoteJid,
+  restriction,
+  enabled,
+) {
+  const groupId = String(remoteJid ?? "").trim();
+  const restrictionName =
+    normalizeRestrictionValue(restriction);
+
+  if (!groupId || !restrictionName) {
+    return false;
+  }
+
+  const data = loadGroupRestrictions();
+
+  if (
+    !data[groupId] ||
+    typeof data[groupId] !== "object" ||
+    Array.isArray(data[groupId])
+  ) {
+    data[groupId] = {};
+  }
+
+  data[groupId][restrictionName] = Boolean(enabled);
+
+  saveGroupRestrictions(data);
+
+  return data[groupId][restrictionName];
+}
+
+
 export {
+  isActiveGroupRestriction,
+  updateIsActiveGroupRestriction,
   runDatabaseSelfTest,
   loadMsgPrefix,
   saveMsgPrefix,

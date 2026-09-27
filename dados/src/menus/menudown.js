@@ -1,3 +1,5 @@
+import { filterMenuCommands } from '../features/commandMaintenance.js';
+
 export default async function menudown(prefix, botName = "MeuBot", userName = "Usuário", {
     header = `╭┈⊰ 🌸 『 *${botName}* 』\n┊Olá, #user#!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
     menuTopBorder = "╭┈",
@@ -14,14 +16,14 @@ export default async function menudown(prefix, botName = "MeuBot", userName = "U
     gamesMenuTitle = "🎮 GAMING & APPS"
 } = {}) {
     const formattedHeader = header.replace(/#user#/g, userName);
-    return `${formattedHeader}
+    const rendered = `${formattedHeader}
 ${menuTopBorder}${separatorIcon} *${audioMenuTitle}*
 ${middleBorder}
 ${middleBorder}${menuItemIcon}${prefix}letra
 ${middleBorder}${menuItemIcon}${prefix}play
 ${middleBorder}${menuItemIcon}${prefix}play2
-${middleBorder}${menuItemIcon}${prefix}spotify
-${middleBorder}${menuItemIcon}${prefix}soundcloud
+${middleBorder}${menuItemIcon}${prefix}spotify ⚠️
+${middleBorder}${menuItemIcon}${prefix}soundcloud ⚠️
 ${bottomBorder}
 
 ${menuTopBorder}${separatorIcon} *${videoMenuTitle}*
@@ -39,11 +41,11 @@ ${middleBorder}${menuItemIcon}${prefix}facebook
 ${middleBorder}${menuItemIcon}${prefix}gdrive
 ${middleBorder}${menuItemIcon}${prefix}mediafire
 ${middleBorder}${menuItemIcon}${prefix}twitter
+${middleBorder}${menuItemIcon}${prefix}pinterest
+${middleBorder}${menuItemIcon}${prefix}cosmos
 ${bottomBorder}
 
-${menuTopBorder}${separatorIcon} *${mediaMenuTitle}*
-${middleBorder}
-${middleBorder}${menuItemIcon}${prefix}pinterest
-${bottomBorder}
 `;
+
+    return filterMenuCommands(rendered, prefix, menuItemIcon);
 }

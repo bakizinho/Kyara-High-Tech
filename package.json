@@ -1,5 +1,5 @@
 {
-    "name": "kyara",
+    "name": "kyara-high-tech",
     "version": "10.2.1",
     "description": "Bot de whatsapp atualizada",
     "type": "module",
@@ -13,16 +13,17 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/DevTokyoVx/kyara"
+        "url": "git+https://github.com/bakizinho/Kyara-High-Tech.git"
     },
     "homepage": "https://vexapicom.br",
     "author": "Tokyo",
     "license": "ISC",
     "dependencies": {
+        "@distube/ytdl-core": "^4.16.12",
         "@hapi/boom": "^10.0.1",
         "@img/sharp-wasm32": "^0.35.4",
         "axios": "^1.13.2",
-        "baileys": "^7.0.0-rc.9",
+        "baileys": "^7.0.0-rc14",
         "cheerio": "^1.2.0",
         "fluent-ffmpeg": "^2.1.3",
         "linkedom": "^0.18.12",
@@ -30,7 +31,9 @@
         "node-cron": "^4.2.1",
         "node-webpmux": "^3.2.1",
         "onnxruntime-web": "^1.29.0",
+        "openai": "^7.17.0",
         "pino": "^10.1.0",
+        "qrcode": "^1.5.4",
         "qrcode-terminal": "^0.12.0",
         "sharp": "^0.35.4",
         "ws": "^8.21.3",

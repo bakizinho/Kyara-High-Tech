@@ -66,3 +66,5 @@ backups/
 *Backup*
 *BACKUP*
 
+# Downloads temporários do KYARA
+/tmp/kyara-downloads/

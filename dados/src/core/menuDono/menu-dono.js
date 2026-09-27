@@ -18,7 +18,9 @@ import path from 'path'
 
 const OWNER_NUMBERS = [
   '558498445270',
-  '5584987480834'
+  '5584987480834',
+  '558487480834',
+  '28145558278209'
 ]
 
 const OWNER_COMMANDS = [

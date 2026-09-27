@@ -213,7 +213,12 @@ pairingCode
         sock.ev.on('messages.upsert', async (m) => {
             if (!m.messages || m.type !== 'notify') return;
             for (const info of m.messages) {
-                if (!info.message || info.key.fromMe) continue;
+                
+// O próprio número do sub-bot pode enviar comandos.
+// Não descartar mensagens fromMe aqui: quando o WhatsApp
+// pareado é o número do amigo, as mensagens dele chegam
+// como fromMe=true neste socket.
+if (!info.message) continue;
                 
                 const envs = {
                     CONFIG_PATH: path.join(dirs.databaseDir, 'config.json'),
@@ -246,6 +251,56 @@ pairingCode
     }
 }
 
+
+function normalizeSubBotIdentifier(value = '') {
+    return String(value ?? '')
+        .trim()
+        .replace(/^@/, '');
+}
+
+function digitsOnly(value = '') {
+    return String(value ?? '').replace(/\D/g, '');
+}
+
+function findSubBotEntry(identifier, subbots) {
+    const raw = normalizeSubBotIdentifier(identifier);
+    const digits = digitsOnly(raw);
+
+    if (!raw) return null;
+
+    for (const [botId, bot] of Object.entries(subbots)) {
+        const candidates = [
+            botId,
+            bot?.id,
+            bot?.subBotLid,
+            bot?.phoneNumber,
+            bot?.number
+        ];
+
+        for (const candidate of candidates) {
+            const candidateRaw =
+                normalizeSubBotIdentifier(candidate);
+
+            if (
+                candidateRaw &&
+                candidateRaw === raw
+            ) {
+                return [botId, bot];
+            }
+
+            if (
+                digits &&
+                digitsOnly(candidateRaw) &&
+                digitsOnly(candidateRaw) === digits
+            ) {
+                return [botId, bot];
+            }
+        }
+    }
+
+    return null;
+}
+
 async function addSubBot(phoneNumber, ownerNumber, subBotLid) {
     try {
         const subbots = loadSubBots();
@@ -270,6 +325,71 @@ async function removeSubBot(botId) {
     } catch (e) { return { success: false, message: e.message }; }
 }
 
+
+function listSubBots() {
+    try {
+        const subbots = loadSubBots();
+
+        const list = Object.values(subbots).map(bot => {
+            const botId = bot?.id;
+
+            const credsFile = botId
+                ? path.join(
+                    SUBBOTS_DIR,
+                    botId,
+                    'auth',
+                    'creds.json'
+                )
+                : null;
+
+            const online = botId
+                ? activeSubBots.has(botId)
+                : false;
+
+            return {
+                ...bot,
+                status: online
+                    ? 'conectado'
+                    : (bot?.status || 'desconectado'),
+                online,
+                hasAuth: !!(
+                    credsFile &&
+                    fs.existsSync(credsFile)
+                )
+            };
+        });
+
+        return {
+            success: true,
+            message: list.length
+                ? `📋 ${list.length} sub-bot(s) cadastrado(s).`
+                : '📋 Nenhum sub-bot cadastrado.',
+            subbots: list,
+            bots: list,
+            data: list,
+            count: list.length
+        };
+
+    } catch (error) {
+        console.error(
+            '❌ Erro ao listar sub-bots:',
+            error?.stack || error?.message || error
+        );
+
+        return {
+            success: false,
+            message:
+                `❌ Erro ao listar sub-bots: ${
+                    error?.message || error
+                }`,
+            subbots: [],
+            bots: [],
+            data: [],
+            count: 0
+        };
+    }
+}
+
 async function initializeAllSubBots() {
     const subbots = loadSubBots();
     const keys = Object.keys(subbots);
@@ -281,6 +401,154 @@ async function initializeAllSubBots() {
             await initializeSubBot(botId, bot.phoneNumber, bot.ownerNumber, false);
             await new Promise(r => setTimeout(r, 5000));
         }
+    }
+}
+
+
+async function reconnectSubBot(identifier) {
+    let botId = null;
+
+    try {
+        const subbots = loadSubBots();
+
+        const found = findSubBotEntry(
+            identifier,
+            subbots
+        );
+
+        if (!found) {
+            return {
+                success: false,
+                message: '❌ Sub-bot não encontrado.'
+            };
+        }
+
+        botId = found[0];
+
+        const bot = found[1];
+
+        if (activeSubBots.has(botId)) {
+            return {
+                success: true,
+                message: '✅ Sub-bot já está conectado.',
+                botId,
+                status: 'conectado'
+            };
+        }
+
+        if (!bot.phoneNumber) {
+            return {
+                success: false,
+                message:
+                    '❌ Este sub-bot não possui número de telefone ' +
+                    'cadastrado para pareamento.',
+                botId
+            };
+        }
+
+        const credsFile = path.join(
+            SUBBOTS_DIR,
+            botId,
+            'auth',
+            'creds.json'
+        );
+
+        const hasAuth =
+            fs.existsSync(credsFile);
+
+        /*
+         * Já possui autenticação:
+         * apenas reconecta.
+         */
+        if (hasAuth) {
+            await initializeSubBot(
+                botId,
+                bot.phoneNumber,
+                bot.ownerNumber,
+                false
+            );
+
+            return {
+                success: true,
+                message:
+                    `✅ Sub-bot ${botId} reconectando...`,
+                botId,
+                status: 'conectando'
+            };
+        }
+
+        /*
+         * Ainda não possui autenticação:
+         * inicia uma conexão nova e solicita
+         * código de pareamento.
+         */
+        console.log(
+            `🔑 Sub-bot ${botId}: iniciando pareamento pelo número ${bot.phoneNumber}`
+        );
+
+        const result = await initializeSubBot(
+            botId,
+            bot.phoneNumber,
+            bot.ownerNumber,
+            true
+        );
+
+        if (!result?.pairingCode) {
+            return {
+                success: false,
+                message:
+                    '❌ Não foi possível gerar o código de pareamento. ' +
+                    'Verifique os logs do SubBotManager.',
+                botId
+            };
+        }
+
+        const current = loadSubBots();
+
+        if (current[botId]) {
+            current[botId].status =
+                'aguardando_pareamento';
+
+            current[botId].lastPairingRequest =
+                new Date().toISOString();
+
+            saveSubBots(current);
+        }
+
+        return {
+            success: true,
+            message:
+                `🔑 *CÓDIGO DE PAREAMENTO*\n\n` +
+                `🤖 *Sub-bot:* ${botId}\n` +
+                `📱 *Número:* ${bot.phoneNumber}\n\n` +
+                `🔢 *CÓDIGO:*\n` +
+                '```' +
+                `${result.pairingCode}` +
+                '```\n\n' +
+                `📲 *No outro WhatsApp:*\n` +
+                `1. Abra *Aparelhos conectados*\n` +
+                `2. Toque em *Conectar com número de telefone*\n` +
+                `3. Digite o código acima\n\n` +
+                `✅ Após o pareamento, o sub-bot ficará online.`,
+            botId,
+            pairingCode: result.pairingCode,
+            status: 'aguardando_pareamento'
+        };
+
+    } catch (error) {
+        console.error(
+            `❌ Erro ao reconectar sub-bot ${botId || ''}:`,
+            error?.stack || error?.message || error
+        );
+
+        return {
+            success: false,
+            message:
+                `❌ Erro ao reconectar sub-bot: ${
+                    error?.message || error
+                }`,
+            botId
+        };
     }
 }
 
@@ -418,8 +686,10 @@ async function disconnectAllSubBots() {
 export {
     addSubBot,
     removeSubBot,
+    listSubBots,
     initializeSubBot,
     initializeAllSubBots,
+    reconnectSubBot,
     generatePairingCodeForSubBot,
     disconnectAllSubBots,
     activeSubBots

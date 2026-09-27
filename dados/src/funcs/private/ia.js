@@ -375,6 +375,181 @@ async function executarKyaraLocal(prompt) {
   }
 }
 
+
+/**
+ * IA exclusiva para o modo desenvolvedor.
+ *
+ * Usa o servidor local diretamente, sem passar pelo
+ * pipeline completo de conversa da Kyara.
+ *
+ * IMPORTANTE:
+ * Esta função somente consulta a IA.
+ * Não lê, grava, altera ou executa arquivos/comandos.
+ */
+async function makeKyaraDevRequest(tarefa) {
+
+  const texto =
+    String(tarefa || '')
+      .trim()
+      .slice(0, 4000);
+
+  if (!texto) {
+    throw new Error('Tarefa de desenvolvimento vazia.');
+  }
+
+  const url =
+    LOCAL_AI_URL +
+    LOCAL_AI_ENDPOINT;
+
+  const systemPrompt =
+    [
+      'Você é a IA de desenvolvimento integrada ao bot Kyara/BKkyara.',
+      'Responda em português.',
+      '',
+      'IDENTIDADE:',
+      '- Baki é o dono e desenvolvedor responsável pelo projeto.',
+      '- Kyara é o nome do bot WhatsApp.',
+      '- Você é a IA de desenvolvimento da Kyara.',
+      '- Baki não é o bot; Baki é quem desenvolve e administra a Kyara.',
+      '- Nunca diga que você é Baki.',
+      '- Nunca trate Baki como se fosse a Kyara.',
+      '- Ao falar do projeto, use Kyara ou BKkyara.',
+
+      'Sua função é analisar problemas e propor correções.',
+      '',
+      'REGRAS:',
+      '- Não diga que leu arquivos que não foram fornecidos.',
+      '- Não invente caminhos, funções, APIs ou resultados de testes.',
+      '- Não afirme que aplicou uma alteração.',
+      '- Não execute comandos.',
+      '- Não altere arquivos.',
+      '- Se faltar código, peça o trecho necessário.',
+      '- Quando houver código suficiente, explique a causa e proponha uma correção.',
+      '- Prefira patches pequenos e seguros.',
+      '- Sempre recomende backup e validação quando uma alteração for necessária.',
+      '',
+      'TAREFA DO BAKI:'
+    ].join('\n');
+
+  console.log(
+    `[ASSISTENTE-DEV] Enviando tarefa para ${url}`
+  );
+
+  try {
+
+    const response =
+      await axios.post(
+        url,
+        {
+          model:
+            LOCAL_AI_MODEL,
+
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: texto
+            }
+          ],
+
+          temperature: 0.2,
+
+          max_tokens: 300,
+
+          stream: false
+        },
+        {
+          timeout:
+            Math.max(
+              Number(AI_TIMEOUT) || 45000,
+              60000
+            )
+        }
+      );
+
+    const resposta =
+      response?.data
+        ?.choices?.[0]
+        ?.message?.content || '';
+
+    if (!String(resposta).trim()) {
+      throw new Error(
+        'Servidor local respondeu sem conteúdo.'
+      );
+    }
+
+    console.log(
+      `[ASSISTENTE-DEV] Resposta recebida: ${String(resposta).length} caracteres`
+    );
+
+    return normalizarKyaraTexto(
+      String(resposta)
+    );
+
+  } catch (error) {
+      const erroMensagem =
+        String(error?.message || error || 'Erro desconhecido');
+
+      const erroCodigo =
+        String(error?.code || 'sem código');
+
+      const erroStatus =
+        String(error?.response?.status || 'sem status');
+
+      let erroResposta = '';
+
+      if (error?.response?.data) {
+        try {
+          erroResposta =
+            JSON.stringify(
+              error.response.data
+            ).slice(0, 1500);
+        } catch (_) {
+          erroResposta =
+            String(error.response.data);
+        }
+      }
+
+      console.error(
+        '\n========== ASSISTENTE-DEV ERRO =========='
+      );
+
+      console.error(
+        'MENSAGEM:',
+        erroMensagem
+      );
+
+      console.error(
+        'CÓDIGO:',
+        erroCodigo
+      );
+
+      console.error(
+        'HTTP:',
+        erroStatus
+      );
+
+      if (erroResposta) {
+        console.error(
+          'RESPOSTA:',
+          erroResposta
+        );
+      }
+
+      console.error(
+        '==========================================\n'
+      );
+
+      throw new Error(
+        `[ASSISTENTE-DEV] ${erroMensagem} ` +
+        `(código=${erroCodigo}, http=${erroStatus})`
+      );
+    }
+}
+
 async function executarKyaraHttp(prompt) {
   return executarKyaraLocal(prompt);
 }
@@ -1689,6 +1864,7 @@ export {
 
   makeKyaraChatRequest,
   makeAssistentRequest,
+  makeKyaraDevRequest,
   makeCognimaRequest,
 
   getHistoricoStats,

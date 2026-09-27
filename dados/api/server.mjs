@@ -9,7 +9,31 @@ import { promisify } from "util";
 import { platformOf } from "../src/features/kyaraBrowser.js";
 import { mp3 as youtubeMp3, mp4 as youtubeMp4 } from "../src/funcs/downloads/youtube.js";
 
+
 const execFileAsync = promisify(execFile);
+
+/*
+ * PLAY2 AUDIO CACHE
+ *
+ * O navegador normalmente faz:
+ *
+ * HEAD
+ * GET
+ * GET Range
+ *
+ * Não podemos baixar o YouTube novamente
+ * em cada uma dessas requisições.
+ */
+const PLAY2_AUDIO_CACHE =
+  new Map();
+
+const PLAY2_AUDIO_CACHE_TTL =
+  10 * 60 * 1000;
+
+const PLAY2_AUDIO_CACHE_MAX =
+  30 * 1024 * 1024;
+
+
 
 /*
  * ==========================================================
@@ -67,6 +91,196 @@ function browserSearchDomain(platform) {
 
 }
 
+
+
+
+const kyaraYoutubeSearchCache = new Map();
+
+async function kyaraYoutubeSearchReal(query, wanted = 100) {
+
+  const q =
+    String(query || '')
+      .trim()
+      .slice(0, 150);
+
+  if (!q) return [];
+
+  const count =
+    Math.min(
+      100,
+      Math.max(
+        20,
+        Number(wanted) || 100
+      )
+    );
+
+  const key =
+    q.toLowerCase();
+
+  const cached =
+    kyaraYoutubeSearchCache.get(key);
+
+  if (
+    cached &&
+    cached.items.length >= count &&
+    Date.now() - cached.time < 10 * 60 * 1000
+  ) {
+    return cached.items;
+  }
+
+  const args = [
+    '--no-warnings',
+    '--js-runtimes',
+    'node:' + process.execPath,
+    '--remote-components',
+    'ejs:github',
+    '--flat-playlist',
+    '--dump-single-json',
+    '--skip-download',
+    'ytsearch' + count + ':' + q
+  ];
+
+  const { stdout } =
+    await execFileAsync(
+      'yt-dlp',
+      args,
+      {
+        timeout: 180000,
+        maxBuffer: 60 * 1024 * 1024
+      }
+    );
+
+  let data;
+
+  try {
+    data = JSON.parse(stdout);
+  } catch {
+    throw new Error(
+      'Resposta inválida do yt-dlp.'
+    );
+  }
+
+  const entries =
+    Array.isArray(data?.entries)
+      ? data.entries
+      : [];
+
+  const seen =
+    new Set();
+
+  const items =
+    entries
+      .map((video) => {
+
+        const id =
+          String(
+            video?.id || ''
+          ).trim();
+
+        if (!id || seen.has(id)) {
+          return null;
+        }
+
+        seen.add(id);
+
+        const channelId =
+          String(
+            video?.channel_id ||
+            video?.uploader_id ||
+            ''
+          ).trim();
+
+        const channelUrl =
+          String(
+            video?.channel_url ||
+            video?.uploader_url ||
+            (
+              channelId
+                ? 'https://www.youtube.com/channel/' + channelId
+                : ''
+            )
+          ).trim();
+
+        return {
+          type: 'video',
+          id,
+
+          title:
+            String(
+              video?.title ||
+              'Vídeo'
+            ),
+
+          url:
+            'https://www.youtube.com/watch?v=' +
+            id,
+
+          thumbnail:
+            video?.thumbnail ||
+            (
+              'https://i.ytimg.com/vi/' +
+              id +
+              '/hqdefault.jpg'
+            ),
+
+          author:
+            String(
+              video?.channel ||
+              video?.uploader ||
+              'YouTube'
+            ),
+
+          channelUrl,
+
+          channelId,
+
+          platform:
+            'youtube',
+
+          duration:
+            Number(
+              video?.duration
+            ) || 0,
+
+          views:
+            Number(
+              video?.view_count
+            ) || 0,
+
+          uploadDate:
+            String(
+              video?.upload_date ||
+              ''
+            )
+        };
+
+      })
+      .filter(Boolean);
+
+  kyaraYoutubeSearchCache.set(
+    key,
+    {
+      time: Date.now(),
+      items
+    }
+  );
+
+  while (
+    kyaraYoutubeSearchCache.size > 100
+  ) {
+    const first =
+      kyaraYoutubeSearchCache
+        .keys()
+        .next()
+        .value;
+
+    kyaraYoutubeSearchCache.delete(
+      first
+    );
+  }
+
+  return items;
+}
 
 async function browserSearch(siteUrl = '', query = '') {
   const q = String(query || '').trim();
@@ -498,6 +712,10 @@ function json(res, status, data) {
   res.end(body);
 }
 
+
+
+
+
 function escapeXml(text) {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -801,12 +1019,335 @@ async function pesquisarMusica(query) {
  * ==========================================================
  */
 
+/* KYARA QUIZCASAL HELPERS BEGIN */
+
+const QUIZ_DB_FILE=path.join(process.cwd(),"dados","database","quizcasal.json");
+  
+  function quizDB(){
+   try{
+    if(!fs.existsSync(QUIZ_DB_FILE))return {sessions:{},history:[]};
+    const x=JSON.parse(fs.readFileSync(QUIZ_DB_FILE,"utf8"));
+    return {sessions:x.sessions||{},history:Array.isArray(x.history)?x.history:[]};
+   }catch{return {sessions:{},history:[]}}
+  }
+  
+  function quizSave(x){
+   fs.mkdirSync(path.dirname(QUIZ_DB_FILE),{recursive:true});
+   const t=QUIZ_DB_FILE+".tmp";
+   fs.writeFileSync(t,JSON.stringify(x,null,2));
+   fs.renameSync(t,QUIZ_DB_FILE);
+  }
+  
+  function quizAuth(s,role,token){
+   if(!s)return false;
+   return String(role).toUpperCase()==="A"
+    ? String(token)===String(s.tokenA)
+    : String(token)===String(s.tokenB);
+  }
+  
+  function quizResult(s){
+   const q=s.questions||[];
+   const a=s.answersA||[];
+   const b=s.answersB||[];
+   let score=0,details=[];
+  
+   for(let i=0;i<q.length;i++){
+    const correct=Number(a[i])===Number(b[i]);
+    if(correct)score++;
+    details.push({
+     question:q[i].q,
+     correct,
+     correctAnswer:q[i].options[a[i]]||"—",
+     chosenAnswer:q[i].options[b[i]]||"—"
+    });
+   }
+  
+   return {
+    score,
+    percent:q.length?Math.round(score/q.length*100):0,
+    details
+   };
+  }
+
+/* KYARA QUIZCASAL HELPERS END */
+
 const server = http.createServer(async (req, res) => {
+
+  
+
+
+  // =========================================================
+  // KYARA GAME EXTERNO
+  // =========================================================
+
+  try {
+
+    const requestUrl =
+      new URL(
+        req.url || "/",
+        `http://${req.headers.host || "localhost"}`
+      );
+
+    if (
+      requestUrl.pathname === "/kyarajogo" &&
+      req.method === "GET"
+    ) {
+
+      const KYARA_GAME_FILE =
+        path.join(
+          process.cwd(),
+          "dados",
+          "api",
+          "kyara-jogo.html"
+        );
+
+      try {
+
+        const html =
+          await fs.promises.readFile(
+            KYARA_GAME_FILE,
+            "utf8"
+          );
+
+        res.writeHead(
+          200,
+          {
+            "Content-Type":
+              "text/html; charset=utf-8",
+            "Cache-Control":
+              "no-store",
+            "Access-Control-Allow-Origin":
+              "*"
+          }
+        );
+
+        return res.end(html);
+
+      } catch (err) {
+
+        console.error(
+          "[KYARA GAME] Erro:",
+          err
+        );
+
+        res.writeHead(
+          500,
+          {
+            "Content-Type":
+              "text/plain; charset=utf-8"
+          }
+        );
+
+        return res.end(
+          "KYARA GAME indisponível."
+        );
+      }
+    }
+
+  } catch (err) {
+
+    console.error(
+      "[KYARA GAME] Falha na rota:",
+      err
+    );
+  }
+
+
   try {
     const url = new URL(
       req.url,
       `http://${req.headers.host || `${HOST}:${PORT}`}`
     );
+
+  /* KYARA QUIZCASAL ROUTES BEGIN */
+    /* KYARA QUIZCASAL HEALTH */
+    /* KYARA QUIZ CASAL — HTML */
+    if(
+      (url.pathname==="/quizcasal"||url.pathname==="/quizcasal/") &&
+      req.method==="GET"
+    ){
+      const file=path.join(
+        process.cwd(),
+        "dados",
+        "api",
+        "quiz-casal.html"
+      );
+
+      try{
+        const html=fs.readFileSync(file,"utf8");
+
+        res.writeHead(200,{
+          "Content-Type":"text/html; charset=utf-8",
+          "Cache-Control":"no-store",
+          "Access-Control-Allow-Origin":"*"
+        });
+
+        return res.end(html);
+      }catch(err){
+        console.error("[QUIZ CASAL] HTML:",err);
+
+        return json(res,500,{
+          ok:false,
+          error:"Página do Quiz indisponível."
+        });
+      }
+    }
+
+    if(url.pathname==="/api/quizcasal/health"&&req.method==="GET"){
+      return json(res,200,{
+        ok:true,
+        service:"quizcasal",
+        version:1,
+        timestamp:Date.now()
+      });
+    }
+
+    
+
+  if(url.pathname==="/api/quizcasal/state"&&req.method==="GET"){
+    
+     const code=String(url.searchParams.get("code")||"").toUpperCase();
+     const role=String(url.searchParams.get("role")||"").toUpperCase();
+     const token=String(url.searchParams.get("token")||"");
+    
+     const d=quizDB();
+     const s=d.sessions[code];
+    
+     if(!s)
+      return json(res,404,{ok:false,error:"Este Quiz não existe mais ou expirou."});
+    
+     if(!quizAuth(s,role,token))
+      return json(res,403,{ok:false,error:"Acesso não autorizado."});
+    
+     if(s.phase==="RESULTS"){
+      const r=quizResult(s);
+      return json(res,200,{
+       ok:true,
+       phase:"RESULTS",
+       currentIndex:s.questions.length,
+       questionsCount:s.questions.length,
+       score:r.score,
+       percent:r.percent,
+       details:r.details
+      });
+     }
+    
+     const current=role==="A"?Number(s.aIndex||0):Number(s.bIndex||0);     return json(res,200,{
+      ok:true,
+      phase:s.phase,
+      ready:role==="A"?s.phase==="A":s.phase==="WAIT_B",
+      currentIndex:current,
+      questionsCount:s.questions.length,
+      questions:(s.questions||[]).map(q=>({
+       q:q.q,
+       options:Array.isArray(q.options)?q.options:[]
+      }))
+     });
+    }
+    
+    if(url.pathname==="/api/quizcasal/answer"&&req.method==="POST"){
+    
+     let body={};
+    
+     try{
+      body=await readRequestBody(req);
+     }catch{
+      return json(res,400,{ok:false,error:"JSON inválido."});
+     }
+    
+     const code=String(body.code||"").toUpperCase();
+     const role=String(body.role||"").toUpperCase();
+     const token=String(body.token||"");
+     const qi=Number(body.questionIndex);
+     const oi=Number(body.optionIndex);
+    
+     const d=quizDB();
+     const s=d.sessions[code];
+    
+     if(!s)
+      return json(res,404,{ok:false,error:"Quiz não encontrado."});
+    
+     if(!quizAuth(s,role,token))
+      return json(res,403,{ok:false,error:"Acesso não autorizado."});
+    
+     const q=s.questions[qi];
+    
+     if(!q||!Number.isInteger(qi)||!Number.isInteger(oi)||!q.options[oi])
+      return json(res,400,{ok:false,error:"Resposta inválida."});
+    
+     const index=role==="A"?Number(s.aIndex||0):Number(s.bIndex||0);
+    
+     if(index!==qi)
+      return json(res,409,{ok:false,error:"Esta pergunta já foi respondida."});
+    
+     if(role==="A"){
+    
+      if(s.phase!=="A")
+       return json(res,409,{ok:false,error:"Sua parte já terminou."});
+    
+      s.answersA[qi]=oi;
+      s.aIndex=qi+1;
+    
+      if(s.aIndex>=s.questions.length)
+       s.phase="WAIT_B";
+    
+     }else if(role==="B"){
+    
+      if(s.phase!=="WAIT_B")
+       return json(res,409,{ok:false,error:"A primeira pessoa ainda não terminou."});
+    
+      s.answersB[qi]=oi;
+      s.bIndex=qi+1;
+    
+      if(s.bIndex>=s.questions.length){
+       s.phase="RESULTS";
+    
+       const r=quizResult(s);
+    
+       d.history.push({
+        code,
+        chatId:s.chatId,
+        a:s.a,
+        b:s.b,
+        score:r.score,
+        percent:r.percent,
+        details:r.details,
+        finishedAt:new Date().toISOString()
+       });
+    
+       d.history=d.history.slice(-100);
+      }
+    
+     }else{
+      return json(res,400,{ok:false,error:"Participante inválido."});
+     }
+    
+     s.updatedAt=Date.now();
+     d.sessions[code]=s;
+     quizSave(d);
+    
+     if(s.phase==="RESULTS"){
+      const r=quizResult(s);
+      return json(res,200,{
+       ok:true,
+       phase:"RESULTS",
+       currentIndex:s.questions.length,
+       questionsCount:s.questions.length,
+       score:r.score,
+       percent:r.percent,
+       details:r.details
+      });
+     }
+    
+     return json(res,200,{
+      ok:true,
+      phase:s.phase,
+      currentIndex:role==="A"?s.aIndex:s.bIndex,
+      questionsCount:s.questions.length
+     });
+    }
+
+  /* KYARA QUIZCASAL ROUTES END */
 
     /*
      * CORS PREFLIGHT
@@ -841,23 +1382,93 @@ const server = http.createServer(async (req, res) => {
           process.cwd(),
           "dados",
           "api",
-          "kyara-tube.html"
+          "kyara-youtube.html"
         );
 
       if (!fs.existsSync(htmlPath)) {
 
         return json(res, 404, {
           status: false,
-          error: "kyara-tube.html não encontrado."
+          error: "kyara-youtube.html não encontrado."
         });
 
       }
 
-      const html =
+      let html =
         fs.readFileSync(
           htmlPath,
           "utf8"
         );
+
+      /*
+       * O mesmo HTML usado pelo KYARA TUBE
+       * agora funciona também pela rota /kyara-tube.
+       *
+       * A origem é calculada pela própria requisição,
+       * então não fica presa a um Quick Tunnel antigo.
+       */
+      const host =
+        String(
+          req.headers.host || ""
+        ).trim();
+
+      const forwardedProto =
+        String(
+          req.headers["x-forwarded-proto"] ||
+          ""
+        )
+          .split(",")[0]
+          .trim();
+
+      const protocol =
+        /^https?$/i.test(
+          forwardedProto
+        )
+          ? forwardedProto
+          : (
+              String(req.socket.encrypted)
+                === "true"
+                ? "https"
+                : "http"
+            );
+
+      const apiBase =
+        host
+          ? protocol + "://" + host
+          : "http://127.0.0.1:3000";
+
+      const initialQuery =
+        String(
+          url.searchParams.get("q") ||
+          url.searchParams.get("query") ||
+          ""
+        ).trim();
+
+      const safeAttr =
+        initialQuery
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+      html =
+        html
+          .replace(
+            /__KYARA_API_BASE__/g,
+            JSON.stringify(apiBase)
+          )
+          .replace(
+            /__KYARA_INITIAL_QUERY__/g,
+            JSON.stringify(initialQuery)
+          )
+          .replace(
+            /__KYARA_INITIAL_QUERY_ATTR__/g,
+            safeAttr
+          )
+          .replace(
+            /__KYARA_INITIAL_RESULTS__/g,
+            "[]"
+          );
 
       res.writeHead(200, {
         "Content-Type":
@@ -1018,13 +1629,39 @@ self.addEventListener(
 
         const query =
           String(
-            url.searchParams.get("query") || ""
+            url.searchParams.get("query") ||
+            url.searchParams.get("q") ||
+            ""
           ).trim();
 
         const siteUrl =
           String(
-            url.searchParams.get("siteUrl") || ""
+            url.searchParams.get("siteUrl") ||
+            "https://www.youtube.com"
           ).trim();
+
+        const offset =
+          Math.max(
+            0,
+            parseInt(
+              url.searchParams.get("offset") ||
+              "0",
+              10
+            ) || 0
+          );
+
+        const limit =
+          Math.min(
+            30,
+            Math.max(
+              1,
+              parseInt(
+                url.searchParams.get("limit") ||
+                "20",
+                10
+              ) || 20
+            )
+          );
 
         if (!query) {
 
@@ -1033,16 +1670,50 @@ self.addEventListener(
             400,
             {
               status: false,
-              error: "A pesquisa é obrigatória."
+              error:
+                "A pesquisa é obrigatória."
             }
           );
 
         }
 
-        const results =
-          await browserSearch(
-            siteUrl,
-            query
+        const isYoutube =
+          /youtube\.com|youtu\.be/i.test(
+            siteUrl
+          );
+
+        let all;
+
+        if (isYoutube) {
+
+          all =
+            await kyaraYoutubeSearchReal(
+              query,
+              100
+            );
+
+        } else {
+
+          all =
+            await browserSearch(
+              siteUrl,
+              query
+            );
+
+        }
+
+        const videos =
+          Array.isArray(all)
+            ? all.filter(
+                item =>
+                  item?.type === 'video'
+              )
+            : [];
+
+        const page =
+          videos.slice(
+            offset,
+            offset + limit
           );
 
         return json(
@@ -1050,12 +1721,34 @@ self.addEventListener(
           200,
           {
             status: true,
-            site: siteUrl || "web",
+
+            site:
+              siteUrl,
+
             platform:
-              siteUrl
-                ? platformOf(siteUrl)
-                : "web",
-            results
+              isYoutube
+                ? "youtube"
+                : (
+                    siteUrl
+                      ? platformOf(siteUrl)
+                      : "web"
+                  ),
+
+            query,
+
+            offset,
+
+            limit,
+
+            total:
+              videos.length,
+
+            hasMore:
+              offset + page.length <
+              videos.length,
+
+            results:
+              page
           }
         );
 
@@ -1063,6 +1756,8 @@ self.addEventListener(
 
         console.error(
           "[KYARA BROWSER] Pesquisa GET:",
+          error?.stack ||
+          error?.message ||
           error
         );
 
@@ -1530,161 +2225,523 @@ if (
      * ========================================================
      */
 
+    /*
+     * ========================================================
+     * KYARA PLAY2 — STREAM DE ÁUDIO
+     *
+     * O player Rich HTML usa esta rota diretamente no
+     * elemento <audio>. O servidor baixa/converte o áudio
+     * com o mesmo sistema já usado pelo Kyara Tube.
+     * ========================================================
+     */
+
+    /*
+     * ========================================================
+     * KYARA PLAY2 — STREAM MP3
+     *
+     * O Rich HTML recebe MP3/AAC-compatible via <audio>.
+     * O YouTube é baixado com yt-dlp e convertido pelo ffmpeg
+     * para MP3 antes de ser entregue ao player.
+     * ========================================================
+     */
+
+
+    /*
+     * ========================================================
+     * KYARA PLAY2 — STREAM DE ÁUDIO
+     *
+     * O Rich HTML usa:
+     *
+     *   /api/browser/stream?url=YOUTUBE
+     *
+     * O áudio é obtido pelo youtubeMp3()
+     * e mantido em memória temporariamente.
+     *
+     * Suporta:
+     *
+     *   OPTIONS
+     *   HEAD
+     *   GET
+     *   Range
+     * ========================================================
+     */
+
     if (
       url.pathname ===
-      "/api/browser/download" &&
-      req.method === "POST"
+      "/api/browser/stream" &&
+      (
+        req.method === "GET" ||
+        req.method === "HEAD" ||
+        req.method === "OPTIONS"
+      )
     ) {
 
-      try {
+      const corsHeaders = {
 
-        const body =
-          await readRequestBody(req);
+        "Access-Control-Allow-Origin":
+          "*",
 
-        const source =
-          String(
-            body?.url ||
-            ""
-          ).trim();
+        "Access-Control-Allow-Methods":
+          "GET, HEAD, OPTIONS",
 
-        const type =
-          String(
-            body?.type ||
-            "video"
-          ).toLowerCase();
+        "Access-Control-Allow-Headers":
+          "Range, Content-Type, Accept",
 
-        if (
-          !/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//i.test(
-            source
-          )
-        ) {
+        "Access-Control-Expose-Headers":
+          "Accept-Ranges, Content-Length, Content-Range, Content-Type",
 
-          return json(
-            res,
-            400,
-            {
-              status: false,
-              error:
-                "O Kyara Tube aceita somente URLs do YouTube."
-            }
-          );
+        "Accept-Ranges":
+          "bytes",
 
-        }
+        "Cache-Control":
+          "no-store, no-cache, must-revalidate",
 
-        if (
-          type !== "video" &&
-          type !== "audio"
-        ) {
+        "Content-Disposition":
+          "inline"
 
-          return json(
-            res,
-            400,
-            {
-              status: false,
-              error:
-                "Tipo deve ser video ou audio."
-            }
-          );
+      };
 
-        }
 
-        console.log(
-          "[KYARA TUBE] Download:",
-          type,
-          source
-        );
+      /*
+       * ------------------------------------------------------
+       * CORS
+       * ------------------------------------------------------
+       */
 
-        const result =
-          type === "video"
-            ? await youtubeMp4(source)
-            : await youtubeMp3(source);
-
-        if (
-          !result?.ok ||
-          !result?.buffer?.length
-        ) {
-
-          return json(
-            res,
-            502,
-            {
-              status: false,
-              error:
-                result?.msg ||
-                "yt-dlp não conseguiu gerar o arquivo."
-            }
-          );
-
-        }
-
-        const filename =
-          String(
-            result.filename ||
-            (
-              type === "video"
-                ? "kyara-video.mp4"
-                : "kyara-audio.mp3"
-            )
-          )
-          .replace(
-            /[^a-zA-Z0-9._-]+/g,
-            "_"
-          );
+      if (
+        req.method ===
+        "OPTIONS"
+      ) {
 
         res.writeHead(
-          200,
-          {
-
-            "Content-Type":
-              result.mimetype ||
-              (
-                type === "video"
-                  ? "video/mp4"
-                  : "audio/mpeg"
-              ),
-
-            "Content-Length":
-              result.buffer.length,
-
-            "Content-Disposition":
-              `attachment; filename="${filename}"`,
-
-            "Cache-Control":
-              "no-store",
-
-            "Access-Control-Allow-Origin":
-              "*"
-
-          }
+          204,
+          corsHeaders
         );
 
-        return res.end(
-          result.buffer
-        );
+        return res.end();
 
-      } catch (err) {
+      }
 
-        console.error(
-          "[KYARA TUBE DOWNLOAD]",
-          err?.stack ||
-          err
-        );
+
+      /*
+       * ------------------------------------------------------
+       * URL DO YOUTUBE
+       * ------------------------------------------------------
+       */
+
+      const source =
+        String(
+          url.searchParams.get(
+            "url"
+          ) ||
+          ""
+        ).trim();
+
+
+      if (
+        !/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\//i.test(
+          source
+        )
+      ) {
 
         return json(
           res,
-          500,
+          400,
           {
-            status: false,
+            status:
+              false,
+
             error:
-              err?.message ||
-              "Falha no download."
+              "URL do YouTube inválida."
           }
         );
 
       }
 
-    }
 
+      /*
+       * ------------------------------------------------------
+       * CACHE
+       * ------------------------------------------------------
+       */
+
+      let cached =
+        PLAY2_AUDIO_CACHE.get(
+          source
+        );
+
+
+      /*
+       * Expira cache antigo.
+       */
+
+      if (
+        cached &&
+        cached.time &&
+        Date.now() -
+          cached.time >
+          PLAY2_AUDIO_CACHE_TTL
+      ) {
+
+        PLAY2_AUDIO_CACHE.delete(
+          source
+        );
+
+        cached =
+          null;
+
+      }
+
+
+      /*
+       * ------------------------------------------------------
+       * DOWNLOAD ÚNICO
+       * ------------------------------------------------------
+       */
+
+      if (!cached) {
+
+        console.log(
+          "[PLAY2 STREAM] 🎧 Obtendo MP3:",
+          source
+        );
+
+
+        const promise =
+          (async () => {
+
+            const result =
+              await youtubeMp3(
+                source,
+                null,
+                {
+                  bitrate:
+                    "128k"
+                }
+              );
+
+
+            if (
+              !result ||
+              result.ok !== true ||
+              !Buffer.isBuffer(
+                result.buffer
+              ) ||
+              result.buffer.length === 0
+            ) {
+
+              throw new Error(
+                result?.msg ||
+                "youtubeMp3() não retornou áudio."
+              );
+
+            }
+
+
+            if (
+              result.buffer.length >
+              PLAY2_AUDIO_CACHE_MAX
+            ) {
+
+              throw new Error(
+                "Áudio PLAY2 excede o limite permitido."
+              );
+
+            }
+
+
+            console.log(
+              "[PLAY2 STREAM] ✅ MP3:",
+              Math.round(
+                result.buffer.length /
+                1024
+              ),
+              "KB"
+            );
+
+
+            return {
+              buffer:
+                result.buffer,
+
+              time:
+                Date.now()
+            };
+
+          })();
+
+
+        cached = {
+          promise
+        };
+
+
+        PLAY2_AUDIO_CACHE.set(
+          source,
+          cached
+        );
+
+
+        try {
+
+          cached =
+            await promise;
+
+          PLAY2_AUDIO_CACHE.set(
+            source,
+            cached
+          );
+
+        } catch (error) {
+
+          PLAY2_AUDIO_CACHE.delete(
+            source
+          );
+
+          throw error;
+
+        }
+
+      }
+
+
+      /*
+       * ------------------------------------------------------
+       * AGUARDA DOWNLOAD EM ANDAMENTO
+       * ------------------------------------------------------
+       */
+
+      if (
+        cached.promise
+      ) {
+
+        cached =
+          await cached.promise;
+
+        PLAY2_AUDIO_CACHE.set(
+          source,
+          cached
+        );
+
+      }
+
+
+      const audio =
+        cached.buffer;
+
+
+      const total =
+        audio.length;
+
+
+      /*
+       * ------------------------------------------------------
+       * HEAD
+       * ------------------------------------------------------
+       */
+
+      if (
+        req.method ===
+        "HEAD"
+      ) {
+
+        res.writeHead(
+          200,
+          {
+            ...corsHeaders,
+
+            "Content-Type":
+              "audio/mpeg",
+
+            "Content-Length":
+              total
+          }
+        );
+
+        return res.end();
+
+      }
+
+
+      /*
+       * ------------------------------------------------------
+       * GET SEM RANGE
+       * ------------------------------------------------------
+       */
+
+      const range =
+        String(
+          req.headers.range ||
+          ""
+        ).trim();
+
+
+      if (!range) {
+
+        res.writeHead(
+          200,
+          {
+            ...corsHeaders,
+
+            "Content-Type":
+              "audio/mpeg",
+
+            "Content-Length":
+              total
+          }
+        );
+
+        return res.end(
+          audio
+        );
+
+      }
+
+
+      /*
+       * ------------------------------------------------------
+       * RANGE
+       * ------------------------------------------------------
+       */
+
+      const match =
+        /^bytes=(\d*)-(\d*)$/i.exec(
+          range
+        );
+
+
+      if (!match) {
+
+        res.writeHead(
+          416,
+          {
+            ...corsHeaders,
+
+            "Content-Range":
+              `bytes */${total}`
+          }
+        );
+
+        return res.end();
+
+      }
+
+
+      let start =
+        match[1]
+          ? Number(
+              match[1]
+            )
+          : 0;
+
+
+      let end =
+        match[2]
+          ? Number(
+              match[2]
+            )
+          : total - 1;
+
+
+      /*
+       * bytes=-50000
+       */
+
+      if (
+        !match[1] &&
+        match[2]
+      ) {
+
+        const quantity =
+          Number(
+            match[2]
+          );
+
+        start =
+          Math.max(
+            0,
+            total - quantity
+          );
+
+        end =
+          total - 1;
+
+      }
+
+
+      if (
+        !Number.isFinite(
+          start
+        ) ||
+        !Number.isFinite(
+          end
+        ) ||
+        start < 0 ||
+        start >= total ||
+        end < start
+      ) {
+
+        res.writeHead(
+          416,
+          {
+            ...corsHeaders,
+
+            "Content-Range":
+              `bytes */${total}`
+          }
+        );
+
+        return res.end();
+
+      }
+
+
+      end =
+        Math.min(
+          end,
+          total - 1
+        );
+
+
+      const chunk =
+        audio.subarray(
+          start,
+          end + 1
+        );
+
+
+      res.writeHead(
+        206,
+        {
+          ...corsHeaders,
+
+          "Content-Type":
+            "audio/mpeg",
+
+          "Content-Length":
+            chunk.length,
+
+          "Content-Range":
+            `bytes ${start}-${end}/${total}`
+        }
+      );
+
+
+      console.log(
+        "[PLAY2 STREAM] ▶️ Range:",
+        start,
+        "-",
+        end,
+        "/",
+        total
+      );
+
+
+      return res.end(
+        chunk
+      );
+
+    }
 
     /*
      * STATUS
@@ -1883,26 +2940,8 @@ server.on("error", err => {
 
 
 // KYARA GAME EXTERNO
-try {
-  const KYARA_GAME_FILE = path.join(process.cwd(), "dados", "api", "kyara-jogo.html");
-
-  app.get("/kyarajogo", async (req, res) => {
-    try {
-      const html = await fs.readFile(KYARA_GAME_FILE, "utf8");
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "no-store");
-      res.end(html);
-    } catch (err) {
-      console.error("[KYARA GAME]", err);
-      res.statusCode = 500;
-      res.end("KYARA GAME indisponível.");
-    }
-  });
-
-  console.log("[KYARA GAME] Rota /kyarajogo registrada.");
-} catch (err) {
-  console.error("[KYARA GAME] Falha ao registrar rota:", err);
-}
+// O server.mjs usa http.createServer(), não Express.
+// A rota /kyarajogo foi integrada diretamente ao handler HTTP.
 
 server.listen(PORT, HOST, () => {
   console.log("");

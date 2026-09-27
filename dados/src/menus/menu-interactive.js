@@ -1,21 +1,28 @@
 export const KYARA_MAIN_BUTTONS = [
   ['📥 DOWNLOADS', 'menudown'],
   ['🎨 LOGOS', 'menulogos'],
-  ['🛠️ EDITS', 'menuedits'],
+  ['✏️ EDITS', 'menuedits'],
   ['🛡️ ADMINISTRAÇÃO', 'menuadm'],
   ['🎭 DIVERSÃO', 'menubn'],
-  ['👤 MEMBROS', 'menumemb'],
+  ['👥 MEMBROS', 'menumemb'],
   ['🧰 FERRAMENTAS', 'ferramentas'],
-  ['🎨 FIGURINHAS', 'menufig'],
+  ['🖼️ FIGURINHAS', 'menufig'],
   ['✨ ALTERADORES', 'alteradores'],
   ['🎮 RPG', 'menurpg'],
-  ['💎 VIP / PREMIUM', 'menuvip']
-];
+  ['🎨 ARTISTA', 'menuartista'],
+  ['💎 VIP / PREMIUM', 'menuvip'],
+  ['📈 LEVEL UP', 'menulevel']
+]
 
 export function getInteractiveMenu() {
   return {
     title:
-      '🌸 *BKkyara*\\n\\nEscolha uma categoria abaixo.',
-    buttons: KYARA_MAIN_BUTTONS
-  };
+      '🌸 *KYARA • CENTRAL*\n\n' +
+      '✨ Escolha uma categoria.\n' +
+      '📈 Acompanhe seu Level Up.\n' +
+      '📢 Use o botão *VER CANAL* para acompanhar a Kyara.',
+
+    buttons:
+      KYARA_MAIN_BUTTONS
+  }
 }

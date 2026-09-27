@@ -2449,6 +2449,10 @@ async function pin({
     text,
     systemZR
 }) {
+    // Pinterest local antigo desativado.
+    // O comando atual é tratado por kyaraPinterest.js.
+    return false;
+
 
     const raw =
         textoSeguro(text);

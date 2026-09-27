@@ -5,6 +5,8 @@
  * ================================================================
  */
 
+import { event as kyaraTerminalEvent } from '../kyara-terminal.js';
+
 const C = {
     reset: '\x1b[0m',
     bold: '\x1b[1m',
@@ -50,15 +52,16 @@ function line(char = '─', width = WIDTH) {
 
 function log(type, message, color = C.white) {
 
-    const t = String(type || 'INFO')
-        .toUpperCase()
-        .padEnd(5);
+    const rawType = String(type || 'INFO').toUpperCase();
+    const t = rawType.padEnd(5);
+    const text = clean(message);
 
-    console.log(
-        `  ${paint(clock(), C.gray)} ` +
-        `${paint(t, color)} ` +
-        `${paint(clean(message), C.white)}`
-    );
+    try {
+        kyaraTerminalEvent('log', {
+            type: rawType,
+            message: text
+        });
+    } catch {}
 }
 
 /* ================================================================
@@ -129,35 +132,21 @@ function command({
     const usr = clean(user);
     const body = clean(content);
 
+    try {
+        kyaraTerminalEvent('command', {
+            command: cmdName,
+            group: grp,
+            user: usr,
+            content: body
+        });
+    } catch {}
+
     let preview = body;
 
     if (preview.length > 42) {
         preview = preview.slice(0, 39) + '...';
     }
 
-    console.log();
-
-    console.log(
-        `  ${paint(clock(), C.gray)} ` +
-        `${paint('CMD', C.cyan)} ` +
-        `${paint(cmdName || 'UNKNOWN', C.bold + C.white)}`
-    );
-
-    console.log(
-        `             ${paint('›', C.cyan)} ` +
-        `${paint(grp || 'PRIVADO', C.white)} ` +
-        `${paint('›', C.gray)} ` +
-        `${paint(usr || 'UNKNOWN', C.white)}`
-    );
-
-    if (preview) {
-        console.log(
-            `             ${paint('↳', C.cyan)} ` +
-            `${paint(preview, C.gray)}`
-        );
-    }
-
-    console.log();
 }
 
 /* ================================================================
@@ -170,31 +159,30 @@ function message({
     content = ''
 } = {}) {
 
-    const grp = clean(group) || 'PRIVADO';
-    const usr = clean(user) || 'UNKNOWN';
+    const grp =
+        clean(group) ||
+        'PRIVADO';
 
-    let body = clean(content);
+    const usr =
+        clean(user) ||
+        'Sem Nome';
 
-    if (body.length > 55) {
-        body = body.slice(0, 52) + '...';
-    }
+    const body =
+        clean(content);
 
-    console.log();
+    try {
 
-    console.log(
-        `  ${paint(clock(), C.gray)} ` +
-        `${paint('MSG', C.blue)} ` +
-        `${paint(usr, C.bold + C.white)} ` +
-        `${paint('›', C.blue)} ` +
-        `${paint(`"${body}"`, C.white)}`
-    );
+        kyaraTerminalEvent(
+            'message',
+            {
+                group: grp,
+                user: usr,
+                content: body
+            }
+        );
 
-    console.log(
-        `             ${paint('↳', C.blue)} ` +
-        `${paint(grp, C.gray)}`
-    );
+    } catch {}
 
-    console.log();
 }
 
 /* ================================================================

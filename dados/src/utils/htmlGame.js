@@ -1,74 +1,114 @@
 /**
  * KYARA HTML GAME
- *
- * Único mecanismo de envio dos jogos Rich HTML.
  */
 
 import crypto from "node:crypto";
+
 import {
   generateWAMessageFromContent
 } from "baileys";
 
+
 export const HTML_GAME_PRIMITIVE =
   "GenAIaeacdsnwHtmlPrimitive";
 
-export const HTML_GAME_TRUSTED_SOURCES = [];
 
 function getJid(options = {}) {
+
   return (
     options.from ||
     options.remoteJid ||
     options.info?.key?.remoteJid
   );
+
 }
 
+
 function getSocket(options = {}) {
+
   return (
     options.sock ||
     options.nazu ||
     options.socket
   );
+
 }
+
 
 function normalizeHtml(html) {
-  if (typeof html !== "string") {
+
+  if (
+    typeof html !==
+    "string"
+  ) {
+
     throw new TypeError(
-      "O HTML do jogo precisa ser uma string."
+      "HTML inválido"
     );
+
   }
 
-  const value = html
-    .replace(/^\uFEFF/, "")
-    .trim();
+  const value =
+    html
+      .replace(
+        /^\uFEFF/,
+        ""
+      )
+      .trim();
+
 
   if (!value) {
+
     throw new TypeError(
-      "O HTML do jogo está vazio."
+      "HTML vazio"
     );
+
   }
 
+
   return value;
+
 }
+
 
 export function buildHtmlGameMessage(
   html,
   {
-    submessageText = "KYARA HTML GAME"
+    submessageText =
+      "KYARA HTML GAME",
+
+    url = "",
+
+    trustedSources = []
+
   } = {}
 ) {
 
   const payload =
-    normalizeHtml(html);
+    normalizeHtml(
+      html
+    );
 
-  /*
-   * Estrutura Unified Response.
-   *
-   * IMPORTANTE:
-   * data precisa ser a representação Base64
-   * do JSON serializado.
-   */
 
-  const unifiedResponse = {
+  const trusted =
+    Array.isArray(
+      trustedSources
+    )
+
+      ? trustedSources
+          .map(
+            value =>
+              String(
+                value || ""
+              ).trim()
+          )
+          .filter(Boolean)
+
+      : [];
+
+
+  const unifiedData = {
+
     __typename:
       "GenAIUnifiedResponse",
 
@@ -76,39 +116,44 @@ export function buildHtmlGameMessage(
       crypto.randomUUID(),
 
     sections: [
+
       {
+
         __typename:
           "GenAIUnifiedResponseSection",
 
         view_model: {
+
           __typename:
             "GenAISingleLayoutViewModel",
 
           primitive: {
+
             __typename:
               HTML_GAME_PRIMITIVE,
 
             payload,
 
+            ...(url
+              ? {
+                  url:
+                    String(url)
+                }
+              : {}),
+
             trusted_sources:
-              [
-                ...HTML_GAME_TRUSTED_SOURCES
-              ]
+              trusted
+
           }
+
         }
+
       }
+
     ]
+
   };
 
-  const data =
-    Buffer
-      .from(
-        JSON.stringify(
-          unifiedResponse
-        ),
-        "utf8"
-      )
-      .toString("base64");
 
   return {
 
@@ -116,20 +161,48 @@ export function buildHtmlGameMessage(
 
       deviceListMetadata: {},
 
-      deviceListMetadataVersion: 2,
+      deviceListMetadataVersion:
+        2,
 
       botMetadata: {
 
-        messageDisclaimerText: "",
+        messageDisclaimerText:
+          "",
 
         botResponseId:
           crypto.randomUUID(),
 
         verificationMetadata: {
-          proofs: []
+
+          proofs: [
+
+            {
+
+              version:
+                1,
+
+              useCase:
+                1,
+
+              signature:
+                "...",
+
+              certificateChain: [
+                "...",
+                "...",
+                "..."
+              ]
+
+            }
+
+          ]
+
         }
+
       }
+
     },
+
 
     botForwardedMessage: {
 
@@ -137,49 +210,71 @@ export function buildHtmlGameMessage(
 
         richResponseMessage: {
 
-          messageType: 1,
+          messageType:
+            1,
 
           submessages: [
+
             {
-              messageType: 2,
+
+              messageType:
+                2,
 
               messageText:
-                String(
-                  submessageText ||
-                  "KYARA HTML GAME"
-                )
+                submessageText
+
             }
+
           ],
 
+
           unifiedResponse: {
-            data
+
+            data:
+
+              Buffer.from(
+
+                JSON.stringify(
+                  unifiedData
+                ),
+
+                "utf8"
+
+              )
+
           },
+
 
           contextInfo: {
 
-            mentionedJid: [],
+            forwardingScore:
+              1,
 
-            groupMentions: [],
-
-            statusAttributions: [],
-
-            forwardingScore: 1,
-
-            isForwarded: true,
+            isForwarded:
+              true,
 
             forwardedAiBotMessageInfo: {
 
               botJid:
                 "867051314767696@bot"
+
             },
 
-            forwardOrigin: 4
+            forwardOrigin:
+              4
+
           }
+
         }
+
       }
+
     }
+
   };
+
 }
+
 
 export async function sendHtmlGame(
   socket,
@@ -193,16 +288,22 @@ export async function sendHtmlGame(
     typeof socket.relayMessage !==
       "function"
   ) {
+
     throw new Error(
       "Socket da Kyara não possui relayMessage()."
     );
+
   }
 
+
   if (!jid) {
+
     throw new Error(
       "JID do chat não encontrado."
     );
+
   }
+
 
   const content =
     buildHtmlGameMessage(
@@ -210,28 +311,75 @@ export async function sendHtmlGame(
       options
     );
 
-  const message =
+
+  const msg =
     generateWAMessageFromContent(
       jid,
       content,
       {
         quoted:
           options.quoted ||
-          options.info
+          options.info,
+
+        messageId:
+          options.messageId
       }
     );
 
+
+  if (
+    !msg ||
+    !msg.message ||
+    !msg.message.botForwardedMessage ||
+    !msg.message.botForwardedMessage.message ||
+    !msg.message.botForwardedMessage.message.richResponseMessage
+  ) {
+    throw new Error(
+      "Rich HTML inválido após gerar a mensagem."
+    );
+  }
+
+  const rich =
+    msg.message
+      .botForwardedMessage
+      .message
+      .richResponseMessage;
+
+  if (
+    !rich.unifiedResponse ||
+    !rich.unifiedResponse.data
+  ) {
+    throw new Error(
+      "unifiedResponse.data não foi gerado."
+    );
+  }
+
+  console.log(
+    "[HTML] payload Rich HTML:",
+    rich.unifiedResponse.data.length,
+    "bytes"
+  );
+
+
   await socket.relayMessage(
     jid,
-    message.message,
+    msg.message,
     {
       messageId:
-        message.key.id
+        msg.key.id
     }
   );
 
+
+  console.log(
+    "[HTML] ✅ Rich HTML relay enviado"
+  );
+
+
   return true;
+
 }
+
 
 export async function sendHtmlGameFromOptions(
   options = {},
@@ -239,21 +387,27 @@ export async function sendHtmlGameFromOptions(
   config = {}
 ) {
 
-  const socket =
-    getSocket(options);
-
-  const jid =
-    getJid(options);
-
   return sendHtmlGame(
-    socket,
-    jid,
+
+    getSocket(
+      options
+    ),
+
+    getJid(
+      options
+    ),
+
     html,
+
     {
+
       ...config,
 
-      quoted:
+      info:
         options.info
+
     }
+
   );
+
 }

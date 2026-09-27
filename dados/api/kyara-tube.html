@@ -2,1005 +2,663 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#08050d">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>KYARA TUBE</title>
 
-<link rel="manifest" href="/kyara-tube/manifest.webmanifest">
-
 <style>
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
+*{box-sizing:border-box}
+html,body{
+ margin:0;background:#0f0f0f;color:#fff;
+ font-family:Arial,Helvetica,sans-serif
 }
+body{padding-bottom:70px}
 
-:root{
-  --bg:#07050b;
-  --panel:#100b17;
-  --panel2:#171020;
-  --line:#292033;
-  --text:#fff;
-  --muted:#9d93aa;
-  --purple:#a855f7;
-  --purple2:#d946ef;
-  --danger:#ff4d8d;
-}
-
-body{
-  min-height:100vh;
-  background:
-    radial-gradient(circle at 50% -10%,#361052 0,transparent 38%),
-    var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-}
-
-button,
-input{
-  font:inherit;
-}
-
-button{
-  border:0;
-  cursor:pointer;
-}
-
-.app{
-  min-height:100vh;
-  padding-bottom:82px;
-}
-
-.topbar{
-  position:sticky;
-  top:0;
-  z-index:20;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:14px 16px;
-  background:rgba(7,5,11,.88);
-  backdrop-filter:blur(18px);
-  border-bottom:1px solid rgba(255,255,255,.05);
+header{
+ position:sticky;top:0;z-index:50;
+ height:64px;background:#0f0f0ff5;
+ backdrop-filter:blur(12px);
+ display:flex;align-items:center;
+ gap:18px;padding:8px 18px;
+ border-bottom:1px solid #272727
 }
 
 .logo{
-  display:flex;
-  align-items:center;
-  gap:9px;
-  min-width:max-content;
-  font-weight:900;
-  letter-spacing:.5px;
+ font-weight:900;font-size:21px;
+ white-space:nowrap
 }
-
-.logo-icon{
-  width:34px;
-  height:34px;
-  display:grid;
-  place-items:center;
-  border-radius:11px;
-  background:linear-gradient(135deg,var(--purple),var(--purple2));
-  box-shadow:0 0 25px rgba(168,85,247,.35);
-}
+.logo span{color:#ff0033}
 
 .search{
-  flex:1;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:9px 12px;
-  border:1px solid var(--line);
-  border-radius:15px;
-  background:#0d0912;
+ flex:1;display:flex;
+ max-width:720px;margin:auto
 }
-
 .search input{
-  width:100%;
-  outline:none;
-  border:0;
-  background:transparent;
-  color:white;
+ flex:1;height:42px;
+ background:#121212;
+ border:1px solid #303030;
+ border-radius:22px 0 0 22px;
+ color:#fff;padding:0 18px;
+ font-size:15px;outline:none
 }
-
 .search button{
-  width:32px;
-  height:32px;
-  border-radius:10px;
-  background:#21142b;
-  color:white;
+ width:58px;border:1px solid #303030;
+ border-left:0;background:#222;
+ color:#fff;border-radius:0 22px 22px 0;
+ font-size:19px
 }
 
-.page{
-  width:min(1250px,100%);
-  margin:auto;
-  padding:20px 15px;
+main{max-width:1500px;margin:auto;padding:16px}
+
+.chips{
+ display:flex;gap:10px;
+ overflow-x:auto;padding-bottom:15px
+}
+.chips button{
+ border:0;background:#272727;color:#fff;
+ padding:9px 16px;border-radius:9px;
+ white-space:nowrap
+}
+.chips button.active{
+ background:#fff;color:#111
 }
 
-.hero{
-  position:relative;
-  overflow:hidden;
-  min-height:190px;
-  padding:24px;
-  display:flex;
-  align-items:flex-end;
-  border:1px solid var(--line);
-  border-radius:25px;
-  background:
-    linear-gradient(120deg,rgba(168,85,247,.24),rgba(7,5,11,.2)),
-    radial-gradient(circle at 80% 20%,rgba(217,70,239,.4),transparent 35%),
-    #110b18;
+#player{
+ display:none;
+ background:#000;
+ margin:-16px -16px 22px
+}
+#player iframe{
+ width:100%;
+ aspect-ratio:16/9;
+ border:0;display:block
+}
+.player-body{
+ padding:14px 16px;
+ background:#181818
+}
+.player-title{
+ font-size:19px;font-weight:700;
+ line-height:1.35
+}
+.player-channel{
+ color:#aaa;margin-top:7px;font-size:14px
+}
+.player-actions{
+ display:flex;gap:8px;
+ overflow:auto;margin-top:13px
+}
+.player-actions button{
+ border:0;background:#272727;
+ color:#fff;padding:9px 15px;
+ border-radius:18px;white-space:nowrap
 }
 
-.hero h1{
-  font-size:clamp(28px,7vw,52px);
-  line-height:1;
-}
-
-.hero p{
-  margin-top:9px;
-  color:#c6bdce;
-}
-
-.section{
-  margin-top:24px;
-}
-
-.section-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:13px;
-}
-
-.section-head h2{
-  font-size:19px;
-}
-
-.categories{
-  display:flex;
-  gap:9px;
-  overflow:auto;
-  scrollbar-width:none;
-}
-
-.categories::-webkit-scrollbar{
-  display:none;
-}
-
-.category{
-  flex:0 0 auto;
-  padding:10px 14px;
-  border-radius:999px;
-  background:#130e1a;
-  border:1px solid var(--line);
-  color:#d7cedd;
-}
-
-.category.active{
-  color:#fff;
-  border-color:#9b4de0;
-  background:linear-gradient(135deg,#6d28a9,#b026bd);
+.section-title{
+ font-size:20px;font-weight:700;
+ margin:12px 0
 }
 
 .grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:16px;
+ display:grid;
+ grid-template-columns:
+ repeat(auto-fill,minmax(260px,1fr));
+ gap:28px 17px
 }
 
-.card{
-  overflow:hidden;
-  border-radius:17px;
-  background:var(--panel);
-  border:1px solid rgba(255,255,255,.05);
-  transition:.2s;
-}
-
-.card:active{
-  transform:scale(.985);
-}
-
+.card{cursor:pointer;min-width:0}
 .thumb{
-  position:relative;
-  aspect-ratio:16/9;
-  background:#16101d;
-  overflow:hidden;
+ position:relative;
+ aspect-ratio:16/9;
+ background:#222;
+ border-radius:10px;
+ overflow:hidden
 }
-
 .thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
+ width:100%;height:100%;
+ object-fit:cover;display:block
 }
-
 .duration{
-  position:absolute;
-  right:7px;
-  bottom:7px;
-  padding:3px 6px;
-  border-radius:6px;
-  background:rgba(0,0,0,.82);
-  font-size:11px;
-}
-
-.card-body{
-  padding:10px;
-}
-
-.title{
-  display:-webkit-box;
-  -webkit-line-clamp:2;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-  font-size:14px;
-  font-weight:700;
-  line-height:1.35;
+ position:absolute;right:7px;bottom:7px;
+ background:#000d;
+ padding:3px 5px;
+ border-radius:4px;font-size:12px
 }
 
 .meta{
-  margin-top:7px;
-  color:var(--muted);
-  font-size:12px;
+ display:flex;gap:10px;padding-top:10px
+}
+.avatar{
+ width:38px;height:38px;
+ border-radius:50%;
+ background:#303030;
+ flex:none
+}
+.info{min-width:0}
+.title{
+ font-size:15px;
+ font-weight:600;
+ line-height:1.35;
+ display:-webkit-box;
+ -webkit-line-clamp:2;
+ -webkit-box-orient:vertical;
+ overflow:hidden
+}
+.channel{
+ color:#aaa;font-size:13px;
+ margin-top:6px
+}
+.views{
+ color:#777;font-size:12px;
+ margin-top:3px
 }
 
-.player{
-  overflow:hidden;
-  border-radius:20px;
-  background:#000;
-  border:1px solid var(--line);
+.loading{
+ text-align:center;
+ color:#aaa;
+ padding:70px 20px
+}
+.empty{
+ text-align:center;
+ color:#888;
+ padding:70px 20px
 }
 
-.player iframe{
-  width:100%;
-  aspect-ratio:16/9;
-  display:block;
-  border:0;
+nav{
+ position:fixed;bottom:0;left:0;right:0;
+ z-index:100;height:64px;
+ display:flex;
+ background:#0f0f0ff7;
+ backdrop-filter:blur(15px);
+ border-top:1px solid #292929
 }
-
-.watch-title{
-  margin-top:16px;
-  font-size:20px;
-  font-weight:800;
+nav button{
+ flex:1;border:0;background:none;
+ color:#aaa;font-size:11px
 }
-
-.actions{
-  display:flex;
-  gap:9px;
-  overflow:auto;
-  margin-top:12px;
+nav button b{
+ display:block;font-size:21px;
+ margin-bottom:3px
 }
+nav button.active{color:#fff}
 
-.action{
-  flex:0 0 auto;
-  padding:10px 13px;
-  border-radius:12px;
-  background:#17101e;
-  color:white;
-  border:1px solid var(--line);
-}
-
-.action.liked{
-  border-color:var(--purple);
-  color:#e9b7ff;
-}
-
-.bottom{
-  position:fixed;
-  z-index:30;
-  left:0;
-  right:0;
-  bottom:0;
-  height:70px;
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-  background:rgba(10,7,13,.95);
-  backdrop-filter:blur(18px);
-  border-top:1px solid var(--line);
-}
-
-.nav{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:3px;
-  color:#857b90;
-  background:none;
-  font-size:11px;
-}
-
-.nav.active{
-  color:#d38cff;
-}
-
-.nav span:first-child{
-  font-size:21px;
-}
-
-.loading,
-.empty,
-.error{
-  padding:35px 15px;
-  text-align:center;
-  color:var(--muted);
-}
-
-.error{
-  color:#ff8eb8;
-}
-
-@media(min-width:700px){
-  .grid{
-    grid-template-columns:repeat(3,minmax(0,1fr));
-  }
-}
-
-@media(min-width:1050px){
-  .grid{
-    grid-template-columns:repeat(4,minmax(0,1fr));
-  }
+@media(max-width:650px){
+ header{
+  height:56px;padding:7px 10px;gap:9px
+ }
+ .logo{font-size:17px}
+ .search input{
+  height:38px;font-size:14px
+ }
+ .search button{
+  width:45px
+ }
+ main{padding:12px 10px}
+ #player{margin:-12px -10px 18px}
+ .grid{
+  display:block
+ }
+ .card{margin-bottom:24px}
+ .thumb{border-radius:8px}
+ .section-title{font-size:18px}
 }
 </style>
 </head>
 
 <body>
-<div class="app">
 
-<header class="topbar">
-  <div class="logo">
-    <div class="logo-icon">▶</div>
-    <span>KYARA TUBE</span>
-  </div>
+<header>
+ <div class="logo">KYARA<span>TUBE</span></div>
 
-  <form class="search" id="searchForm">
-    <input id="searchInput"
-           autocomplete="off"
-           placeholder="Pesquisar vídeos...">
-    <button type="submit">⌕</button>
-  </form>
+ <form class="search" id="searchForm">
+  <input
+   id="query"
+   autocomplete="off"
+   placeholder="Pesquisar"
+  >
+  <button type="submit">⌕</button>
+ </form>
 </header>
 
-<main class="page">
+<main>
 
-<section id="homeView">
+ <div class="chips" id="chips">
+  <button class="active" data-q="músicas mais tocadas">Tudo</button>
+  <button data-q="música">Música</button>
+  <button data-q="games">Games</button>
+  <button data-q="minecraft">Minecraft</button>
+  <button data-q="notícias">Notícias</button>
+  <button data-q="filmes">Filmes</button>
+  <button data-q="futebol">Futebol</button>
+ </div>
 
-  <div class="hero">
-    <div>
-      <h1>KYARA<br>TUBE</h1>
-      <p>Seu universo de vídeos, dentro da experiência Kyara.</p>
-    </div>
+ <section id="player">
+
+  <iframe
+   id="frame"
+   allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;web-share"
+   allowfullscreen>
+  </iframe>
+
+  <div class="player-body">
+   <div class="player-title" id="playerTitle"></div>
+   <div class="player-channel" id="playerChannel"></div>
+
+   <div class="player-actions">
+    <button id="likeBtn">👍 Curtir</button>
+    <button id="shareBtn">↗ Compartilhar</button>
+    <button id="closeBtn">✕ Fechar</button>
+   </div>
   </div>
 
-  <section class="section">
-    <div class="section-head">
-      <h2>Categorias</h2>
-    </div>
+ </section>
 
-    <div class="categories" id="categories">
-      <button class="category active" data-q="Minecraft">🎮 Minecraft</button>
-      <button class="category" data-q="anime">🌸 Anime</button>
-      <button class="category" data-q="música">🎵 Música</button>
-      <button class="category" data-q="tecnologia">💻 Tecnologia</button>
-      <button class="category" data-q="memes">😂 Memes</button>
-      <button class="category" data-q="filmes">🎬 Filmes</button>
-    </div>
-  </section>
+ <div class="section-title" id="sectionTitle">
+  Recomendações
+ </div>
 
-  <section class="section">
-    <div class="section-head">
-      <h2 id="feedTitle">Recomendados</h2>
-    </div>
-
-    <div class="grid" id="feed">
-      <div class="loading">Carregando vídeos...</div>
-    </div>
-  </section>
-
-</section>
-
-<section id="watchView" hidden></section>
+ <section id="content">
+  <div class="loading">Carregando vídeos...</div>
+ </section>
 
 </main>
 
-<nav class="bottom">
-  <button class="nav active" data-nav="home">
-    <span>⌂</span>
-    <small>Início</small>
-  </button>
+<nav>
+ <button id="homeBtn" class="active">
+  <b>⌂</b>Início
+ </button>
 
-  <button class="nav" data-nav="search">
-    <span>⌕</span>
-    <small>Pesquisar</small>
-  </button>
+ <button id="shortsBtn">
+  <b>▶</b>Shorts
+ </button>
 
-  <button class="nav" data-nav="history">
-    <span>◷</span>
-    <small>Histórico</small>
-  </button>
+ <button id="historyBtn">
+  <b>◷</b>Histórico
+ </button>
+
+ <button id="savedBtn">
+  <b>♡</b>Você
+ </button>
 </nav>
 
-</div>
-
 <script>
+const API="/api/browser/search";
 
-async function kyaraTubeResolveEmbed(videoUrl) {
-  const source =
-    String(videoUrl || '').trim();
+const content=document.getElementById("content");
+const query=document.getElementById("query");
+const player=document.getElementById("player");
+const frame=document.getElementById("frame");
+const playerTitle=document.getElementById("playerTitle");
+const playerChannel=document.getElementById("playerChannel");
+const sectionTitle=document.getElementById("sectionTitle");
 
-  if (!source) {
-    throw new Error(
-      'URL do vídeo vazia.'
-    );
-  }
+let currentItems=[];
 
-  const endpoint =
-    '/api/browser/embed?url=' +
-    encodeURIComponent(source);
-
-  const response =
-    await fetch(
-      endpoint,
-      {
-        method: 'GET',
-        headers: {
-          'Accept':
-            'application/json'
-        }
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      'Erro no embed HTTP ' +
-      response.status
-    );
-  }
-
-  const data =
-    await response.json();
-
-  if (
-    data &&
-    data.status &&
-    data.embed
-  ) {
-    return String(data.embed);
-  }
-
-  const id =
-    kyaraTubeVideoId({
-      url: source
-    });
-
-  if (id) {
-    return (
-      'https://www.youtube.com/embed/' +
-      encodeURIComponent(id) +
-      '?autoplay=1&rel=0'
-    );
-  }
-
-  throw new Error(
-    'Não foi possível gerar o player.'
-  );
+function esc(s){
+ return String(s||"").replace(/[&<>"']/g,m=>({
+  "&":"&amp;",
+  "<":"&lt;",
+  ">":"&gt;",
+  '"':"&quot;",
+  "'":"&#39;"
+ }[m]));
 }
 
-
-
-function kyaraTubeVideoId(video) {
-  const raw = String(
-    video?.id ||
-    video?.videoId ||
-    video?.url ||
-    ''
-  ).trim();
-
-  if (!raw) return '';
-
-  try {
-    const u = new URL(raw);
-
-    if (u.hostname.includes('youtu.be')) {
-      return u.pathname
-        .replace(/^\/+/, '')
-        .split('/')[0];
-    }
-
-    if (
-      u.hostname.includes('youtube.com') ||
-      u.hostname.includes('youtube-nocookie.com')
-    ) {
-
-      const v = u.searchParams.get('v');
-
-      if (v) return v;
-
-      const parts =
-        u.pathname
-          .split('/')
-          .filter(Boolean);
-
-      const marker =
-        parts.findIndex(
-          x =>
-            x === 'shorts' ||
-            x === 'embed' ||
-            x === 'live'
-        );
-
-      if (
-        marker >= 0 &&
-        parts[marker + 1]
-      ) {
-        return parts[marker + 1];
-      }
-    }
-
-  } catch (_) {}
-
-  const match =
-    raw.match(
-      /(?:v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{6,})/
-    );
-
-  return match ? match[1] : '';
+function thumb(v){
+ const id=v.id||v.videoId||"";
+ return v.thumbnail ||
+  v.thumb ||
+  "https://i.ytimg.com/vi/"+encodeURIComponent(id)+"/hqdefault.jpg";
 }
 
+function normalize(data){
+ if(Array.isArray(data))return data;
 
-const state = {
-  videos: [],
-  history: JSON.parse(localStorage.getItem("kyaraTubeHistory") || "[]"),
-  liked: JSON.parse(localStorage.getItem("kyaraTubeLiked") || "[]"),
-  subscribed: JSON.parse(localStorage.getItem("kyaraTubeSubscribed") || "[]"),
-  currentQuery: ""
-};
-
-const feed = document.getElementById("feed");
-const homeView = document.getElementById("homeView");
-const watchView = document.getElementById("watchView");
-const searchInput = document.getElementById("searchInput");
-const feedTitle = document.getElementById("feedTitle");
-
-function escapeHtml(value){
-  return String(value ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+ return data.results ||
+        data.resultados ||
+        data.items ||
+        data.videos ||
+        [];
 }
 
-function save(){
-  localStorage.setItem("kyaraTubeHistory",JSON.stringify(state.history));
-  localStorage.setItem("kyaraTubeLiked",JSON.stringify(state.liked));
-  localStorage.setItem("kyaraTubeSubscribed",JSON.stringify(state.subscribed));
-}
+function render(items,title){
+ currentItems=items||[];
 
-function videoId(video) {
-  return kyaraTubeVideoId(video);
-}
+ sectionTitle.textContent=
+  title||"Recomendações";
 
-function renderVideos(videos){
-  state.videos = Array.isArray(videos) ? videos : [];
+ if(!currentItems.length){
+  content.innerHTML=
+   '<div class="empty">Nenhum vídeo encontrado.</div>';
+  return;
+ }
 
-  if(!state.videos.length){
-    feed.innerHTML = '<div class="empty">Nenhum vídeo encontrado.</div>';
-    return;
-  }
+ content.innerHTML=
+  '<div class="grid">'+
+  currentItems.map((v,i)=>{
 
-  feed.innerHTML = state.videos.map(video => {
-    const id = videoId(video);
+   const id=v.id||v.videoId||"";
+   const t=v.title||v.name||"Vídeo";
+   const channel=
+    v.channel||v.author||v.uploader||"YouTube";
 
-    return `
-      <article class="card" data-id="${escapeHtml(id)}">
-        <div class="thumb">
-          <img
-            loading="lazy"
-            src="${escapeHtml(video.thumbnail || "")}"
-            alt=""
-            onerror="this.style.display='none'">
-          ${video.duration ? `<span class="duration">${escapeHtml(video.duration)}</span>` : ""}
+   return `
+    <article class="card"
+      data-id="${esc(id)}"
+      data-title="${esc(t)}"
+      data-channel="${esc(channel)}">
+
+      <div class="thumb">
+       <img
+        loading="lazy"
+        src="${esc(thumb(v))}"
+        onerror="this.src='https://i.ytimg.com/vi/${encodeURIComponent(id)}/mqdefault.jpg'">
+
+       ${
+        v.duration||v.seconds
+        ? `<span class="duration">${
+            esc(v.duration||formatTime(v.seconds))
+          }</span>`
+        :""
+       }
+      </div>
+
+      <div class="meta">
+
+       <div class="avatar"></div>
+
+       <div class="info">
+
+        <div class="title">
+         ${esc(t)}
         </div>
 
-        <div class="card-body">
-          <div class="title">${escapeHtml(video.title || "Vídeo")}</div>
-          <div class="meta">
-            ${escapeHtml(video.author || "YouTube")}
-            ${video.views ? " • " + escapeHtml(video.views) : ""}
-          </div>
+        <div class="channel">
+         ${esc(channel)}
         </div>
-      </article>
-    `;
-  }).join("");
 
-  feed.querySelectorAll(".card").forEach(card => {
-    card.addEventListener("click",() => {
-      const item = state.videos.find(v => videoId(v) === card.dataset.id);
-      if(item) openVideo(item);
-    });
+        <div class="views">
+         ${esc(v.views||"")}
+        </div>
+
+       </div>
+      </div>
+    </article>
+   `;
+  }).join("")+
+  "</div>";
+
+ document.querySelectorAll(".card").forEach(card=>{
+  card.addEventListener("click",()=>{
+   play(
+    card.dataset.id,
+    card.dataset.title,
+    card.dataset.channel
+   );
   });
+ });
 }
 
-async function search(query){
-  query = String(query || "").trim();
+function formatTime(sec){
+ sec=Math.floor(Number(sec)||0);
+ if(!sec)return "";
+ const m=Math.floor(sec/60);
+ const s=String(sec%60).padStart(2,"0");
+ return m+":"+s;
+}
 
-  if(!query){
-    return;
-  }
+function play(id,title,channel){
 
-  state.currentQuery = query;
-  feedTitle.textContent = `Resultados para "${query}"`;
-  feed.innerHTML = '<div class="loading">🔎 Pesquisando...</div>';
+ if(!id)return;
+
+ player.style.display="block";
+
+ frame.src=
+  "https://www.youtube.com/embed/"+
+  encodeURIComponent(id)+
+  "?autoplay=1&rel=0&modestbranding=1";
+
+ playerTitle.textContent=title||"";
+ playerChannel.textContent=channel||"";
+
+ localStorage.setItem(
+  "kyara.lastVideo",
+  JSON.stringify({
+   id:id,
+   title:title,
+   channel:channel,
+   time:Date.now()
+  })
+ );
+
+ let history=
+  JSON.parse(
+   localStorage.getItem("kyara.history")||"[]"
+  );
+
+ history=history.filter(x=>x.id!==id);
+
+ history.unshift({
+  id,title,channel
+ });
+
+ history=history.slice(0,50);
+
+ localStorage.setItem(
+  "kyara.history",
+  JSON.stringify(history)
+ );
+
+ window.scrollTo({
+  top:0,
+  behavior:"smooth"
+ });
+}
+
+function closePlayer(){
+ player.style.display="none";
+ frame.src="";
+}
+
+async function search(q,title){
+
+ q=(q||"").trim();
+
+ if(!q)return;
+
+ content.innerHTML=
+  '<div class="loading">🔎 Pesquisando no YouTube...</div>';
+
+ try{
+
+  const response=
+   await fetch(
+    API+"?q="+encodeURIComponent(q)
+   );
+
+  if(!response.ok)
+   throw new Error(
+    "HTTP "+response.status
+   );
+
+  const data=
+   await response.json();
+
+  if(data.status===false)
+   throw new Error(
+    data.error||"Erro na API"
+   );
+
+  const items=normalize(data);
+
+  render(
+   items,
+   title||"Resultados para "+q
+  );
+
+ }catch(error){
+
+  content.innerHTML=
+   '<div class="empty">'+
+   'Não foi possível carregar os vídeos.<br><br>'+
+   '<small>'+esc(error.message)+'</small>'+
+   '</div>';
+ }
+}
+
+document
+ .getElementById("searchForm")
+ .addEventListener("submit",e=>{
+  e.preventDefault();
+
+  const q=query.value.trim();
+
+  if(q)
+   search(q,"Resultados para "+q);
+ });
+
+document
+ .getElementById("closeBtn")
+ .onclick=closePlayer;
+
+document
+ .getElementById("shareBtn")
+ .onclick=async()=>{
+
+  const url=frame.src;
 
   try{
-    const url =
-      "/api/browser/search?query=" +
-      encodeURIComponent(query) +
-      "&siteUrl=" +
-      encodeURIComponent("https://www.youtube.com");
-
-    const response = await fetch(url,{
-      headers:{accept:"application/json"}
-    });
-
-    if(!response.ok){
-      throw new Error("HTTP " + response.status);
-    }
-
-    const data = await response.json();
-
-    const videos = Array.isArray(data)
-      ? data
-      : (data.results || data.videos || []);
-
-    renderVideos(videos.filter(v => v && v.type !== "channel"));
-
-  }catch(error){
-    console.error(error);
-
-    feed.innerHTML =
-      '<div class="error">Não foi possível pesquisar agora.<br>Tente novamente.</div>';
+   await navigator.clipboard.writeText(url);
+   alert("Link copiado.");
+  }catch{
+   prompt("Copie o link:",url);
   }
-}
+ };
 
-function addHistory(video){
-  const id = videoId(video);
+document
+ .getElementById("likeBtn")
+ .onclick=function(){
 
-  state.history = [
-    video,
-    ...state.history.filter(v => videoId(v) !== id)
-  ].slice(0,50);
+  this.textContent=
+   this.textContent.includes("Curtido")
+   ?"👍 Curtir"
+   :"👍 Curtido";
+ };
 
-  save();
-}
+document
+ .querySelectorAll("#chips button")
+ .forEach(btn=>{
 
-function openVideo(video){
-  const id = videoId(video);
+  btn.addEventListener("click",()=>{
 
-  if(!id){
-    return;
-  }
+   document
+    .querySelectorAll("#chips button")
+    .forEach(x=>
+     x.classList.remove("active")
+    );
 
-  addHistory(video);
+   btn.classList.add("active");
 
-  homeView.hidden = true;
-  watchView.hidden = false;
+   const q=btn.dataset.q;
 
-  watchView.innerHTML = `
-    <div class="player">
-      <iframe
-        src="/api/browser/embed?url=${encodeURIComponent(video.url || ("https://www.youtube.com/watch?v=" + id))}"
-        allow="autoplay; encrypted-media; picture-in-picture"
-        allowfullscreen>
-      </iframe>
-    </div>
+   query.value=q;
 
-    <div class="watch-title">
-      ${escapeHtml(video.title || "Vídeo")}
-    </div>
-
-    <div class="meta">
-      ${escapeHtml(video.author || "YouTube")}
-      ${video.views ? " • " + escapeHtml(video.views) : ""}
-    </div>
-
-    <div class="actions">
-      <button class="action ${state.liked.includes(id) ? "liked" : ""}" id="likeBtn">
-        ${state.liked.includes(id) ? "♥ Curtido" : "♡ Curtir"}
-      </button>
-
-      <button class="action" id="shareBtn">
-        ↗ Compartilhar
-      </button>
-
-      <button class="action" id="ytBtn">
-        ▶ YouTube
-      </button>
-    </div>
-
-    <section class="section">
-      <div class="section-head">
-        <h2>Mais vídeos</h2>
-      </div>
-      <div class="grid" id="related">
-        <div class="loading">Carregando...</div>
-      </div>
-    </section>
-  `;
-
-  document.getElementById("likeBtn").onclick = () => {
-    if(state.liked.includes(id)){
-      state.liked = state.liked.filter(x => x !== id);
-    }else{
-      state.liked.push(id);
-    }
-
-    save();
-    openVideo(video);
-  };
-
-  document.getElementById("shareBtn").onclick = async () => {
-    const shareUrl =
-      location.origin +
-      "/kyara-tube?q=" +
-      encodeURIComponent(video.title || "");
-
-    try{
-      if(navigator.share){
-        await navigator.share({
-          title:video.title || "KYARA TUBE",
-          url:shareUrl
-        });
-      }else{
-        await navigator.clipboard.writeText(shareUrl);
-        alert("Link copiado!");
-      }
-    }catch{}
-  };
-
-  document.getElementById("ytBtn").onclick = () => {
-    if(video.url){
-      location.href = video.url;
-    }else{
-      location.href = "https://www.youtube.com/watch?v=" + encodeURIComponent(id);
-    }
-  };
-
-  search(video.title || "");
-}
-
-function showHistory(){
-  homeView.hidden = false;
-  watchView.hidden = true;
-
-  feedTitle.textContent = "Histórico";
-
-  renderVideos(state.history);
-}
-
-document.getElementById("searchForm").addEventListener("submit",event => {
-  event.preventDefault();
-  search(searchInput.value);
-});
-
-document.getElementById("categories").addEventListener("click",event => {
-  const button = event.target.closest("[data-q]");
-
-  if(!button){
-    return;
-  }
-
-  document.querySelectorAll(".category")
-    .forEach(x => x.classList.remove("active"));
-
-  button.classList.add("active");
-
-  searchInput.value = button.dataset.q;
-  search(button.dataset.q);
-});
-
-document.querySelectorAll(".nav").forEach(button => {
-  button.addEventListener("click",() => {
-    document.querySelectorAll(".nav")
-      .forEach(x => x.classList.remove("active"));
-
-    button.classList.add("active");
-
-    if(button.dataset.nav === "history"){
-      showHistory();
-      return;
-    }
-
-    homeView.hidden = false;
-    watchView.hidden = true;
-
-    if(button.dataset.nav === "search"){
-      searchInput.focus();
-      return;
-    }
-
-    feedTitle.textContent = "Recomendados";
-
-    if(state.videos.length){
-      renderVideos(state.videos);
-    }else{
-      search("Minecraft");
-    }
+   search(q,btn.textContent);
   });
-});
+ });
 
-const params = new URLSearchParams(location.search);
-const initialQuery = params.get("q");
+document
+ .getElementById("homeBtn")
+ .onclick=()=>{
 
-if(initialQuery){
-  searchInput.value = initialQuery;
-  search(initialQuery);
+  closePlayer();
+
+  document
+   .querySelectorAll("nav button")
+   .forEach(x=>
+    x.classList.remove("active")
+   );
+
+  document
+   .getElementById("homeBtn")
+   .classList.add("active");
+
+  search("músicas mais tocadas","Início");
+ };
+
+document
+ .getElementById("shortsBtn")
+ .onclick=()=>{
+
+  search(
+   "YouTube Shorts",
+   "Shorts"
+  );
+ };
+
+document
+ .getElementById("historyBtn")
+ .onclick=()=>{
+
+  document
+   .querySelectorAll("nav button")
+   .forEach(x=>
+    x.classList.remove("active")
+   );
+
+  document
+   .getElementById("historyBtn")
+   .classList.add("active");
+
+  const history=
+   JSON.parse(
+    localStorage.getItem("kyara.history")||"[]"
+   );
+
+  render(history,"Histórico");
+ };
+
+document
+ .getElementById("savedBtn")
+ .onclick=()=>{
+
+  document
+   .querySelectorAll("nav button")
+   .forEach(x=>
+    x.classList.remove("active")
+   );
+
+  document
+   .getElementById("savedBtn")
+   .classList.add("active");
+
+  content.innerHTML=
+   '<div class="empty">'+
+   'Seus vídeos salvos aparecerão aqui.'+
+   '</div>';
+ };
+
+const params=
+ new URLSearchParams(location.search);
+
+const initial=
+ params.get("q");
+
+if(initial){
+
+ query.value=initial;
+
+ search(
+  initial,
+  "Resultados para "+initial
+ );
+
 }else{
-  search("Minecraft");
+
+ search(
+  "músicas mais tocadas",
+  "Início"
+ );
 }
-
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("/kyara-tube/sw.js").catch(() => {});
-}
-</script>
-
-
-
-<script>
-(function(){
-  "use strict";
-
-  const GAME_NAME =
-    document.title ||
-    location.pathname ||
-    "kyara-game";
-
-  const SAVE_KEY =
-    "kyara_game_save_" +
-    GAME_NAME
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g,"_");
-
-  window.KYARA_GAME_SAVE = {
-
-    load(){
-      try{
-        return JSON.parse(
-          localStorage.getItem(SAVE_KEY) || "{}"
-        );
-      }catch{
-        return {};
-      }
-    },
-
-    save(data){
-      try{
-        localStorage.setItem(
-          SAVE_KEY,
-          JSON.stringify(data || {})
-        );
-      }catch{}
-    },
-
-    patch(data){
-      const old = this.load();
-
-      this.save({
-        ...old,
-        ...(data || {}),
-        savedAt: Date.now()
-      });
-    }
-  };
-
-  /*
-   * Tela cheia.
-   */
-  function fullscreen(){
-    const el = document.documentElement;
-
-    try{
-      if(
-        !document.fullscreenElement &&
-        el.requestFullscreen
-      ){
-        el.requestFullscreen();
-      }else if(
-        document.exitFullscreen
-      ){
-        document.exitFullscreen();
-      }
-    }catch{}
-  }
-
-  window.KYARA_FULLSCREEN = fullscreen;
-
-  const btn =
-    document.createElement("button");
-
-  btn.type = "button";
-  btn.textContent = "⛶";
-
-  btn.title = "Tela cheia";
-
-  btn.style.cssText = `
-    position:fixed;
-    right:12px;
-    top:12px;
-    z-index:2147483647;
-    width:44px;
-    height:44px;
-    border:0;
-    border-radius:14px;
-    background:rgba(0,0,0,.72);
-    color:#fff;
-    font-size:22px;
-    box-shadow:0 4px 18px rgba(0,0,0,.35);
-    cursor:pointer;
-  `;
-
-  btn.addEventListener(
-    "click",
-    fullscreen
-  );
-
-  document.addEventListener(
-    "keydown",
-    function(e){
-      if(
-        e.key === "F11" ||
-        (
-          e.key === "Enter" &&
-          e.ctrlKey &&
-          e.shiftKey
-        )
-      ){
-        e.preventDefault();
-        fullscreen();
-      }
-    }
-  );
-
-  document.addEventListener(
-    "fullscreenchange",
-    function(){
-      btn.textContent =
-        document.fullscreenElement
-          ? "✕"
-          : "⛶";
-    }
-  );
-
-  document.addEventListener(
-    "DOMContentLoaded",
-    function(){
-      document.body.appendChild(btn);
-    }
-  );
-
-  /*
-   * Salvamento periódico.
-   *
-   * Não sobrescreve variáveis dos jogos.
-   * Apenas dispara um evento que jogos podem
-   * utilizar caso queiram registrar estado.
-   */
-  window.dispatchEvent(
-    new CustomEvent(
-      "kyara:game-save-ready",
-      {
-        detail:{
-          save: window.KYARA_GAME_SAVE
-        }
-      }
-    )
-  );
-
-})();
 </script>
 
 </body>

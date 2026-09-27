@@ -1,18 +1,84 @@
+import { filterMenuCommands } from '../features/commandMaintenance.js'
 import os from 'os'
 
+const UI = Object.freeze({
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    purple: '\x1b[38;5;141m',
+    pink: '\x1b[38;5;213m',
+    cyan: '\x1b[38;5;81m',
+    green: '\x1b[38;5;120m',
+    yellow: '\x1b[38;5;221m',
+    white: '\x1b[38;5;255m',
+    gray: '\x1b[38;5;245m',
+    red: '\x1b[38;5;204m'
+})
+
+function clean(value, fallback = '') {
+    const result = String(value ?? fallback)
+        .replace(/\r/g, '')
+        .replace(/\n+/g, ' ')
+        .trim()
+
+    return result || fallback
+}
+
+function paint(color, text) {
+    return `${color}${text}${UI.reset}`
+}
+
+function center(text, width = 48) {
+    const value = String(text ?? '')
+    const gap = Math.max(0, width - value.length)
+    const left = Math.floor(gap / 2)
+    const right = gap - left
+
+    return (
+        ' '.repeat(left) +
+        value +
+        ' '.repeat(right)
+    )
+}
+
+function top(width = 48) {
+    return `╭${'─'.repeat(width)}╮`
+}
+
+function middle(width = 48) {
+    return `├${'─'.repeat(width)}┤`
+}
+
+function bottom(width = 48) {
+    return `╰${'─'.repeat(width)}╯`
+}
+
+function line(text = '', width = 48) {
+    return `│${String(text).padEnd(width, ' ')}│`
+}
+
 function uptimeText() {
-    const total = Math.floor(process.uptime())
+    const total = Math.max(
+        0,
+        Math.floor(process.uptime())
+    )
 
     const days = Math.floor(total / 86400)
-    const hours = Math.floor((total % 86400) / 3600)
-    const minutes = Math.floor((total % 3600) / 60)
+    const hours = Math.floor(
+        (total % 86400) / 3600
+    )
+    const minutes = Math.floor(
+        (total % 3600) / 60
+    )
     const seconds = total % 60
 
     const parts = []
 
-    if (days > 0) parts.push(`${days}d`)
-    if (hours > 0) parts.push(`${hours}h`)
-    if (minutes > 0) parts.push(`${minutes}m`)
+    if (days) parts.push(`${days}d`)
+    if (hours || days) parts.push(`${hours}h`)
+    if (minutes || hours || days) {
+        parts.push(`${minutes}m`)
+    }
 
     parts.push(`${seconds}s`)
 
@@ -22,13 +88,17 @@ function uptimeText() {
 function memoryText() {
     const mem = process.memoryUsage()
 
-    return `${(mem.rss / 1024 / 1024).toFixed(1)} MB`
+    return `${(
+        mem.rss / 1024 / 1024
+    ).toFixed(1)} MB`
 }
 
 function heapText() {
     const mem = process.memoryUsage()
 
-    return `${(mem.heapUsed / 1024 / 1024).toFixed(1)} MB`
+    return `${(
+        mem.heapUsed / 1024 / 1024
+    ).toFixed(1)} MB`
 }
 
 function cpuText() {
@@ -56,68 +126,191 @@ function greeting() {
     return 'Boa noite'
 }
 
-function section(title, lines, {
-    prefix,
-    itemIcon = '╰─›',
-    bottom = '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
-} = {}) {
+function section(
+    title,
+    icon,
+    commands,
+    prefix
+) {
+    const rendered = [
+        `╭─〔 ${icon} ${title} 〕`,
+        `│`
+    ]
+
+    for (let i = 0; i < commands.length; i++) {
+        const last = i === commands.length - 1
+        const branch = last ? '└─' : '├─'
+
+        rendered.push(
+            `│ ${branch} ${prefix}${commands[i]}`
+        )
+    }
+
+    rendered.push(
+        `╰─┈┈┈┈┈┈┈┈┈┈┈`
+    )
+
+    return rendered.join('\n')
+}
+
+function authStyleHeader(
+    botName,
+    userName
+) {
+    const width = 52
+
+    const safeBot = clean(
+        botName,
+        'KYARA'
+    )
+
+    const safeUser = clean(
+        userName,
+        'Dono'
+    )
+
     return [
-        `╭━━━〔 ${title} 〕`,
-        ...lines.map(line => `┃ ${itemIcon} ${prefix}${line}`),
-        `┃`,
-        bottom
+        paint(
+            UI.purple,
+            `╭${'─'.repeat(width)}╮`
+        ),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.pink + UI.bold,
+            center(
+                '🌸  K Y A R A',
+                width
+            )
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.cyan,
+            center(
+                'OWNER CONTROL CENTER',
+                width
+            )
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.dim,
+            center(
+                'PAINEL ADMINISTRATIVO',
+                width
+            )
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(
+            UI.purple,
+            `├${'─'.repeat(width)}┤`
+        ),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.white,
+            `  👑 Dono: ${safeUser}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.white,
+            `  🤖 Bot: ${safeBot}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.green,
+            `  🟢 Status: ONLINE`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.cyan,
+            `  ⏱️ Uptime: ${uptimeText()}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.cyan,
+            `  🧠 RAM: ${memoryText()}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.gray,
+            `  📦 Heap: ${heapText()}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(UI.purple, '│') +
+        paint(
+            UI.gray,
+            `  ⚙️ CPU: ${cpuText()}`.padEnd(width)
+        ) +
+        paint(UI.purple, '│'),
+
+        paint(
+            UI.purple,
+            `╰${'─'.repeat(width)}╯`
+        )
     ].join('\n')
 }
 
 async function menuDono(
-    prefix,
-    botName = 'MeuBot',
-    userName = 'Usuário',
-    {
-        header,
-        menuTopBorder = '╭━━━〔',
-        bottomBorder = '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
-        menuItemIcon = '╰─›',
-        separatorIcon = '👑',
-        middleBorder = '┃'
-    } = {}
+    prefix = '#',
+    botName = 'KYARA',
+    userName = 'Dono',
+    options = {}
 ) {
+    const safePrefix = clean(
+        prefix,
+        '#'
+    )
 
-    const safePrefix = prefix || '.'
-    const safeBotName = botName || 'MeuBot'
-    const safeUserName = userName || 'Dono'
+    const safeBotName = clean(
+        botName,
+        'KYARA'
+    )
 
-    const customHeader = header
-        ? header.replace(/#user#/g, safeUserName)
-        : `${greeting()}, ${safeUserName}! 👑`
+    const safeUserName = clean(
+        userName,
+        'Dono'
+    )
 
-    const status = [
-        `┃ 🔐 Acesso: OWNER`,
-        `┃ 🤖 Bot: ${safeBotName}`,
-        `┃ 🟢 Estado: ONLINE`,
-        `┃ ⏱️ Uptime: ${uptimeText()}`,
-        `┃ 🧠 RAM: ${memoryText()}`,
-        `┃ 📦 Heap: ${heapText()}`,
-        `┃ ⚙️ CPU: ${cpuText()}`,
-        `┃ 🟦 Node: ${process.version}`,
-        `┃ 🆔 PID: ${process.pid}`,
-        `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
-    ].join('\n')
+    const menuItemIcon =
+        clean(
+            options.itemIcon,
+            '├─'
+        )
+
+    const customHeader =
+        clean(
+            options.customHeader,
+            `${greeting()}, ${safeUserName}!`
+        )
 
     const inicio = section(
-        '📚 INÍCIO',
+        'INÍCIO',
+        '📚',
         [
             'tutorial'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const config = section(
-        '🤖 CONFIGURAÇÕES DO BOT',
+        'CONFIGURAÇÕES DO BOT',
+        '🤖',
         [
             'prefixo',
             'numerodono',
@@ -132,29 +325,23 @@ async function menuDono(
             'lermais',
             'personalizargrupo'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const personalidade = section(
-        '🧠 PERSONALIDADE DA ASSISTENTE',
+        'PERSONALIDADE',
+        '🧠',
         [
             'setpersonalidade',
             'criarpers',
             'novapers'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const design = section(
-        '🎨 DESIGN & APARÊNCIA',
+        'DESIGN & APARÊNCIA',
+        '🎨',
         [
             'designmenu',
             'setborda',
@@ -166,15 +353,12 @@ async function menuDono(
             'setheader',
             'resetdesign'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const automacao = section(
-        '⚙️ SISTEMA & AUTOMAÇÃO',
+        'SISTEMA & AUTOMAÇÃO',
+        '⚙️',
         [
             'addauto',
             'addautomidia',
@@ -187,15 +371,12 @@ async function menuDono(
             'listnopref',
             'delnopref'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const comandos = section(
-        '🛠️ PERSONALIZAÇÃO DE COMANDOS',
+        'PERSONALIZAÇÃO DE COMANDOS',
+        '🛠️',
         [
             'addcmd',
             'addcmdmidia',
@@ -212,29 +393,23 @@ async function menuDono(
             'listblackglobal',
             'rmblackglobal'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const limitacao = section(
-        '🚫 LIMITAÇÃO DE COMANDOS',
+        'LIMITAÇÃO DE COMANDOS',
+        '🚫',
         [
             'cmdlimitar',
             'cmddeslimitar',
             'cmdlimites'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const usuarios = section(
-        '👥 GERENCIAMENTO DE USUÁRIOS',
+        'GERENCIAMENTO DE USUÁRIOS',
+        '👥',
         [
             'addsubdono',
             'delsubdono',
@@ -250,15 +425,12 @@ async function menuDono(
             'unbangp',
             'listbangp'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const aluguel = section(
-        '💰 SISTEMA DE ALUGUEL',
+        'SISTEMA DE ALUGUEL',
+        '💰',
         [
             'modoaluguel',
             'addaluguel',
@@ -273,30 +445,24 @@ async function menuDono(
             'setdiv',
             'divulgar'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const subbots = section(
-        '🤖 GERENCIAMENTO DE SUB-BOTS',
+        'GERENCIAMENTO DE SUB-BOTS',
+        '🤖',
         [
             'addsubbot',
             'removesubbot',
             'listarsubbots',
             'conectarsubbot'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const vip = section(
-        '💎 SISTEMA VIP / PREMIUM',
+        'SISTEMA VIP / PREMIUM',
+        '💎',
         [
             'addcmdvip',
             'removecmdvip',
@@ -306,48 +472,12 @@ async function menuDono(
             'menuvip',
             'infovip'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
-    )
-
-
-    const figban = section(
-        '🎴 FIGBAN • CONTROLE',
-        [
-            'figban lista',
-            'figban painel'
-        ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
-    )
-
-    const ajustes = section(
-        '🧪 COMANDOS EM AJUSTE',
-        [
-            'menuajustes',
-            'cmdajuste lista',
-            'cmdajuste buscar <termo>',
-            'cmdajuste marcar <comando>',
-            'cmdajuste desmarcar <comando>',
-            'cmdajuste limpar',
-            'ajuda <comando>',
-            'caixadeideias'
-        ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const controle = section(
-        '⚡ CONTROLE & MANUTENÇÃO',
+        'CONTROLE & MANUTENÇÃO',
+        '⚡',
         [
             'atualizar',
             'reiniciar',
@@ -362,15 +492,12 @@ async function menuDono(
             'listblocks',
             'antibanmarcar'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const monitoramento = section(
-        '📊 MONITORAMENTO & ANÁLISE',
+        'MONITORAMENTO & ANÁLISE',
+        '📊',
         [
             'listagp',
             'antipv',
@@ -390,15 +517,12 @@ async function menuDono(
             'nuke',
             'msgprefix'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
     const transmissao = section(
-        '📡 TRANSMISSÕES',
+        'TRANSMISSÕES',
+        '📡',
         [
             'tm',
             'tm2',
@@ -412,62 +536,91 @@ async function menuDono(
             'divdono time',
             'divdono status'
         ],
-        {
-            prefix: safePrefix,
-            itemIcon: menuItemIcon,
-            bottom: bottomBorder
-        }
+        safePrefix
     )
 
-    return [
-        `${menuTopBorder} ${separatorIcon} *KYARA OWNER OS* 〕`,
-        `┃`,
-        `┃ ${customHeader}`,
-        `┃`,
-        status,
-        `┃`,
-        `┃ 🛡️ *PAINEL RESTRITO AO DONO*`,
-        `┃`,
-        `┃ Escolha uma categoria abaixo.`,
-        bottomBorder,
-        ``,
+    const figban = section(
+        'FIGBAN • CONTROLE',
+        '🎴',
+        [
+            'figban lista',
+            'figban painel'
+        ],
+        safePrefix
+    )
+
+    const ajustes = section(
+        'COMANDOS EM AJUSTE',
+        '🧪',
+        [
+            'menuajustes',
+            'cmdajuste lista',
+            'cmdajuste buscar <termo>',
+            'cmdajuste marcar <comando>',
+            'cmdajuste desmarcar <comando>',
+            'cmdajuste limpar',
+            'ajuda <comando>',
+            'caixadeideias'
+        ],
+        safePrefix
+    )
+
+    const blocks = [
         inicio,
-        ``,
         config,
-        ``,
         personalidade,
-        ``,
         design,
-        ``,
         automacao,
-        ``,
         comandos,
-        ``,
         limitacao,
-        ``,
         usuarios,
-        ``,
         aluguel,
-        ``,
         subbots,
-        ``,
         vip,
-        ``,
         controle,
-        ``,
         monitoramento,
-        ``,
         transmissao,
-        ``,
         figban,
-        ``,
-        ajustes,
-        ``,
-        `╭━━━〔 👑 KYARA OWNER 〕`,
-        `┃ 🔒 Área exclusiva do proprietário`,
-        `┃ ⚠️ Execute os comandos somente quando necessário.`,
-        `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+        ajustes
+    ]
+
+    const text = [
+        authStyleHeader(
+            safeBotName,
+            safeUserName
+        ),
+
+        '',
+
+        `╭${'─'.repeat(52)}╮`,
+        `│${center('🔐 ACESSO EXCLUSIVO DO PROPRIETÁRIO', 52)}│`,
+        `├${'─'.repeat(52)}┤`,
+        `│${center(customHeader, 52)}│`,
+        `│${center('Use os comandos críticos com cuidado.', 52)}│`,
+        `╰${'─'.repeat(52)}╯`,
+
+        '',
+
+        ...blocks.flatMap(
+            block => [block, '']
+        ),
+
+        `╭${'─'.repeat(52)}╮`,
+        `│${center('👑 KYARA • OWNER MODE', 52)}│`,
+        `├${'─'.repeat(52)}┤`,
+        `│${center('🔒 Painel protegido', 52)}│`,
+        `│${center(`⚡ Prefixo: ${safePrefix}`, 52)}│`,
+        `│${center(`🟦 Node: ${process.version}`, 52)}│`,
+        `╰${'─'.repeat(52)}╯`
     ].join('\n')
+
+    const rendered = filterMenuCommands(
+        text,
+        safePrefix,
+        menuItemIcon
+    )
+
+    return rendered
 }
 
 export default menuDono

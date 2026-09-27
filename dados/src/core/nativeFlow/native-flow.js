@@ -1,41 +1,59 @@
+import fs from 'fs'
+import os from 'os'
+
 import {
   proto,
   generateWAMessageFromContent,
-  isJidGroup
+  isJidGroup,
+  prepareWAMessageMedia
 } from 'baileys'
 
-const PRIVACY_MODE_TS_OFFSET = 77980457
+import {
+  normalizeOutgoingContent
+} from '../runtime/kyara-runtime.js'
 
-const j = value => JSON.stringify(value)
+const PRIVACY_MODE_TS_OFFSET =
+  77980457
 
-function getPrivacyModeTs() {
+const stringify =
+  value =>
+    JSON.stringify(
+      value
+    )
+
+function privacyTimestamp() {
   return String(
-    Math.floor(Date.now() / 1000) - PRIVACY_MODE_TS_OFFSET
+    Math.floor(
+      Date.now() / 1000
+    ) -
+    PRIVACY_MODE_TS_OFFSET
   )
 }
 
-function createBaseBizAttrs() {
-  return {
-    actual_actors: '2',
-    host_storage: '2',
-    privacy_mode_ts: getPrivacyModeTs()
-  }
-}
-
-function buildMixedNativeFlowBizNode() {
+function bizNode() {
   return {
     tag: 'biz',
-    attrs: createBaseBizAttrs(),
+
+    attrs: {
+      actual_actors: '2',
+      host_storage: '2',
+      privacy_mode_ts:
+        privacyTimestamp()
+    },
+
     content: [
       {
         tag: 'interactive',
+
         attrs: {
           type: 'native_flow',
           v: '1'
         },
+
         content: [
           {
             tag: 'native_flow',
+
             attrs: {
               v: '9',
               name: 'mixed'
@@ -43,72 +61,126 @@ function buildMixedNativeFlowBizNode() {
           }
         ]
       },
+
       {
         tag: 'quality_control',
+
         attrs: {
-          source_type: 'third_party'
+          source_type:
+            'third_party'
         }
       }
     ]
   }
 }
 
-function buildAdditionalNodes(jid) {
-  const bizNode = buildMixedNativeFlowBizNode()
+function additionalNodes(
+  jid
+) {
+  const node =
+    bizNode()
 
-  if (isJidGroup(jid)) {
-    return [bizNode]
+  if (
+    isJidGroup(
+      jid
+    )
+  ) {
+    return [
+      node
+    ]
   }
 
   return [
     {
       tag: 'bot',
+
       attrs: {
         biz_bot: '1'
       }
     },
-    bizNode
+
+    node
   ]
 }
 
-function nativeButton(name, params) {
-  return proto.Message.InteractiveMessage.NativeFlowMessage.NativeFlowButton.create({
-    name,
-    buttonParamsJson: j(params)
-  })
+function nativeButton(
+  name,
+  params
+) {
+  return proto
+    .Message
+    .InteractiveMessage
+    .NativeFlowMessage
+    .NativeFlowButton
+    .create({
+      name,
+      buttonParamsJson:
+        stringify(
+          params
+        )
+    })
 }
 
-export function singleSelect(displayText, sections) {
+export function singleSelect(
+  displayText,
+  sections
+) {
   return {
-    name: 'single_select',
-    buttonParamsJson: j({
-      title: displayText,
-      sections
-    })
+    name:
+      'single_select',
+
+    buttonParamsJson:
+      stringify({
+        title:
+          displayText,
+
+        sections
+      })
   }
 }
 
-export function quickReply(displayText, id) {
+export function quickReply(
+  displayText,
+  id
+) {
   return {
-    name: 'quick_reply',
-    buttonParamsJson: j({
-      display_text: displayText,
-      id
-    })
+    name:
+      'quick_reply',
+
+    buttonParamsJson:
+      stringify({
+        display_text:
+          displayText,
+
+        id
+      })
   }
 }
 
-export function copyBtn(displayText, copyCode) {
+export function copyBtn(
+  displayText,
+  copyCode
+) {
   return {
-    name: 'cta_copy',
-    buttonParamsJson: j({
-      display_text: displayText,
-      copy_code: copyCode
-    })
+    name:
+      'cta_copy',
+
+    buttonParamsJson:
+      stringify({
+        display_text:
+          displayText,
+
+        copy_code:
+          copyCode
+      })
   }
 }
 
-export function row(title, description, id) {
+export function row(
+  title,
+  description,
+  id
+) {
   return {
     title,
     description,
@@ -117,17 +189,38 @@ export function row(title, description, id) {
 }
 
 export function getMetrics() {
-  const mem = process.memoryUsage()
+  const memory =
+    process.memoryUsage()
 
   return {
-    ram: Math.round(mem.rss / 1024 / 1024),
-    heap: Math.round(mem.heapUsed / 1024 / 1024),
-    cores: typeof navigator !== 'undefined'
-      ? navigator.hardwareConcurrency || 1
-      : 1,
-    up: Math.floor(process.uptime()),
-    load: 'ONLINE',
-    model: 'Native Flow'
+    ram:
+      Math.round(
+        memory.rss /
+        1024 /
+        1024
+      ),
+
+    heap:
+      Math.round(
+        memory.heapUsed /
+        1024 /
+        1024
+      ),
+
+    cores:
+      os.cpus().length ||
+      1,
+
+    up:
+      Math.floor(
+        process.uptime()
+      ),
+
+    load:
+      'ONLINE',
+
+    model:
+      'Native Flow'
   }
 }
 
@@ -138,92 +231,268 @@ export async function sendFlow(
     text = '',
     footer = '',
     title = '',
-    buttons = []
+    buttons = [],
+    media = null,
+    mentionedJid = []
   } = {}
 ) {
   if (!Kyara) {
-    throw new Error('Socket Kyara não informado')
+    throw new Error(
+      'Socket Kyara não informado'
+    )
   }
 
   if (!jid) {
-    throw new Error('JID não informado')
+    throw new Error(
+      'JID não informado'
+    )
   }
 
-  const nativeButtons = buttons.map(button =>
-    nativeButton(
-      button.name,
-      JSON.parse(button.buttonParamsJson)
+  const prepared =
+    normalizeOutgoingContent(
+      {
+        text,
+        footer,
+        title,
+        buttons
+      },
+      jid
     )
-  )
+
+  const nativeButtons =
+    (
+      prepared.buttons ||
+      []
+    ).map(
+      button =>
+        nativeButton(
+          button.name,
+          JSON.parse(
+            button.buttonParamsJson
+          )
+        )
+    )
 
   const nativeFlow =
-    proto.Message.InteractiveMessage.NativeFlowMessage.create({
-      buttons: nativeButtons,
-      messageParamsJson: '{}',
-      messageVersion: 1
-    })
+    proto
+      .Message
+      .InteractiveMessage
+      .NativeFlowMessage
+      .create({
+        buttons:
+          nativeButtons,
+
+        messageParamsJson:
+          '{}',
+
+        messageVersion:
+          1
+      })
+
+  let mediaMessage =
+    null
+
+  if (
+    media?.path &&
+    fs.existsSync(
+      media.path
+    )
+  ) {
+    try {
+      const buffer =
+        fs.readFileSync(
+          media.path
+        )
+
+      if (
+        !buffer.length
+      ) {
+        throw new Error(
+          'Arquivo de mídia vazio'
+        )
+      }
+
+      if (
+        media.type ===
+        'video'
+      ) {
+        const preparedMedia =
+          await prepareWAMessageMedia(
+            {
+              video:
+                buffer,
+
+              mimetype:
+                'video/mp4',
+
+              gifPlayback:
+                true
+            },
+
+            {
+              upload:
+                Kyara.waUploadToServer
+            }
+          )
+
+        mediaMessage = {
+          type:
+            'video',
+
+          message:
+            preparedMedia
+              ?.videoMessage ||
+            null
+        }
+
+      } else {
+        const preparedMedia =
+          await prepareWAMessageMedia(
+            {
+              image:
+                buffer
+            },
+
+            {
+              upload:
+                Kyara.waUploadToServer
+            }
+          )
+
+        mediaMessage = {
+          type:
+            'image',
+
+          message:
+            preparedMedia
+              ?.imageMessage ||
+            null
+        }
+      }
+
+    } catch (
+      mediaError
+    ) {
+      console.warn(
+        '[KYARA FLOW MEDIA]',
+        mediaError?.message ||
+        mediaError
+      )
+    }
+  }
+
+  const header =
+    mediaMessage?.message
+      ? {
+          title:
+            prepared.title,
+
+          hasMediaAttachment:
+            true,
+
+          ...(mediaMessage.type ===
+          'video'
+            ? {
+                videoMessage:
+                  mediaMessage.message
+              }
+            : {
+                imageMessage:
+                  mediaMessage.message
+              })
+        }
+      : {
+          title:
+            prepared.title,
+
+          hasMediaAttachment:
+            false
+        }
 
   const interactive =
-    proto.Message.InteractiveMessage.create({
-      body:
-        proto.Message.InteractiveMessage.Body.create({
-          text
-        }),
+    proto
+      .Message
+      .InteractiveMessage
+      .create({
+        body:
+          proto
+            .Message
+            .InteractiveMessage
+            .Body
+            .create({
+              text:
+                prepared.text
+            }),
 
-      footer:
-        proto.Message.InteractiveMessage.Footer.create({
-          text: footer
-        }),
+        footer:
+          proto
+            .Message
+            .InteractiveMessage
+            .Footer
+            .create({
+              text:
+                prepared.footer
+            }),
 
-      header:
-        proto.Message.InteractiveMessage.Header.create({
-          title,
-          hasMediaAttachment: false
-        }),
+        header:
+          proto
+            .Message
+            .InteractiveMessage
+            .Header
+            .create(
+              header
+            ),
 
-      nativeFlowMessage: nativeFlow
-    })
+        nativeFlowMessage:
+          nativeFlow
+      })
 
-  const waMessage =
+  if (
+    Array.isArray(
+      mentionedJid
+    ) &&
+    mentionedJid.length
+  ) {
+    interactive.contextInfo = {
+      mentionedJid
+    }
+  }
+
+  const message =
     generateWAMessageFromContent(
       jid,
+
       {
-        interactiveMessage: interactive
+        interactiveMessage:
+          interactive
       },
+
       {
-        userJid: Kyara.user?.id || jid
+        userJid:
+          Kyara.user?.id ||
+          jid
       }
     )
 
-  const additionalNodes =
-    buildAdditionalNodes(jid)
-
-  console.log(
-    '[KYARA FLOW] Enviando Native Flow',
-    JSON.stringify({
-      jid,
-      buttons: nativeButtons.length,
-      private: !isJidGroup(jid),
-      additionalNodes: additionalNodes.map(
-        node => node.tag
-      ),
-      messageId: waMessage.key?.id
-    })
-  )
-
   await Kyara.relayMessage(
     jid,
-    waMessage.message,
+    message.message,
+
     {
-      messageId: waMessage.key.id,
-      additionalNodes
+      messageId:
+        message.key.id,
+
+      additionalNodes:
+        additionalNodes(
+          jid
+        )
     }
   )
 
   console.log(
-    '[KYARA FLOW] Relay Native Flow concluído:',
-    waMessage.key.id
+    '[KYARA FLOW] Native Flow enviado:',
+    message.key.id
   )
 
-  return waMessage
+  return message
 }

@@ -1,79 +1,154 @@
+import {
+  getConfiguredBotName
+} from '../core/identity/kyara-identity.js'
+
+function hora() {
+  const h = new Date().getHours()
+
+  if (h >= 5 && h < 12) return 'Bom dia'
+  if (h >= 12 && h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
+function clean(value, fallback = '') {
+  return String(value ?? fallback)
+    .replace(/\n+/g, ' ')
+    .trim()
+}
+
+function roleInfo(design = {}) {
+  if (
+    design.isOwner ||
+    design.owner ||
+    design.cargo === 'dono'
+  ) {
+    return {
+      label: '👑 DONO',
+      mode: 'OWNER MODE'
+    }
+  }
+
+  if (
+    design.isAdmin ||
+    design.admin ||
+    design.cargo === 'adm'
+  ) {
+    return {
+      label: '🛡️ ADM',
+      mode: 'ADM MODE'
+    }
+  }
+
+  return {
+    label: '👤 MEMBRO',
+    mode: 'USER MODE'
+  }
+}
+
+function category(title, icon, commands, prefix) {
+  return [
+    `╭─〔 ${icon} ${title} 〕`,
+    ...commands.map(
+      command => `│  ├─ ${prefix}${command}`
+    ),
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`
+  ].join('\n')
+}
 
 export default async function menu(
   prefix,
-  botName = 'BOT-KYARA',
+  botName = getConfiguredBotName(),
   userName = 'Usuário',
   design = {}
 ) {
-  const cargo =
-    design.cargo ||
-    design.nivel ||
-    design.role ||
-    'membro';
-
-  const nivel =
-    cargo === 'dono'
-      ? '👑 DONO'
-      : cargo === 'adm'
-        ? '👤 ADM'
-        : '👤 MEMBRO';
+  const safePrefix = clean(prefix, '#')
+  const safeBotName = clean(botName, 'KYARA')
+  const safeUserName = clean(userName, 'Usuário')
+  const role = roleInfo(design)
 
   const online =
-    design.online ||
-    design.uptime ||
-    'Online: 0s';
+    clean(
+      design.online ||
+      design.uptime,
+      'ONLINE'
+    )
 
   const ram =
-    design.ram ||
-    design.memory ||
-    'N/D';
+    clean(
+      design.ram ||
+      design.memory,
+      'N/D'
+    )
 
-  const canais = [
-    '📢 O COMEÇO • Canal Oficial',
-    '🌸 Kyara-bot • Canal do Bot'
-  ];
+  const categorias = [
+    category(
+      'CENTRAL',
+      '🌸',
+      [
+        'menudown',
+        'menulogos',
+        'menuedits',
+        'menuadm',
+        'menubn',
+        'menumemb'
+      ],
+      safePrefix
+    ),
 
-  const canaisTexto = canais
-    .map(function(item) {
-      return '┃ ' + item;
-    })
-    .join('\\n');
+    category(
+      'FERRAMENTAS',
+      '🧰',
+      [
+        'ferramentas',
+        'menufig',
+        'alteradores'
+      ],
+      safePrefix
+    ),
 
-  return (
-    '🌸 KYARA • USER MODE\\n' +
-    'Bom dia, ' + userName + '! 🌸\\n' +
-    '\\n' +
+    category(
+      'ENTRETENIMENTO',
+      '🎮',
+      [
+        'menurpg',
+        'menuartista',
+        'menuvip',
+        'menulevel'
+      ],
+      safePrefix
+    )
+  ]
 
-    '╭━━〔 🌸 *BOT-KYARA* 〕━━╮\\n' +
-    '┃ ' + nivel + '\\n' +
-    '┃ ⚡ ' + online + '\\n' +
-    '┃ 🧠 RAM: ' + ram + '\\n' +
-    '╰━━━━━━━━━━━━━━━━━━━━╯\\n' +
-    '\\n' +
-
-    '╭━━〔 📚 *CENTRAL KYARA* 〕━━╮\\n' +
-    '┃ 📥 ' + prefix + 'menudown\\n' +
-    '┃ 🎨 ' + prefix + 'menulogos\\n' +
-    '┃ ✏️ ' + prefix + 'menuedits\\n' +
-    '┃ 🛡️ ' + prefix + 'menuadm\\n' +
-    '┃ 🎉 ' + prefix + 'menubn\\n' +
-    '┃ 👑 ' + prefix + 'menudono\\n' +
-    '┃ 👥 ' + prefix + 'menumemb\\n' +
-    '┃ 🛠️ ' + prefix + 'ferramentas\\n' +
-    '┃ 🖼️ ' + prefix + 'menufig\\n' +
-    '┃ ⚙️ ' + prefix + 'alteradores\\n' +
-    '┃ 🎮 ' + prefix + 'menurpg\\n' +
-    '┃ 💎 ' + prefix + 'menuvip\\n' +
-    '╰━━━━━━━━━━━━━━━━━━━━╯\\n' +
-    '\\n' +
-
-    'Escolha um dos menus abaixo.\\n' +
-    '🌸 *12 menus originais da Kyara.*\\n' +
-    '🌸 BOT-KYARA • Menu Interativo\\n' +
-    '\\n' +
-
-    '╭━━〔 📢 *CANAIS OFICIAIS* 〕━━╮\\n' +
-    canaisTexto + '\\n' +
-    '╰━━━━━━━━━━━━━━━━━━━━╯'
-  );
+  return [
+    `╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮`,
+    `│ 🌸 *${safeBotName} OS*`,
+    `│`,
+    `│ ${hora()}, @${safeUserName}!`,
+    `│`,
+    `│ ${role.label}`,
+    `│ ⚡ ${role.mode}`,
+    `│ 🟢 Status: ${online}`,
+    `│ 🧠 RAM: ${ram}`,
+    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`,
+    ``,
+    `╭─〔 📚 CENTRAL KYARA 〕`,
+    `│ Escolha uma categoria:`,
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`,
+    ``,
+    ...categorias,
+    ``,
+    `╭─〔 💡 COMUNIDADE 〕`,
+    `│  ├─ ${safePrefix}ideia <sua ideia>`,
+    `│  ├─ ${safePrefix}caixadeideias`,
+    `│  ├─ ${safePrefix}melhoresideias`,
+    `│  ├─ ${safePrefix}votarideia <id>`,
+    `│  ├─ ${safePrefix}level`,
+    `│  └─ ${safePrefix}ranklevel`,
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`,
+    ``,
+    `╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮`,
+    `│ ✦ KYARA • ${role.mode}`,
+    `│ ⚡ ${safePrefix}menu`,
+    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+  ].join('\n')
 }

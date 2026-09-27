@@ -1,3 +1,4 @@
+import { processExperimentalMessage } from './experimental/index.js';
 /**
  * KYARA CORE
  *
@@ -42,7 +43,27 @@ export async function kyaraCore({
     };
   }
 
-  const intencao = entenderIntencao(texto);
+  
+  let experimental = null;
+
+  try {
+    experimental = await processExperimentalMessage({
+      text: texto,
+      scope: 'message',
+      id:
+        mensagem?.key?.remoteJid ||
+        mensagem?.remoteJid ||
+        'default',
+      message: mensagem
+    });
+  } catch (experimentalError) {
+    console.error(
+      '[KYARA EXPERIMENTAL] Falha não crítica:',
+      experimentalError?.message || experimentalError
+    );
+  }
+
+const intencao = entenderIntencao(texto);
 
   const contexto = montarContexto({
     mensagem,

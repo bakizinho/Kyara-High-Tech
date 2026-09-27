@@ -185,7 +185,7 @@ async function download(url) {
       },
       download_dir: 'downloads',
       filename_tag: 'SPOTISAVER',
-      user_ip: '138.118.236.9',
+      user_ip: process.env.KYARA_SPOTISAVER_USER_IP || undefined,
       is_premium: false
     };
 

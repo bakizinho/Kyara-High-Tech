@@ -7,6 +7,7 @@ URL_FILE="dados/.kyara-browser-public-url"
 LOG_DIR="dados/logs"
 SERVER_LOG="$LOG_DIR/kyara-browser-server.log"
 CF_LOG="$LOG_DIR/cloudflared-browser.log"
+CF_PID_FILE="dados/.kyara-browser-cloudflared.pid"
 
 mkdir -p "$LOG_DIR"
 
@@ -71,15 +72,31 @@ echo
 echo "☁️ Criando túnel HTTPS..."
 
 rm -f "$URL_FILE"
+
+if [ -f "$CF_PID_FILE" ]; then
+  OLD_CF_PID="$(cat "$CF_PID_FILE" 2>/dev/null || true)"
+
+  if [ -n "$OLD_CF_PID" ] &&
+     kill -0 "$OLD_CF_PID" 2>/dev/null
+  then
+    echo "☁️ Encerrando cloudflared antigo: $OLD_CF_PID"
+    kill "$OLD_CF_PID" 2>/dev/null || true
+    sleep 2
+  fi
+fi
+
 : > "$CF_LOG"
 
 nohup cloudflared tunnel \
   --url "http://127.0.0.1:$PORT" \
   --protocol http2 \
   --no-autoupdate \
+  </dev/null \
   > "$CF_LOG" 2>&1 &
 
 CF_PID=$!
+
+printf '%s\n' "$CF_PID" > "$CF_PID_FILE"
 
 echo "☁️ PID cloudflared: $CF_PID"
 echo "⏳ Aguardando URL..."
@@ -150,7 +167,7 @@ for n in $(seq 1 15); do
       --max-time 10 \
       -o /dev/null \
       -w '%{http_code}' \
-      "$PUBLIC_URL/api/browser/search?query=minecraft" \
+      "$PUBLIC_URL/" \
       2>/dev/null || true
   )"
 

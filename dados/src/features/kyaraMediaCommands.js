@@ -4,14 +4,660 @@ import {
 } from 'baileys';
 
 import * as youtube from '../funcs/downloads/youtube.js';
+import { baixarHttp } from '../funcs/downloads/httpFallback.js';
 import * as tiktok from '../funcs/downloads/tiktok.js';
 import * as instagram from '../funcs/downloads/igdl.js';
 import * as kwai from '../funcs/downloads/kwai.js';
 import facebook from '../funcs/downloads/facebook.js';
 import * as pinterest from '../funcs/downloads/pinterest.js';
+import {
+  executeCosmos,
+  cleanupCosmosFiles
+} from '../funcs/downloads/cosmos.js';
 import * as twitter from '../funcs/utils/twitter.js';
+import { isOwner } from '../core/menuDono/menu-dono.js';
+import { handlePlay2 } from './kyaraPlay2.js';
+import {
+  handlePinterest,
+  kyaraPinterestNativeCarousel
+} from './kyaraPinterest.js';
+import { sendHtmlGameFromOptions } from '../utils/htmlGame.js';
 
 const searchCache = new Map();
+
+function buildCosmosGalleryHtml(files, query) {
+  const images = files
+    .map((item, index) => {
+      const url = String(item?.file || '').trim();
+
+      if (!url) return '';
+
+      return `
+        <button
+          class="cosmos-thumb"
+          data-index="${index}"
+          onclick="selectCosmosImage(${index})"
+          type="button"
+        >
+          <img
+            src="${url}"
+            alt="Cosmos ${index + 1}"
+            loading="lazy"
+          >
+        </button>
+      `;
+    })
+    .filter(Boolean)
+    .join('');
+
+  const sources = files
+    .map(item => String(item?.file || '').trim())
+    .filter(Boolean);
+
+  const firstImage = sources[0] || '';
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+>
+
+<title>Cosmos • Kyara</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html,
+body{
+  width:100%;
+  min-height:100%;
+  background:#08090d;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+
+body{
+  padding:14px;
+}
+
+.cosmos-header{
+  margin-bottom:12px;
+}
+
+.cosmos-title{
+  font-size:20px;
+  font-weight:800;
+}
+
+.cosmos-query{
+  margin-top:4px;
+  font-size:13px;
+  opacity:.65;
+}
+
+.cosmos-main{
+  width:100%;
+  height:min(65vh,520px);
+  border-radius:18px;
+  overflow:hidden;
+  background:#11141b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.cosmos-main img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.cosmos-counter{
+  text-align:center;
+  margin:10px 0;
+  font-size:13px;
+  opacity:.65;
+}
+
+.cosmos-strip{
+  display:flex;
+  gap:10px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:4px 2px 12px;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity;
+}
+
+.cosmos-strip::-webkit-scrollbar{
+  display:none;
+}
+
+.cosmos-thumb{
+  flex:0 0 82px;
+  width:82px;
+  height:82px;
+  padding:0;
+  border:2px solid transparent;
+  border-radius:14px;
+  overflow:hidden;
+  background:#151820;
+  scroll-snap-align:start;
+}
+
+.cosmos-thumb.active{
+  border-color:#fff;
+}
+
+.cosmos-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+</style>
+</head>
+
+<body>
+
+<div class="cosmos-header">
+  <div class="cosmos-title">🌌 COSMOS</div>
+  <div class="cosmos-query">${String(query || '').replace(/</g,'&lt;')}</div>
+</div>
+
+<div class="cosmos-main">
+  <img
+    id="cosmos-main-image"
+    src="${firstImage}"
+    alt="Cosmos"
+  >
+</div>
+
+<div class="cosmos-counter" id="cosmos-counter">
+  1 / ${sources.length}
+</div>
+
+<div class="cosmos-strip" id="cosmos-strip">
+  ${images}
+</div>
+
+<script>
+const cosmosImages = ${JSON.stringify(sources)};
+
+function selectCosmosImage(index){
+  if(
+    index < 0 ||
+    index >= cosmosImages.length
+  ){
+    return;
+  }
+
+  const main =
+    document.getElementById(
+      'cosmos-main-image'
+    );
+
+  const counter =
+    document.getElementById(
+      'cosmos-counter'
+    );
+
+  main.src =
+    cosmosImages[index];
+
+  counter.textContent =
+    (index + 1) +
+    ' / ' +
+    cosmosImages.length;
+
+  document
+    .querySelectorAll('.cosmos-thumb')
+    .forEach((thumb, i) => {
+      thumb.classList.toggle(
+        'active',
+        i === index
+      );
+    });
+}
+
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+    selectCosmosImage(0);
+  }
+);
+</script>
+
+</body>
+</html>`;
+}
+
+
+/*
+ * ============================================================
+ * 🌌 KYARA COSMOS
+ *
+ * Pesquisa imagens públicas, baixa localmente e envia
+ * diretamente para o WhatsApp.
+ *
+ * Usuário normal: até 10
+ * Dono: até 30
+ * ============================================================
+ */
+
+async function handleCosmos({
+  nazu,
+  from,
+  info,
+  reply,
+  q
+}) {
+  const rawQuery =
+    String(q || '').trim();
+
+  /*
+   * Aceita:
+   *
+   * #cosmos gato
+   * #cosmos 5 gato
+   * #cosmos 10 carros
+   * #cosmos 30 naruto
+   */
+
+  const parts =
+    rawQuery
+      .split(/\s+/)
+      .filter(Boolean);
+
+  let requestedLimit = 10;
+
+  if (
+    parts.length &&
+    /^\d+$/.test(parts[0])
+  ) {
+    requestedLimit =
+      Number(parts.shift());
+  }
+
+  const query =
+    parts.join(' ').trim();
+
+  /*
+   * Em grupo:
+   *   info.key.participant = quem executou o comando
+   *
+   * Em conversa privada:
+   *   info.key.remoteJid = quem executou o comando
+   */
+  const senderJid =
+    info?.key?.participant ||
+    info?.participant ||
+    info?.key?.remoteJid ||
+    from;
+
+  const owner =
+    isOwner(senderJid);
+
+  const maximum =
+    owner
+      ? 30
+      : 10;
+
+  if (
+    !Number.isInteger(requestedLimit) ||
+    requestedLimit < 1
+  ) {
+    await reply(
+      '❌ A quantidade precisa ser um número maior que 0.'
+    );
+
+    return true;
+  }
+
+  const limit =
+    Math.min(
+      requestedLimit,
+      maximum
+    );
+
+  if (!query) {
+    await reply(
+      '❌ Use assim:\n' +
+      '*#cosmos 5 gato*\n' +
+      '*#cosmos 10 carros*'
+    );
+
+    return true;
+  }
+
+  let files = [];
+
+  try {
+    await reply(
+      `🌌 *COSMOS*\n` +
+      `🔎 Pesquisando: *${query}*\n` +
+      `📸 Quantidade: *${limit} imagens*`
+    );
+
+    const result =
+      await executeCosmos(
+        query,
+        owner,
+        limit
+      );
+
+    files =
+      Array.isArray(result?.files)
+        ? result.files
+        : [];
+
+    if (!files.length) {
+      await reply(
+        `❌ Nenhuma imagem encontrada para *${query}*.`
+      );
+
+      return true;
+    }
+
+    const escapeHtml = value =>
+      String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const uniqueFiles = [];
+    const seenFiles = new Set();
+
+    for (const item of files) {
+      const url = String(item?.file || '').trim();
+
+      if (!url || seenFiles.has(url)) {
+        continue;
+      }
+
+      seenFiles.add(url);
+      uniqueFiles.push(item);
+    }
+
+    if (!uniqueFiles.length) {
+      await reply(
+        '❌ Não consegui preparar nenhuma das imagens encontradas.'
+      );
+
+      return true;
+    }
+
+    const galleryItems =
+      uniqueFiles.map((item, index) => {
+        const url = escapeHtml(item.file);
+
+        return `
+          <button
+            type="button"
+            class="thumb"
+            onclick="showImage(${index})"
+          >
+            <img
+              src="${url}"
+              alt="Cosmos ${index + 1}"
+              loading="lazy"
+            >
+          </button>
+        `;
+      }).join('');
+
+    const mainUrl =
+      escapeHtml(uniqueFiles[0].file);
+
+    const galleryHtml = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  padding:0;
+  background:#080808;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+
+body{
+  padding:14px;
+}
+
+.card{
+  width:100%;
+  max-width:700px;
+  margin:auto;
+}
+
+.title{
+  font-size:20px;
+  font-weight:700;
+  margin-bottom:5px;
+}
+
+.query{
+  color:#aaa;
+  font-size:14px;
+  margin-bottom:12px;
+}
+
+.main{
+  width:100%;
+  height:58vh;
+  min-height:280px;
+  max-height:620px;
+  border-radius:18px;
+  overflow:hidden;
+  background:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.main img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.strip{
+  display:flex;
+  gap:9px;
+  overflow-x:auto;
+  padding:12px 2px 5px;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+}
+
+.strip::-webkit-scrollbar{
+  display:none;
+}
+
+.thumb{
+  flex:0 0 82px;
+  width:82px;
+  height:82px;
+  padding:0;
+  border:2px solid transparent;
+  border-radius:12px;
+  overflow:hidden;
+  background:#161616;
+  scroll-snap-align:start;
+}
+
+.thumb:first-child{
+  border-color:#fff;
+}
+
+.thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+</style>
+</head>
+
+<body>
+<div class="card">
+
+  <div class="title">🌌 COSMOS</div>
+
+  <div class="query">
+    🔎 ${escapeHtml(result.query)}
+    · ${uniqueFiles.length} imagens
+  </div>
+
+  <div class="main">
+    <img
+      id="mainImage"
+      src="${mainUrl}"
+      alt="Cosmos"
+    >
+  </div>
+
+  <div class="strip">
+    ${galleryItems}
+  </div>
+
+</div>
+
+<script>
+const images = ${JSON.stringify(
+  uniqueFiles.map(item => item.file)
+)};
+
+function showImage(index){
+  const url = images[index];
+
+  if(!url){
+    return;
+  }
+
+  const main =
+    document.getElementById('mainImage');
+
+  if(!main){
+    return;
+  }
+
+  main.setAttribute('src', url);
+
+  document
+    .querySelectorAll('.thumb')
+    .forEach((button, i) => {
+      button.style.borderColor =
+        i === index
+          ? '#fff'
+          : 'transparent';
+    });
+}
+</script>
+</body>
+</html>`;
+    const cosmosImages =
+      files.map(
+        item => ({
+          url:
+            String(
+              item?.file ||
+              item?.imageUrl ||
+              item?.originalUrl ||
+              ""
+            ).trim()
+        })
+      ).filter(
+        item =>
+          /^https?:\/\//i.test(
+            item.url
+          )
+      );
+
+    if(!cosmosImages.length){
+      throw new Error(
+        "Nenhuma imagem válida para o carousel."
+      );
+    }
+
+    const requesterId =
+      info?.participant ||
+      info?.key?.participant ||
+      from;
+
+    console.log(
+      `[COSMOS] 🎠 Enviando carousel nativo: ${cosmosImages.length} imagem(ns)`
+    );
+
+    await kyaraPinterestNativeCarousel(
+      nazu,
+      from,
+      requesterId,
+      result?.query || query,
+      cosmosImages
+    );
+
+    console.log(
+      `[COSMOS] ✅ Carousel nativo enviado: ${cosmosImages.length} imagem(ns)`
+    );
+
+    await reply(
+      `✅ *COSMOS concluído!*
+` +
+      `🖼️ ${cosmosImages.length} imagens encontradas`
+    );
+
+
+    return true;
+
+  } catch (error) {
+    console.error(
+      '[COSMOS] Erro:',
+      error
+    );
+
+    await reply(
+      `❌ Erro no Cosmos:\n${error?.message || error}`
+    );
+
+    return true;
+
+  } finally {
+    try {
+      await cleanupCosmosFiles(
+        files
+      );
+    } catch (error) {
+      console.warn(
+        '[COSMOS] Falha limpando temporários:',
+        error?.message || error
+      );
+    }
+  }
+}
+
 
 
 /*
@@ -80,6 +726,27 @@ function allowPlayCard(from, data) {
 }
 
 const buttonUrls = new Map();
+
+/*
+ * ============================================================
+ * ⚡ PLAY ULTRA FAST — CACHE DE STREAM
+ * ============================================================
+ *
+ * O /play não espera o usuário clicar para começar
+ * a descobrir o stream.
+ *
+ * Enquanto o card é preparado/enviado, o stream do
+ * YouTube já pode ser resolvido em paralelo.
+ *
+ * A URL do YouTube é temporária, portanto o cache é
+ * deliberadamente curto.
+ */
+
+const audioStreamCache = new Map();
+
+const AUDIO_STREAM_TTL = 45 * 1000;
+
+
 
 const SEARCH_TTL = 10 * 60 * 1000;
 const BUTTON_TTL = 30 * 60 * 1000;
@@ -366,9 +1033,14 @@ async function downloadVideo(url) {
     if (
       platform === 'Facebook'
     ) {
-      return facebook.downloadHD(
-        source
-      );
+      const r =
+        await facebook.downloadHD(
+          source
+        );
+
+      if (r?.ok) {
+        return r;
+      }
     }
 
     if (
@@ -470,6 +1142,40 @@ async function downloadVideo(url) {
     };
   }
 
+  /*
+   * FALLBACK UNIVERSAL
+   *
+   * Se yt-dlp e os módulos específicos não
+   * conseguirem reconhecer a página, tenta:
+   *
+   * página HTML -> descobrir MP4/WebM -> baixar
+   */
+  if (!result?.ok) {
+    try {
+      const http =
+        await baixarHttp(
+          source
+        );
+
+      if (http?.ok) {
+        return {
+          ...http,
+          sourceUrl: source
+        };
+      }
+
+      console.log(
+        '[KYARA UNIVERSAL] Fallback HTTP:',
+        http?.msg || 'falhou'
+      );
+    } catch (error) {
+      console.error(
+        '[KYARA UNIVERSAL] Erro:',
+        error?.message || error
+      );
+    }
+  }
+
   return result;
 }
 
@@ -527,6 +1233,76 @@ function rememberButton(url) {
   );
 
   return token;
+}
+
+
+/*
+ * ============================================================
+ * ⚡ PLAY ULTRA — PREFETCH CENTRALIZADO
+ * ============================================================
+ *
+ * Existe UMA única entrada para preparar uma mídia.
+ *
+ * O botão e o /play nunca fazem uma segunda extração:
+ *
+ *     prefetch
+ *        ↓
+ *     youtube.stream()
+ *        ↓
+ *     cache / inflight
+ *
+ * ou:
+ *
+ *     prefetch
+ *        ↓
+ *     youtube.streamVideo()
+ *        ↓
+ *     cache / inflight
+ */
+
+function prefetchPlayMedia(url) {
+  const source =
+    cleanUrl(url);
+
+  if (
+    !source ||
+    platformOf(source) !== 'YouTube'
+  ) {
+    return;
+  }
+
+  /*
+   * IMPORTANTE:
+   *
+   * Não fazemos mais streamVideo().
+   *
+   * O /play prepara somente o áudio REAL.
+   *
+   * O download acontece em segundo plano enquanto
+   * o usuário ainda está vendo o card.
+   */
+
+  if (
+    typeof youtube.prefetchVoiceFile === 'function'
+  ) {
+    void youtube.prefetchVoiceFile(source)
+      .then(file => {
+        console.log(
+          '[PLAY VOICE] 🚀 OGG/OPUS PRONTO:',
+          file
+        );
+      })
+      .catch(error => {
+        console.warn(
+          '[PLAY VOICE] Prefetch de voz falhou:',
+          error?.message || error
+        );
+      });
+  } else {
+    console.warn(
+      '[PLAY VOICE] prefetchVoiceFile não está disponível.'
+    );
+  }
 }
 
 function resolveButton(value) {
@@ -800,7 +1576,25 @@ const mediaUrl =
         : ''
     );
 
-  const buttons = [
+
+  /*
+   * ⚡ PRIMEIRA COISA DEPOIS DE CONHECER A URL
+   *
+   * Não aguardamos.
+   * Enquanto o card, thumbnail e mensagem são preparados,
+   * áudio e vídeo já estão sendo resolvidos.
+   */
+  prefetchPlayMedia(mediaUrl);
+
+  /*
+   * ⚡ Começa a resolver o stream imediatamente.
+   *
+   * Não usamos await aqui.
+   * Assim a pesquisa/card não fica mais lento.
+   * O stream é preparado em paralelo enquanto a
+   * mensagem é montada/enviada.
+   */
+    const buttons = [
     {
       name: 'quick_reply',
 
@@ -1028,8 +1822,14 @@ async function handle(options = {}) {
   const query =
     String(q || '').trim();
 
+  const commandName =
+    String(cmd || '')
+      .trim()
+      .toLowerCase();
+
   const commands =
     new Set([
+      'play2',
       'play',
       'playaudio',
       'playvideo',
@@ -1043,18 +1843,19 @@ async function handle(options = {}) {
       'twitter',
       'x',
       'pinterest',
-      'pin'
+      'pin',
+      'cosmos'
     ]);
 
   if (
-    !commands.has(cmd)
+    !commands.has(commandName)
   ) {
     return false;
   }
 
   if (!query) {
     await reply(
-      `❌ Use ${prefix}${cmd} <pesquisa ou URL>.`
+      `❌ Use ${prefix}${commandName} <pesquisa ou URL>.`
     );
 
     return true;
@@ -1063,148 +1864,52 @@ async function handle(options = {}) {
 
   /*
    * ============================================================
-   * KYARA_V7_PLUS_PINTEREST_GATE
+   * 🌌 COSMOS — pesquisa e envio direto de imagens
    * ============================================================
-   *
-   * Pinterest NÃO deve passar por youtube.info(),
-   * youtube.mp3() ou youtube.mp4().
    */
 
-  {
-    const pinterestCommand =
-      cmd === 'pin' ||
-      cmd === 'pinterest';
-
-    const pinterestUrl =
-      typeof query === 'string' &&
-      query.trim() &&
-      platformOf(query) === 'Pinterest';
-
-    const pinterestPlay =
-      cmd === 'play' &&
-      pinterestUrl;
-
-    if (pinterestCommand || pinterestPlay) {
-      console.log('[PINTEREST V7 PLUS] Entrada detectada:', query);
-
-      try {
-        let result;
-
-        if (isUrl(query)) {
-          console.log('[PINTEREST V7 PLUS] Baixando URL...');
-          result = await pinterest.dl(query);
-        } else {
-          console.log('[PINTEREST V7 PLUS] Pesquisando:', query);
-          result = await pinterest.search(query);
-        }
-
-        if (!result) {
-          await reply(
-            '❌ Não encontrei conteúdo público do Pinterest.'
-          );
-          return true;
-        }
-
-        const image =
-          result.url ||
-          result.directLink ||
-          result.image ||
-          result.imageUrl ||
-          result.thumbnail ||
-          result.media;
-
-        if (!image) {
-          await reply(
-            '❌ Encontrei o Pin, mas não consegui obter a imagem.'
-          );
-          return true;
-        }
-
-        try {
-          await nazo.sendMessage(
-            from,
-            {
-              image: {
-                url: image
-              },
-              caption: '📌 *Pinterest V7 PLUS*'
-            },
-            {
-              quoted: options?.msg
-            }
-          );
-
-          console.log('[PINTEREST V7 PLUS] Enviado por URL.');
-          return true;
-
-        } catch (remoteError) {
-          console.log(
-            '[PINTEREST V7 PLUS] Falha no envio remoto:',
-            remoteError?.message || remoteError
-          );
-        }
-
-        try {
-          const response = await fetch(image);
-
-          if (!response.ok) {
-            throw new Error(
-              `HTTP ${response.status}`
-            );
-          }
-
-          const buffer = Buffer.from(
-            await response.arrayBuffer()
-          );
-
-          await nazo.sendMessage(
-            from,
-            {
-              image: buffer,
-              caption: '📌 *Pinterest V7 PLUS*'
-            },
-            {
-              quoted: options?.msg
-            }
-          );
-
-          console.log('[PINTEREST V7 PLUS] Enviado por buffer.');
-          return true;
-
-        } catch (bufferError) {
-          console.log(
-            '[PINTEREST V7 PLUS] Falha no buffer:',
-            bufferError?.message || bufferError
-          );
-
-          await reply(
-            '❌ Não consegui enviar a mídia do Pinterest.'
-          );
-
-          return true;
-        }
-
-      } catch (error) {
-        console.log(
-          '[PINTEREST V7 PLUS] Erro:',
-          error?.message || error
-        );
-
-        await reply(
-          '❌ Não foi possível obter esse conteúdo do Pinterest.'
-        );
-
-        /*
-         * MUITO IMPORTANTE:
-         * Mesmo com erro, retorna true.
-         * Assim o Pinterest não cai no sistema legado
-         * nem no youtube/yt-dlp.
-         */
-        return true;
-      }
-    }
+  if (commandName === 'cosmos') {
+    return handleCosmos({
+      nazu,
+      from,
+      info,
+      reply,
+      q: query
+    });
   }
 
+  /*
+   * ============================================================
+   * PLAY2 + PINTEREST — fluxo direto
+   * ============================================================
+   */
+
+  if (commandName === 'play2') {
+    return handlePlay2({
+      ...options,
+      q: query
+    });
+  }
+
+  if (
+    commandName === 'pinterest' ||
+    commandName === 'pin'
+  ) {
+    return handlePinterest({
+      ...options,
+      q: query
+    });
+  }
+
+  if (
+    commandName === 'play' &&
+    platformOf(query) === 'Pinterest'
+  ) {
+    return handlePinterest({
+      ...options,
+      q: query
+    });
+  }
 
   /*
    * AUDIO.
@@ -1233,6 +1938,102 @@ async function handle(options = {}) {
 
       return true;
     }
+
+    /*
+     * ========================================================
+     * ⚡ PLAY ULTRA FAST
+     * ========================================================
+     *
+     * YouTube:
+     *   NÃO baixa MP3.
+     *   NÃO usa FFmpeg.
+     *   NÃO cria Buffer gigante.
+     *   NÃO grava arquivo temporário.
+     *
+     * O Baileys recebe diretamente a URL do melhor
+     * stream de áudio disponível.
+     */
+
+          if (
+        platformOf(url) === 'YouTube'
+      ) {
+        try {
+          const started = Date.now();
+
+          console.log(
+            '[PLAY VOICE] 📩 Clique recebido'
+          );
+
+          try {
+            await nazu.sendMessage(
+              from,
+              {
+                text:
+                  '🎙️ Preparando áudio, aguarde...'
+              },
+              {
+                quoted: info
+              }
+            );
+          } catch {}
+
+          if (
+            typeof youtube.prefetchVoiceFile !==
+            'function'
+          ) {
+            throw new Error(
+              'prefetchVoiceFile não está disponível no youtube.js.'
+            );
+          }
+
+          const voiceFile =
+            await youtube.prefetchVoiceFile(url);
+
+          console.log(
+            `[PLAY VOICE] ⚡ Arquivo pronto em ${Date.now() - started}ms`
+          );
+
+          console.log(
+            '[PLAY VOICE] 📤 Enviando mensagem de voz...'
+          );
+
+          await nazu.sendMessage(
+            from,
+            {
+              audio: {
+                url: voiceFile
+              },
+              mimetype:
+                'audio/ogg; codecs=opus',
+              ptt: true
+            },
+            {
+              quoted: info
+            }
+          );
+
+          console.log(
+            `[PLAY VOICE] ✅ Voz enviada em ${Date.now() - started}ms`
+          );
+
+          return true;
+
+        } catch (error) {
+          console.warn(
+            '[PLAY VOICE] ❌ Falha:',
+            error?.message || error
+          );
+
+          throw error;
+        }
+      }
+
+    /*
+     * FALLBACK UNIVERSAL
+     *
+     * Usado para plataformas que não sejam YouTube
+     * ou caso o stream direto falhe.
+     */
 
     await reply(
       '🎵 *Baixando áudio na melhor qualidade disponível...*'
@@ -1310,8 +2111,101 @@ async function handle(options = {}) {
       return true;
     }
 
+    /*
+     * ========================================================
+     * ⚡ PLAY VIDEO ULTRA FAST
+     * ========================================================
+     *
+     * Não usamos downloadVideo().
+     *
+     * O vídeo já pode estar sendo preparado pelo prefetch
+     * iniciado quando o card foi criado.
+     *
+     * Fluxo:
+     *
+     * YouTube
+     *   ↓
+     * URL MP4 muxada
+     *   ↓
+     * Baileys
+     *   ↓
+     * WhatsApp
+     *
+     * Sem:
+     *   - download completo
+     *   - Buffer gigante
+     *   - arquivo temporário
+     *   - FFmpeg
+     */
+
+    if (
+      platformOf(url) === 'YouTube' &&
+      typeof youtube.streamVideo === 'function'
+    ) {
+      try {
+        console.log(
+          '[PLAY VIDEO ULTRA] ⚡ Obtendo stream direto...'
+        );
+
+        const stream =
+          await youtube.streamVideo(url);
+
+        if (
+          !stream?.url ||
+          !/^https?:\/\//i.test(stream.url)
+        ) {
+          throw new Error(
+            stream?.msg ||
+            'Stream de vídeo não encontrado.'
+          );
+        }
+
+        console.log(
+          '[PLAY VIDEO ULTRA] ⚡ Stream pronto'
+        );
+
+        await nazu.sendMessage(
+          from,
+          {
+            video: {
+              url:
+                stream.url
+            },
+
+            mimetype:
+              stream.mimetype ||
+              'video/mp4',
+
+            fileName:
+              'video.mp4'
+          },
+          {
+            quoted: info
+          }
+        );
+
+        console.log(
+          '[PLAY VIDEO ULTRA] ✅ Vídeo enviado diretamente'
+        );
+
+        return true;
+
+      } catch (error) {
+        console.warn(
+          '[PLAY VIDEO ULTRA] Stream direto falhou:',
+          error?.message ||
+          error
+        );
+
+        /*
+         * Só cai no método antigo se a URL direta realmente
+         * falhar. O caminho normal não passa por downloadVideo.
+         */
+      }
+    }
+
     await reply(
-      '🎬 *Baixando vídeo na melhor qualidade disponível...*'
+      '🎬 *Preparando vídeo...*'
     );
 
     const result =
@@ -1529,3 +2423,28 @@ export {
   resolveButton,
   platformOf
 };
+
+
+/*
+ * Limpa entradas antigas do cache de stream.
+ */
+function cleanupAudioStreamCache() {
+  const now = Date.now();
+
+  for (
+    const [key, value]
+    of audioStreamCache
+  ) {
+    if (
+      now - value.time >
+      AUDIO_STREAM_TTL
+    ) {
+      audioStreamCache.delete(key);
+    }
+  }
+}
+
+setInterval(
+  cleanupAudioStreamCache,
+  AUDIO_STREAM_TTL
+).unref?.();

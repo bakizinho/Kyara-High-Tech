@@ -1,3 +1,5 @@
+process.env.YTDLP_NO_PLUGINS = "1";
+
 import ytSearch from 'yt-search';
 import fs from 'fs';
 import path from 'path';
@@ -74,9 +76,73 @@ function executarComando(comando, args, options = {}) {
   });
 }
 
+const PLAY_STREAM_CACHE_TTL =
+  60 * 1000;
+
+const playStreamCache =
+  new Map();
+
+const playStreamInflight =
+  new Map();
+
+function limparPlayStreamCache() {
+
+  const now =
+    Date.now();
+
+  for (
+    const [key, value]
+    of playStreamCache
+  ) {
+
+    if (
+      !value ||
+      value.expires <= now
+    ) {
+      playStreamCache.delete(key);
+    }
+  }
+
+  while (
+    playStreamCache.size > 128
+  ) {
+
+    const first =
+      playStreamCache
+        .keys()
+        .next()
+        .value;
+
+    if (
+      first === undefined
+    ) {
+      break;
+    }
+
+    playStreamCache.delete(
+      first
+    );
+  }
+}
+
+function prepararArgsYtDlp(args = []) {
+  const lista = Array.isArray(args) ? [...args] : [];
+
+  if (!lista.includes('--js-runtimes')) {
+    lista.unshift(
+      '--remote-components',
+      'ejs:github',
+      '--js-runtimes',
+      `node:${process.execPath}`
+    );
+  }
+
+  return lista;
+}
+
 async function executarYtDlp(args) {
   try {
-    return await executarComando('yt-dlp', args);
+    return await executarComando('yt-dlp', prepararArgsYtDlp(args));
   } catch (error) {
     throw new Error(
       error?.message ||
@@ -97,7 +163,7 @@ async function executarYtDlpComProgresso(args, onProgress) {
         );
 
   return new Promise((resolve, reject) => {
-    const child = spawn('yt-dlp', args, {
+    const child = spawn('yt-dlp', prepararArgsYtDlp(args), {
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -655,7 +721,7 @@ function prepararPasta(prefixo) {
  * audio-quality 0:
  * melhor qualidade do encoder MP3.
  */
-async function mp3(url, onProgress) {
+async function mp3(url, onProgress, options = {}) {
   const progress =
     typeof onProgress === 'function'
       ? onProgress
@@ -693,7 +759,7 @@ async function mp3(url, onProgress) {
         'mp3',
 
         '--audio-quality',
-        '0',
+        String(options?.bitrate || '0'),
 
         '--no-part',
 
@@ -1020,29 +1086,20 @@ async function mp4(url, onProgress) {
     );
 
     /*
-     * Instagram/TikTok/Facebook/Kwai/Pinterest
-     * frequentemente disponibilizam um MP4 único.
+     * DOWNLOADER UNIVERSAL
      *
-     * Forçar bv+ba ou codecs específicos pode gerar:
-     * Requested format is not available
+     * Não escolhe formato baseado no nome da plataforma.
+     * O yt-dlp tenta:
      *
-     * Por isso esses sites usam o melhor MP4 disponível.
+     * 1. melhor vídeo + melhor áudio;
+     * 2. melhor formato único disponível.
      *
-     * YouTube e similares usam vídeo + áudio separados,
-     * limitados a 1080p para equilibrar qualidade e velocidade.
+     * O resultado será convertido/normalizado para MP4
+     * pela etapa garantirMp4Compativel().
      */
 
     const formato =
-      plataforma === 'Instagram' ||
-      plataforma === 'TikTok' ||
-      plataforma === 'Facebook' ||
-      plataforma === 'Kwai' ||
-      plataforma === 'Twitter/X' ||
-      plataforma === 'Pinterest'
-
-        ? 'best[ext=mp4]/best'
-
-        : 'bv*[height<=1080][vcodec^=avc1][ext=mp4]+ba[acodec^=mp4a]/bv*[height<=1080]+ba/b[height<=1080]/b';
+      'bestvideo*+bestaudio/best';
 
     await executarYtDlpComProgresso(
       [
@@ -1175,11 +1232,891 @@ async function mp4(url, onProgress) {
   }
 }
 
+
+/*
+ * ============================================================
+ * STREAM DIRETO DO YOUTUBE
+ * ============================================================
+ *
+ * O PLAY2 usa esta função para obter o URL real do stream
+ * de áudio sem precisar transformar o áudio em Base64.
+ *
+ * Isso permite que o HTML reproduza músicas maiores
+ * sem aumentar absurdamente o tamanho da mensagem Rich HTML.
+ */
+async function stream(url) {
+
+  const endereco =
+    normalizarUrl(url);
+
+  if (
+    !/^https?:\/\//i.test(endereco)
+  ) {
+
+    return {
+      ok: false,
+      msg: 'URL inválida.'
+    };
+  }
+
+  limparPlayStreamCache();
+
+  /*
+   * Cache curto.
+   * URL do YouTube expira, então não mantemos por muito tempo.
+   */
+  const cached =
+    playStreamCache.get(
+      endereco
+    );
+
+  if (
+    cached &&
+    cached.expires > Date.now()
+  ) {
+
+    console.log(
+      '[YOUTUBE STREAM] ⚡ CACHE'
+    );
+
+    return {
+      ok: true,
+      url: cached.url
+    };
+  }
+
+  /*
+   * Se duas pessoas pedirem a mesma música
+   * ao mesmo tempo, apenas uma extração acontece.
+   */
+  const running =
+    playStreamInflight.get(
+      endereco
+    );
+
+  if (running) {
+    console.log(
+      '[YOUTUBE STREAM] ⚡ REUTILIZANDO EXTRAÇÃO'
+    );
+
+    return running;
+  }
+
+  const job =
+    (async () => {
+
+      const tentativas = [
+
+        /*
+         * Prioridade:
+         * M4A/AAC -> melhor compatibilidade no WhatsApp
+         * sem reencode.
+         */
+        {
+          formato:
+            'bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/bestaudio/best',
+
+          extractor:
+            ''
+        },
+
+        {
+          formato:
+            'bestaudio/best',
+
+          extractor:
+            'youtube:player_client=android'
+        },
+
+        {
+          formato:
+            'bestaudio/best',
+
+          extractor:
+            'youtube:player_client=web_safari'
+        }
+
+      ];
+
+      let ultimoErro =
+        null;
+
+      for (
+        const tentativa
+        of tentativas
+      ) {
+
+        try {
+
+          const args = [
+
+            '--quiet',
+
+            '--no-warnings',
+
+            '--no-playlist',
+
+            '--no-check-formats',
+
+            '--socket-timeout',
+            '10',
+
+            '--extractor-retries',
+            '1',
+
+            '-f',
+            tentativa.formato,
+
+            '--get-url'
+          ];
+
+          if (
+            tentativa.extractor
+          ) {
+
+            args.push(
+              '--extractor-args',
+              tentativa.extractor
+            );
+          }
+
+          args.push(
+            endereco
+          );
+
+          const resultado =
+            await executarYtDlp(
+              args
+            );
+
+          const urls =
+            String(
+              resultado.stdout ||
+              ''
+            )
+              .split(/\\r?\\n/)
+              .map(
+                linha =>
+                  linha.trim()
+              )
+              .filter(
+                linha =>
+                  /^https?:\/\//i.test(
+                    linha
+                  )
+              );
+
+          const streamUrl =
+            urls.at(-1) ||
+            '';
+
+          if (
+            streamUrl
+          ) {
+
+            playStreamCache.set(
+              endereco,
+              {
+                url:
+                  streamUrl,
+
+                expires:
+                  Date.now() +
+                  PLAY_STREAM_CACHE_TTL
+              }
+            );
+
+            console.log(
+              '[YOUTUBE STREAM] ✅ URL direta pronta'
+            );
+
+            return {
+              ok: true,
+              url:
+                streamUrl
+            };
+          }
+
+          ultimoErro =
+            new Error(
+              'yt-dlp não retornou URL de stream.'
+            );
+
+        } catch (error) {
+
+          ultimoErro =
+            error;
+
+          console.warn(
+            '[YOUTUBE STREAM] tentativa falhou:',
+            error?.message ||
+            error
+          );
+        }
+      }
+
+      return {
+        ok: false,
+
+        msg:
+          ultimoErro?.message ||
+          'Não foi possível obter o stream do YouTube.'
+      };
+
+    })();
+
+  playStreamInflight.set(
+    endereco,
+    job
+  );
+
+  try {
+
+    return await job;
+
+  } finally {
+
+    playStreamInflight.delete(
+      endereco
+    );
+  }
+}
+
+
+/*
+ * ============================================================
+ * PLAY ULTRA — STREAM DE VÍDEO DIRETO
+ * ============================================================
+ *
+ * Retorna uma URL MP4 progressiva/muxada:
+ *
+ * YouTube -> URL MP4 -> Baileys -> WhatsApp
+ *
+ * Não:
+ *   - baixa arquivo
+ *   - cria Buffer
+ *   - usa FFmpeg
+ *   - espera download completo
+ *
+ * O formato precisa conter vídeo + áudio juntos, pois o
+ * Baileys não fará a muxagem das duas URLs.
+ */
+
+const playVideoStreamCache = new Map();
+const playVideoStreamInflight = new Map();
+
+const PLAY_VIDEO_STREAM_CACHE_TTL = 60 * 1000;
+
+function limparPlayVideoStreamCache() {
+  const agora = Date.now();
+
+  for (
+    const [chave, item]
+    of playVideoStreamCache
+  ) {
+    if (
+      !item ||
+      item.expires <= agora
+    ) {
+      playVideoStreamCache.delete(chave);
+    }
+  }
+}
+
+async function streamVideo(url) {
+  const endereco =
+    normalizarUrl(url);
+
+  if (
+    !/^https?:\/\//i.test(endereco)
+  ) {
+    return {
+      ok: false,
+      msg: 'URL inválida.'
+    };
+  }
+
+  limparPlayVideoStreamCache();
+
+  const cached =
+    playVideoStreamCache.get(endereco);
+
+  if (
+    cached &&
+    cached.expires > Date.now()
+  ) {
+    console.log(
+      '[YOUTUBE VIDEO STREAM] ⚡ CACHE'
+    );
+
+    return {
+      ok: true,
+      url: cached.url,
+      mimetype: 'video/mp4'
+    };
+  }
+
+  const running =
+    playVideoStreamInflight.get(endereco);
+
+  if (running) {
+    console.log(
+      '[YOUTUBE VIDEO STREAM] ⚡ REUTILIZANDO EXTRAÇÃO'
+    );
+
+    return running;
+  }
+
+  const job = (async () => {
+    const tentativas = [
+      {
+        formato:
+          'best[ext=mp4][vcodec!=none][acodec!=none]/best[ext=mp4][vcodec!=none][acodec!=none]'
+      },
+      {
+        formato:
+          'best[vcodec!=none][acodec!=none]/best'
+      },
+      {
+        formato:
+          'best[ext=mp4]/best'
+      }
+    ];
+
+    let ultimoErro = null;
+
+    for (
+      const tentativa
+      of tentativas
+    ) {
+      try {
+        console.log(
+          '[YOUTUBE VIDEO STREAM] ⚡ Extraindo URL...'
+        );
+
+        const args = [
+          '--quiet',
+          '--no-warnings',
+          '--no-playlist',
+          '--no-check-formats',
+          '--socket-timeout',
+          '10',
+          '--extractor-retries',
+          '1',
+          '-f',
+          tentativa.formato,
+          '--get-url',
+          endereco
+        ];
+
+        const resultado =
+          await executarYtDlp(args);
+
+        const urls =
+          String(
+            resultado.stdout || ''
+          )
+            .split(/\r?\n/)
+            .map(
+              linha =>
+                linha.trim()
+            )
+            .filter(
+              linha =>
+                /^https?:\/\//i.test(linha)
+            );
+
+        /*
+         * Para formato progressivo deve existir uma única
+         * URL. Se houver mais de uma, usamos a última.
+         */
+        const streamUrl =
+          urls.at(-1) || '';
+
+        if (
+          streamUrl
+        ) {
+          playVideoStreamCache.set(
+            endereco,
+            {
+              url: streamUrl,
+              expires:
+                Date.now() +
+                PLAY_VIDEO_STREAM_CACHE_TTL
+            }
+          );
+
+          console.log(
+            '[YOUTUBE VIDEO STREAM] ✅ URL direta pronta'
+          );
+
+          return {
+            ok: true,
+            url: streamUrl,
+            mimetype: 'video/mp4'
+          };
+        }
+
+        ultimoErro =
+          new Error(
+            'yt-dlp não retornou URL de vídeo.'
+          );
+
+      } catch (error) {
+        ultimoErro =
+          error;
+
+        console.warn(
+          '[YOUTUBE VIDEO STREAM] tentativa falhou:',
+          error?.message ||
+          error
+        );
+      }
+    }
+
+    return {
+      ok: false,
+      msg:
+        ultimoErro?.message ||
+        'Não foi possível obter o stream de vídeo.'
+    };
+  })();
+
+  playVideoStreamInflight.set(
+    endereco,
+    job
+  );
+
+  try {
+    return await job;
+  } finally {
+    playVideoStreamInflight.delete(
+      endereco
+    );
+  }
+}
+
+
+
+
+/* KYARA_VOICE_CACHE_V1 */
+
+const __kyaraVoiceCache = new Map();
+const __kyaraVoiceInflight = new Map();
+
+async function prefetchVoiceFile(url) {
+  const source = String(url || '').trim();
+
+  if (!source) {
+    throw new Error('URL do YouTube vazia.');
+  }
+
+  const now = Date.now();
+  const cached = __kyaraVoiceCache.get(source);
+
+  if (cached && cached.expiresAt > now) {
+    console.log('[PLAY VOICE] ⚡ CACHE HIT');
+    return cached.path;
+  }
+
+  const running = __kyaraVoiceInflight.get(source);
+
+  if (running) {
+    console.log('[PLAY VOICE] 🔄 aguardando download já iniciado');
+    return await running;
+  }
+
+  const job = (async () => {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const crypto = await import('node:crypto');
+    const { spawn } = await import('node:child_process');
+
+    const dir = path.join(
+      os.tmpdir(),
+      'kyara-play-voice'
+    );
+
+    await fs.mkdir(dir, { recursive: true });
+
+    const key = crypto
+      .createHash('sha1')
+      .update(source)
+      .digest('hex');
+
+    const m4aPath = path.join(dir, `${key}.m4a`);
+    const m4aPart = `${m4aPath}.part`;
+    const oggPath = path.join(dir, `${key}.ogg`);
+    const oggPart = `${oggPath}.part`;
+
+    try {
+      const started = Date.now();
+
+      console.log('[PLAY VOICE] 🔎 obtendo stream...');
+
+      const streamResult = await stream(source);
+
+      if (!streamResult?.url) {
+        throw new Error('URL direta de áudio não encontrada.');
+      }
+
+      console.log(
+        `[PLAY VOICE] ⚡ stream obtido em ${Date.now() - started}ms`
+      );
+
+      console.log('[PLAY VOICE] ⬇️ download iniciado...');
+
+      const response = await fetch(streamResult.url);
+
+      if (!response.ok || !response.body) {
+        throw new Error(
+          `Download de áudio falhou: HTTP ${response.status}`
+        );
+      }
+
+      const fileHandle = await fs.open(m4aPart, 'w');
+
+      try {
+        const reader = response.body.getReader();
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) break;
+
+          if (value && value.length) {
+            await fileHandle.write(value);
+          }
+        }
+      } finally {
+        await fileHandle.close();
+      }
+
+      await fs.rename(m4aPart, m4aPath);
+
+      console.log(
+        `[PLAY VOICE] ⬇️ download concluído em ${Date.now() - started}ms`
+      );
+
+      console.log('[PLAY VOICE] 🎙️ convertendo para OGG/Opus...');
+
+      await new Promise((resolve, reject) => {
+        const ff = spawn(
+          'ffmpeg',
+          [
+            '-y',
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-i',
+            m4aPath,
+            '-vn',
+            '-c:a',
+            'libopus',
+            '-b:a',
+            '64k',
+            '-vbr',
+            'on',
+            '-application',
+            'voip',
+            '-ac',
+            '1',
+            '-ar',
+            '48000',
+            '-f',
+            'ogg',
+            oggPart
+          ],
+          {
+            stdio: ['ignore', 'ignore', 'pipe']
+          }
+        );
+
+        let stderr = '';
+
+        ff.stderr.on('data', chunk => {
+          stderr += chunk.toString();
+        });
+
+        ff.once('error', reject);
+
+        ff.once('close', code => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(
+              new Error(
+                `FFmpeg falhou (${code}): ${stderr.slice(-1000)}`
+              )
+            );
+          }
+        });
+      });
+
+      await fs.rename(oggPart, oggPath);
+
+      await fs.unlink(m4aPath).catch(() => {});
+
+      const result = {
+        path: oggPath,
+        expiresAt: Date.now() + (10 * 60 * 1000)
+      };
+
+      __kyaraVoiceCache.set(source, result);
+
+      console.log(
+        `[PLAY VOICE] ✅ OGG/Opus pronto em ${Date.now() - started}ms`
+      );
+
+      return oggPath;
+
+    } finally {
+      await fs.unlink(m4aPart).catch(() => {});
+      await fs.unlink(oggPart).catch(() => {});
+    }
+  })();
+
+  __kyaraVoiceInflight.set(source, job);
+
+  try {
+    return await job;
+  } finally {
+    __kyaraVoiceInflight.delete(source);
+  }
+}
+
+
+/* KYARA_REAL_AUDIO_CACHE_V2 */
+
+const __kyaraRealAudioCache = new Map();
+const __kyaraRealAudioInflight = new Map();
+
+async function prefetchAudioFile(url) {
+  const source = String(url || '').trim();
+
+  if (!source) {
+    throw new Error('URL do YouTube vazia.');
+  }
+
+  const now = Date.now();
+
+  const cached = __kyaraRealAudioCache.get(source);
+
+  if (
+    cached &&
+    cached.expiresAt > now
+  ) {
+    return cached.path;
+  }
+
+  const running =
+    __kyaraRealAudioInflight.get(source);
+
+  if (running) {
+    return running;
+  }
+
+  const job = (async () => {
+    const fs =
+      await import('node:fs/promises');
+
+    const os =
+      await import('node:os');
+
+    const path =
+      await import('node:path');
+
+    const crypto =
+      await import('node:crypto');
+
+    const dir =
+      path.join(
+        os.tmpdir(),
+        'kyara-play-audio'
+      );
+
+    await fs.mkdir(
+      dir,
+      {
+        recursive: true
+      }
+    );
+
+    const key =
+      crypto
+        .createHash('sha1')
+        .update(source)
+        .digest('hex');
+
+    const finalPath =
+      path.join(
+        dir,
+        `${key}.m4a`
+      );
+
+    const tempPath =
+      `${finalPath}.part`;
+
+    try {
+
+      /*
+       * PRIMEIRO:
+       * obtém a URL direta usando o cache/inflight
+       * normal do youtube.js.
+       */
+      const stream =
+        await stream(source);
+
+      if (
+        !stream ||
+        !stream.url
+      ) {
+        throw new Error(
+          'URL direta de áudio não encontrada.'
+        );
+      }
+
+      /*
+       * SEGUNDO:
+       * baixa os bytes para o armazenamento local.
+       *
+       * Isso acontece enquanto o usuário ainda está
+       * vendo o card do /play.
+       */
+      console.log(
+        '[PLAY CACHE] ⚡ Baixando áudio real...'
+      );
+
+      const response =
+        await fetch(
+          stream.url
+        );
+
+      if (
+        !response.ok ||
+        !response.body
+      ) {
+        throw new Error(
+          `Falha ao baixar áudio: HTTP ${response.status}`
+        );
+      }
+
+      const file =
+        await fs.open(
+          tempPath,
+          'w'
+        );
+
+      let total = 0;
+
+      try {
+
+        const reader =
+          response.body.getReader();
+
+        while (true) {
+
+          const result =
+            await reader.read();
+
+          if (result.done) {
+            break;
+          }
+
+          if (
+            result.value &&
+            result.value.length
+          ) {
+            await file.write(
+              result.value
+            );
+
+            total +=
+              result.value.length;
+          }
+        }
+
+      } finally {
+        await file.close();
+      }
+
+      if (total <= 0) {
+        throw new Error(
+          'O áudio baixado ficou vazio.'
+        );
+      }
+
+      await fs.rename(
+        tempPath,
+        finalPath
+      );
+
+      __kyaraRealAudioCache.set(
+        source,
+        {
+          path: finalPath,
+          expiresAt:
+            Date.now() +
+            (10 * 60 * 1000)
+        }
+      );
+
+      console.log(
+        `[PLAY CACHE] ✅ ÁUDIO PRONTO: ${Math.round(total / 1024)} KB`
+      );
+
+      return finalPath;
+
+    } catch (error) {
+
+      try {
+        await fs.unlink(
+          tempPath
+        );
+      } catch {}
+
+      throw error;
+    }
+  })();
+
+  __kyaraRealAudioInflight.set(
+    source,
+    job
+  );
+
+  try {
+    return await job;
+  } finally {
+    __kyaraRealAudioInflight.delete(
+      source
+    );
+  }
+}
+
+
 export {
   search,
   info,
   mp3,
-  mp4
+  stream,
+  streamVideo,
+  prefetchAudioFile,
+  mp4,
+  prefetchVoiceFile
 };
+
+export async function mp3Rich(
+  url,
+  onProgress
+) {
+  return mp3(
+    url,
+    onProgress,
+    {
+      bitrate: '64K'
+    }
+  );
+}
 
 export const ytmp3 = mp3;

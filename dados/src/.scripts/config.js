@@ -249,11 +249,12 @@ async function main() {
         numerodono: '',
         nomebot: '',
         prefixo: '!',
+        lidowner: '',
 
         github_ofc: 'https://github.com/bakizinho/BKkyara-',
         autor: 'baki',
         repositorio: 'kyara',
-        modoaluguel: off,
+        modoaluguel: false,
 
         WA_WEB_VERSION: {
             aviso: 'Não mexa aqui, pode afetar o funcionamento do BOT.',
@@ -269,11 +270,74 @@ async function main() {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
     print.info(`${colors.bold}${colors.underline}🔧 Configurações Básicas${colors.reset}`);
-    config.nomedono = await promptInput(rl, '👤 Nome do dono do bot', config.nomedono);
-    config.numerodono = await promptInput(rl, '📱 Número do dono (apenas dígitos)', config.numerodono, (v) => /^\d{10,15}$/.test(v));
-    config.nomebot = await promptInput(rl, '🤖 Nome do bot', config.nomebot);
-    config.prefixo = await promptInput(rl, '🔣 Prefixo do bot (1 caractere)', config.prefixo, (v) => v.length === 1);
 
+    const kyaraOwnerNumberBefore = String(config.numerodono || '').replace(/\D/g, '');
+
+    config.nomedono = await promptInput(
+        rl,
+        '👤 Nome do dono do bot',
+        config.nomedono
+    );
+
+    config.numerodono = await promptInput(
+        rl,
+        '📱 Número do dono (apenas dígitos)',
+        config.numerodono,
+        (v) => /^\d{10,15}$/.test(String(v).replace(/\D/g, ''))
+    );
+
+    const kyaraOwnerNumberAfter = String(config.numerodono || '').replace(/\D/g, '');
+
+    if (kyaraOwnerNumberBefore !== kyaraOwnerNumberAfter) {
+        print.warning('⚠️ O número do dono foi alterado.');
+        print.warning('⚠️ O LID antigo será removido para não manter o dono anterior.');
+
+        delete config.lidowner;
+    }
+
+    const kyaraCurrentLid = config.lidowner || '';
+
+    if (kyaraCurrentLid) {
+        config.lidowner = await promptInput(
+            rl,
+            '🪪 LID do dono',
+            kyaraCurrentLid,
+            (v) => /^\d+@lid$/.test(String(v))
+        );
+    } else {
+        console.log('🪪 LID do dono (opcional; deixe vazio para configurar depois)');
+        const kyaraNewLid = await new Promise(resolve =>
+            rl.question("--> ", resolve)
+        );
+
+        const normalizedKyaraLid = kyaraNewLid.trim();
+
+        if (normalizedKyaraLid) {
+            const finalKyaraLid =
+                /^\d+$/.test(normalizedKyaraLid)
+                    ? `${normalizedKyaraLid}@lid`
+                    : normalizedKyaraLid;
+
+            if (!/^\d+@lid$/.test(finalKyaraLid)) {
+                print.warning('   ➡️ LID inválido. O LID não será salvo.');
+            } else {
+                config.lidowner = finalKyaraLid;
+            }
+        }
+    }
+
+    config.nomebot = await promptInput(
+        rl,
+        '🤖 Nome do bot',
+        config.nomebot
+    );
+
+    config.prefixo = await promptInput(
+        rl,
+        '🔣 Prefixo do bot (1 caractere)',
+        config.prefixo,
+        (v) => String(v).length === 1
+    );
 
     await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true });
     await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));

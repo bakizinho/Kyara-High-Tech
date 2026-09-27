@@ -1,4 +1,14 @@
 import {
+  getConfiguredBotName,
+  getConfiguredPrefix,
+  getKyaraEmoji,
+  commandExample,
+  kyaraHeader,
+  botNeedsAdminMessage,
+  formatKyaraText
+} from '../identity/kyara-identity.js'
+
+import {
   extractId,
   routeOwnerFlow
 } from './owner-flow-router.js'
@@ -14,7 +24,7 @@ export function createKyaraFlowAdapter({
   Kyara,
   isOwner,
   getPrefix = () => '.',
-  getBotName = () => 'KYARA',
+  getBotName = () => getConfiguredBotName(),
   getOwnerId = () => null,
   executeCommand = null
 }) {

@@ -3,9 +3,12 @@ import {
 } from './kyaraMediaCommands.js';
 
 import {
-  handleBrowserCommand,
-  sendBrowserHtml
+  handleBrowserCommand
 } from './kyaraBrowser.js';
+
+import {
+  handleKyaraYouTubeCommand
+} from './kyaraYouTube.js';
 
 import {
   handleKyaraGameCommand
@@ -23,46 +26,46 @@ import {
   setLevelingEnabled
 } from './levelingControl.js';
 
-function parseLevelAction(q = '') {
+function parseLevelAction(q = ''){
+
   const value =
     String(q || '')
       .trim()
       .toLowerCase();
 
-  if (
+  if(
     [
       'on',
       'ativar',
       'ligar'
     ].includes(value)
-  ) {
+  ){
     return true;
   }
 
-  if (
+  if(
     [
       'off',
       'desativar',
       'desligar'
     ].includes(value)
-  ) {
+  ){
     return false;
   }
 
   return null;
 }
 
-
 export async function handleKyaraSpecialCommand(
   options = {}
-) {
+){
 
   const command =
     String(
       options.command || ''
     )
-      .trim()
-      .toLowerCase();
+    .trim()
+    .toLowerCase();
 
   const q =
     String(
@@ -73,9 +76,6 @@ export async function handleKyaraSpecialCommand(
    * ============================================================
    * MENUHTML
    * ============================================================
-   *
-   * Comando auxiliar.
-   * Não entra no menu normal.
    */
 
   const menuHtmlHandled =
@@ -83,9 +83,7 @@ export async function handleKyaraSpecialCommand(
       options
     );
 
-  if (
-    menuHtmlHandled
-  ) {
+  if(menuHtmlHandled){
     return true;
   }
 
@@ -95,21 +93,17 @@ export async function handleKyaraSpecialCommand(
    * ============================================================
    */
 
-  if (
+  if(
     command === 'level' ||
     command === 'nivel'
-  ) {
+  ){
 
     const action =
       parseLevelAction(q);
 
-    if (
-      action !== null
-    ) {
+    if(action !== null){
 
-      if (
-        options.isOwner
-      ) {
+      if(options.isOwner){
 
         await options.reply(
           '👑 O dono não participa do sistema de Level.'
@@ -138,9 +132,7 @@ export async function handleKyaraSpecialCommand(
       return true;
     }
 
-    if (
-      options.isOwner
-    ) {
+    if(options.isOwner){
 
       await options.reply(
         '👑 Você é o dono e não participa do sistema de Level.'
@@ -148,6 +140,7 @@ export async function handleKyaraSpecialCommand(
 
       return true;
     }
+
   }
 
   /*
@@ -161,9 +154,22 @@ export async function handleKyaraSpecialCommand(
       options
     );
 
-  if (
-    gameHandled
-  ) {
+  if(gameHandled){
+    return true;
+  }
+
+  /*
+   * ============================================================
+   * KYARA YOUTUBE
+   * ============================================================
+   */
+
+  const youtubeHandled =
+    await handleKyaraYouTubeCommand(
+      options
+    );
+
+  if(youtubeHandled){
     return true;
   }
 
@@ -178,9 +184,7 @@ export async function handleKyaraSpecialCommand(
       options
     );
 
-  if (
-    browserHandled
-  ) {
+  if(browserHandled){
     return true;
   }
 
@@ -195,9 +199,7 @@ export async function handleKyaraSpecialCommand(
       options
     );
 
-  if (
-    mediaHandled
-  ) {
+  if(mediaHandled){
     return true;
   }
 
@@ -205,9 +207,6 @@ export async function handleKyaraSpecialCommand(
    * ============================================================
    * LEGACY
    * ============================================================
-   *
-   * Tudo que já existia continua passando
-   * pelo sistema antigo.
    */
 
   return handleLegacy(

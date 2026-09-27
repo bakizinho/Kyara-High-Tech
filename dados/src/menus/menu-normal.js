@@ -1,39 +1,64 @@
+import {
+  getConfiguredBotName
+} from '../core/identity/kyara-identity.js'
+
 export default async function menuNormal(
   prefix,
-  botName = 'BKkyara',
+  botName = getConfiguredBotName(),
   userName = 'Usuário'
 ) {
-  return `╭┈⊰ 🌸 『 *${botName}* 』
-┊Olá, ${userName}!
-╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯
+  const p = String(prefix || '#')
+  const bot = String(botName || 'KYARA')
+  const user = String(userName || 'Usuário')
 
-╭┈❁ *MENU PRINCIPAL*
-┊
-┊•.̇𖥨֗💜⭟ ${prefix}menudown
-┊•.̇𖥨֗💜⭟ ${prefix}menulogos
-┊•.̇𖥨֗💜⭟ ${prefix}menuedits
-┊•.̇𖥨֗💜⭟ ${prefix}menuadm
-┊•.̇𖥨֗💜⭟ ${prefix}menubn
-┊•.̇𖥨֗💜⭟ ${prefix}menumemb
-┊•.̇𖥨֗💜⭟ ${prefix}ferramentas
-┊•.̇𖥨֗💜⭟ ${prefix}menufig
-┊•.̇𖥨֗💜⭟ ${prefix}alteradores
-┊•.̇𖥨֗💜⭟ ${prefix}menurpg
-┊•.̇𖥨֗💜⭟ ${prefix}menuvip
-┊
-┊🧠 ${prefix}assistente
-┊🔊 ${prefix}ler <texto>
-┊🎮 ${prefix}quiz
-┊📊 ${prefix}menulevel
-╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯
-╭┈❁ *💡 COMUNIDADE & LEVEL*
-┊
-┊💡 ${prefix}ideia <sua ideia>
-┊💡 ${prefix}caixadeideias
-┊💡 ${prefix}melhoresideias
-┊💡 ${prefix}votarideia <id>
-┊⭐ ${prefix}level
-┊⭐ ${prefix}ranklevel
-╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯
-`;
+  return [
+    `╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮`,
+    `│ 🌸 *${bot} OS*`,
+    `│`,
+    `│ Olá, ${user}!`,
+    `│ ✦ Sistema pronto para uso`,
+    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`,
+    ``,
+
+    `╭─〔 📚 MENU PRINCIPAL 〕`,
+    `│  ├─ ${p}menudown`,
+    `│  ├─ ${p}menulogos`,
+    `│  ├─ ${p}menuedits`,
+    `│  ├─ ${p}menuadm`,
+    `│  ├─ ${p}menubn`,
+    `│  ├─ ${p}menumemb`,
+    `│  ├─ ${p}ferramentas`,
+    `│  ├─ ${p}menufig`,
+    `│  ├─ ${p}alteradores`,
+    `│  ├─ ${p}menurpg`,
+    `│  ├─ ${p}menuvip`,
+    `│  └─ ${p}menulevel`,
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`,
+
+    ``,
+
+    `╭─〔 🧠 ASSISTENTE 〕`,
+    `│  ├─ ${p}assistente`,
+    `│  ├─ ${p}ler <texto>`,
+    `│  └─ ${p}quiz`,
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`,
+
+    ``,
+
+    `╭─〔 💡 COMUNIDADE & LEVEL 〕`,
+    `│  ├─ ${p}ideia <sua ideia>`,
+    `│  ├─ ${p}caixadeideias`,
+    `│  ├─ ${p}melhoresideias`,
+    `│  ├─ ${p}votarideia <id>`,
+    `│  ├─ ${p}level`,
+    `│  └─ ${p}ranklevel`,
+    `╰─┈┈┈┈┈┈┈┈┈┈┈`,
+
+    ``,
+
+    `╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮`,
+    `│ 🌸 ${bot} • ONLINE`,
+    `│ ⚡ Use ${p}menu para voltar`,
+    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+  ].join('\n')
 }

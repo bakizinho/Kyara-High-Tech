@@ -1,418 +1,450 @@
-import https from 'https';
+import https from "node:https";
 
-const cache = new Map();
+const cache =
+  new Map();
 
-const CACHE_TTL = 30 * 60 * 1000;
-const REQUEST_TIMEOUT = 15000;
+const CACHE_TTL =
+  30 * 60 * 1000;
 
+const REQUEST_TIMEOUT =
+  15000;
 
-/*
- * ============================================================
- * CACHE
- * ============================================================
- */
 
 function getCached(key) {
-
-  const item = cache.get(key);
+  const item =
+    cache.get(key);
 
   if (!item) {
     return null;
   }
 
-  if (Date.now() - item.ts > CACHE_TTL) {
+  if (
+    Date.now() - item.ts >
+    CACHE_TTL
+  ) {
     cache.delete(key);
     return null;
   }
 
-  return item.val;
+  return item.value;
 }
 
 
-function setCache(key, val) {
-
+function setCache(
+  key,
+  value
+) {
   if (cache.size >= 500) {
-
     const first =
-      cache.keys().next().value;
+      cache.keys()
+        .next()
+        .value;
 
-    cache.delete(first);
+    if (first) {
+      cache.delete(first);
+    }
   }
 
-  cache.set(key, {
-    val,
-    ts: Date.now()
-  });
+  cache.set(
+    key,
+    {
+      ts: Date.now(),
+      value
+    }
+  );
 }
 
 
-/*
- * ============================================================
- * HTTP
- * ============================================================
- */
+function request(
+  url,
+  options = {},
+  redirects = 0
+) {
+  return new Promise(
+    (resolve, reject) => {
 
-function request(url, options = {}, redirects = 0) {
-
-  return new Promise((resolve, reject) => {
-
-    if (redirects > 5) {
-      reject(
-        new Error('Muitos redirecionamentos')
-      );
-      return;
-    }
-
-    let parsed;
-
-    try {
-      parsed = new URL(url);
-    } catch {
-      reject(
-        new Error('URL inválida')
-      );
-      return;
-    }
-
-    const req = https.get(
-      parsed,
-      {
-        headers: {
-          'User-Agent':
-            options.userAgent ||
-            'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36',
-
-          'Accept':
-            options.accept ||
-            'text/html,application/xhtml+xml,application/json,*/*',
-
-          'Accept-Language':
-            'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
-        }
-      },
-      res => {
-
-        const status =
-          Number(res.statusCode || 0);
-
-        /*
-         * REDIRECT
-         */
-
-        if (
-          status >= 300 &&
-          status < 400 &&
-          res.headers.location
-        ) {
-
-          const next =
-            new URL(
-              res.headers.location,
-              parsed
-            ).toString();
-
-          res.resume();
-
-          request(
-            next,
-            options,
-            redirects + 1
+      if (redirects > 6) {
+        reject(
+          new Error(
+            "Muitos redirecionamentos."
           )
-            .then(resolve)
-            .catch(reject);
-
-          return;
-        }
-
-        let body = '';
-
-        res.setEncoding('utf8');
-
-        res.on(
-          'data',
-          chunk => {
-            body += chunk;
-          }
         );
+        return;
+      }
 
-        res.on(
-          'end',
-          () => {
+      let parsed;
+
+      try {
+        parsed =
+          new URL(url);
+      } catch {
+        reject(
+          new Error(
+            "URL inválida."
+          )
+        );
+        return;
+      }
+
+      const req =
+        https.get(
+          parsed,
+          {
+            headers: {
+              "User-Agent":
+                options.userAgent ||
+                "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36",
+
+              "Accept":
+                options.accept ||
+                "text/html,application/xhtml+xml,application/json,*/*",
+
+              "Accept-Language":
+                "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7"
+            }
+          },
+          res => {
+
+            const status =
+              Number(
+                res.statusCode || 0
+              );
 
             if (
-              status < 200 ||
-              status >= 300
+              status >= 300 &&
+              status < 400 &&
+              res.headers.location
             ) {
 
-              reject(
-                new Error(
-                  `HTTP ${status}`
-                )
-              );
+              const next =
+                new URL(
+                  res.headers.location,
+                  parsed
+                ).toString();
+
+              res.resume();
+
+              request(
+                next,
+                options,
+                redirects + 1
+              )
+                .then(resolve)
+                .catch(reject);
 
               return;
             }
 
-            resolve({
-              status,
-              body,
-              headers: res.headers,
-              url: parsed.toString()
-            });
+            const chunks = [];
+
+            res.on(
+              "data",
+              chunk => {
+                chunks.push(
+                  Buffer.from(chunk)
+                );
+              }
+            );
+
+            res.on(
+              "end",
+              () => {
+
+                const body =
+                  Buffer
+                    .concat(chunks)
+                    .toString("utf8");
+
+                if (
+                  status < 200 ||
+                  status >= 300
+                ) {
+                  reject(
+                    new Error(
+                      `HTTP ${status}`
+                    )
+                  );
+                  return;
+                }
+
+                resolve({
+                  status,
+                  body,
+                  headers:
+                    res.headers,
+
+                  url:
+                    parsed.toString()
+                });
+              }
+            );
           }
         );
-      }
-    );
 
-    req.on(
-      'error',
-      reject
-    );
+      req.on(
+        "error",
+        reject
+      );
 
-    req.setTimeout(
-      REQUEST_TIMEOUT,
-      () => {
-
-        req.destroy(
-          new Error(
-            'Timeout'
-          )
-        );
-
-      }
-    );
-
-  });
+      req.setTimeout(
+        REQUEST_TIMEOUT,
+        () => {
+          req.destroy(
+            new Error(
+              "Timeout."
+            )
+          );
+        }
+      );
+    }
+  );
 }
 
 
-/*
- * ============================================================
- * HTML
- * ============================================================
- */
-
 function decodeHtml(value) {
-
-  return String(value || '')
-    .replace(/&amp;/gi, '&')
+  return String(
+    value || ""
+  )
+    .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&#x27;/gi, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>');
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#x2F;/gi, "/")
+    .replace(/&#47;/gi, "/");
 }
 
 
-function cleanUrl(value) {
-
+function normalizeEscapes(value) {
   return decodeHtml(
-    String(value || '')
-      .replace(/\\u002F/g, '/')
-      .replace(/\\\//g, '/')
-      .replace(/&amp;/g, '&')
+    String(value || "")
+      .replace(/\\u002F/gi, "/")
+      .replace(/\\u002f/gi, "/")
+      .replace(/\\\//g, "/")
+      .replace(/\\u003A/gi, ":")
+      .replace(/\\u003a/gi, ":")
+      .replace(/\\u0026/gi, "&")
       .trim()
   );
 }
 
 
-function isImageUrl(url) {
-
-  const value =
-    String(url || '').toLowerCase();
-
-  return (
-    value.includes('pinimg.com') ||
-    /\.(jpg|jpeg|png|webp)(\?|$)/i.test(value)
+function cleanUrl(value) {
+  return normalizeEscapes(
+    String(value || "")
+      .replace(
+        /^["'`]+/,
+        ""
+      )
+      .replace(
+        /["'`,;)\]}]+$/g,
+        ""
+      )
   );
 }
 
 
-function extractMetaImages(html) {
-
-  const urls = [];
-
-  /*
-   * og:image
-   */
-
-  const ogRegex =
-    /<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["'][^>]*>/gi;
-
-  let match;
-
-  while (
-    (match = ogRegex.exec(html))
-  ) {
-
-    const url =
-      cleanUrl(match[1]);
-
-    if (isImageUrl(url)) {
-      urls.push(url);
-    }
-  }
-
-
-  /*
-   * content antes do property/name
-   */
-
-  const reverseRegex =
-    /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*>/gi;
-
-  while (
-    (match = reverseRegex.exec(html))
-  ) {
-
-    const url =
-      cleanUrl(match[1]);
-
-    if (isImageUrl(url)) {
-      urls.push(url);
-    }
-  }
-
-
-  /*
-   * URLs pinimg espalhadas no HTML
-   */
-
-  const pinimgRegex =
-    /https?:\\?\/\\?\/[^"'\\\s<>]+pinimg\.com[^"'\\\s<>]*/gi;
-
-  while (
-    (match = pinimgRegex.exec(html))
-  ) {
-
-    let url =
-      cleanUrl(match[0]);
-
-    url =
-      url.replace(/\\u0026/g, '&');
-
-    if (isImageUrl(url)) {
-      urls.push(url);
-    }
-  }
-
-
-  return [
-    ...new Set(
-      urls
-    )
-  ];
-}
-
-
-/*
- * ============================================================
- * PINTEREST URL
- * ============================================================
- */
-
-function isPinterestUrl(value) {
-
+function isPinimgImage(
+  value
+) {
   try {
 
     const u =
-      new URL(value);
+      new URL(
+        cleanUrl(value)
+      );
 
-    const host =
+    if (
       u.hostname
-        .toLowerCase();
+        .toLowerCase() !==
+      "i.pinimg.com"
+    ) {
+      return false;
+    }
+
+    const path =
+      u.pathname.toLowerCase();
 
     return (
-      host === 'pin.it' ||
-      host === 'pinterest.com' ||
-      host === 'www.pinterest.com' ||
-      host.endsWith('.pinterest.com')
+      /\.(jpg|jpeg|png|webp|gif)$/i
+        .test(path) ||
+      /\/(?:originals|736x|564x|474x|400x|291x|236x|170x)\//i
+        .test(path)
     );
 
   } catch {
-
     return false;
   }
 }
 
 
+
 /*
- * ============================================================
- * RESOLVER PINTEREST
- * ============================================================
+ * Converte URLs pequenas do Pinterest para candidatos
+ * de resolução maior.
+ *
+ * A existência real da URL é verificada pelo downloader
+ * do feature, portanto não assumimos que "originals"
+ * sempre exista.
  */
+function promotePinimgUrl(value) {
+  const raw = cleanUrl(value);
 
-async function resolvePinterest(url) {
-
-  console.log(
-    `[PINTEREST] Abrindo: ${url}`
-  );
-
-  const page =
-    await request(
-      url,
-      {
-        accept:
-          'text/html,application/xhtml+xml,*/*'
-      }
-    );
-
-  const images =
-    extractMetaImages(
-      page.body
-    );
-
-  if (!images.length) {
-
-    throw new Error(
-      'Imagem não encontrada na página'
-    );
+  if(!raw){
+    return null;
   }
 
-  return {
-    finalUrl:
-      page.url,
+  try {
+    const u = new URL(raw);
 
-    image:
-      images[0],
+    if(
+      u.hostname.toLowerCase() !==
+      "i.pinimg.com"
+    ){
+      return raw;
+    }
 
-    images
-  };
+    u.pathname =
+      u.pathname.replace(
+        /\/(?:170x|236x|291x|400x|474x|564x|736x|originals)\//i,
+        "/originals/"
+      );
+
+    return u.toString();
+
+  } catch {
+    return raw;
+  }
+}
+
+function normalizeImage(
+  value
+) {
+  const image =
+    cleanUrl(value);
+
+  if(
+    !isPinimgImage(image)
+  ){
+    return null;
+  }
+
+  return promotePinimgUrl(
+    image
+  );
 }
 
 
-/*
- * ============================================================
- * PESQUISA WEB
- *
- * NÃO usa VEX.
- * NÃO usa yt-dlp.
- * NÃO usa API local.
- * ============================================================
- */
+function imageKey(value) {
+  try {
 
-async function searchDuckDuckGo(query) {
+    const u =
+      new URL(value);
 
-  const url =
-    'https://html.duckduckgo.com/html/?q=' +
-    encodeURIComponent(
-      `site:pinterest.com/pin/ ${query}`
+    return (
+      u.hostname
+        .toLowerCase() +
+      u.pathname
+        .replace(
+          /\/(?:originals|736x|564x|474x|400x|291x|236x|170x)\//i,
+          "/SIZE/"
+        )
     );
 
-  console.log(
-    `[PINTEREST] Pesquisa DDG: ${query}`
+  } catch {
+    return String(value);
+  }
+}
+
+
+function dedupeImages(
+  values
+) {
+  const map =
+    new Map();
+
+  for (
+    const value
+    of values
+  ) {
+    const image =
+      normalizeImage(value);
+
+    if (!image) {
+      continue;
+    }
+
+    const key =
+      imageKey(image);
+
+    if (
+      !map.has(key)
+    ) {
+      map.set(
+        key,
+        image
+      );
+    }
+  }
+
+  return [
+    ...map.values()
+  ];
+}
+
+
+function extractPinimg(
+  html
+) {
+  const values = [];
+
+  const patterns = [
+
+    /https?:\/\/i\.pinimg\.com\/[^"'<>\\\s]+/gi,
+
+    /https?:\\\/\\\/i\.pinimg\.com\\\/[^"'<>\\\s]+/gi,
+
+    /["'](https?:\/\/i\.pinimg\.com\/[^"']+)["']/gi
+
+  ];
+
+  for (
+    const regex
+    of patterns
+  ) {
+
+    let match;
+
+    while (
+      (match =
+        regex.exec(
+          html
+        ))
+    ) {
+
+      const image =
+        normalizeImage(
+          match[1] ||
+          match[0]
+        );
+
+      if (image) {
+        values.push(image);
+      }
+    }
+  }
+
+  return dedupeImages(
+    values
   );
+}
 
-  const response =
-    await request(
-      url
-    );
 
+function extractPins(
+  html
+) {
   const links = [];
-
-  /*
-   * Links dos resultados
-   */
 
   const regex =
     /href=["']([^"']+)["']/gi;
@@ -420,7 +452,10 @@ async function searchDuckDuckGo(query) {
   let match;
 
   while (
-    (match = regex.exec(response.body))
+    (match =
+      regex.exec(
+        html
+      ))
   ) {
 
     let href =
@@ -428,117 +463,46 @@ async function searchDuckDuckGo(query) {
         match[1]
       );
 
-    /*
-     * DDG pode devolver links
-     * de redirecionamento.
-     */
+    href =
+      normalizeEscapes(
+        href
+      );
 
     try {
 
       if (
-        href.startsWith('//')
+        href.startsWith("//")
       ) {
         href =
-          'https:' + href;
+          "https:" +
+          href;
       }
 
       const parsed =
         new URL(
           href,
-          'https://html.duckduckgo.com'
+          "https://www.bing.com"
         );
 
       if (
         parsed.hostname
-          .includes('duckduckgo.com') &&
-        parsed.searchParams.has('uddg')
-      ) {
-
-        href =
-          parsed.searchParams.get(
-            'uddg'
-          );
-      }
-
-    } catch {}
-
-    try {
-
-      const parsed =
-        new URL(href);
-
-      const host =
-        parsed.hostname
-          .toLowerCase();
-
-      if (
-        host === 'pinterest.com' ||
-        host === 'www.pinterest.com' ||
-        host.endsWith('.pinterest.com')
-      ) {
-
-        if (
-          /\/pin\//i.test(
-            parsed.pathname
+          .toLowerCase()
+          .includes(
+            "bing.com"
           )
-        ) {
-
-          links.push(
-            parsed.toString()
+      ) {
+        const redirected =
+          parsed.searchParams.get(
+            "u"
           );
+
+        if (redirected) {
+          href =
+            redirected;
         }
       }
 
     } catch {}
-
-  }
-
-  return [
-    ...new Set(
-      links
-    )
-  ];
-}
-
-
-/*
- * ============================================================
- * PESQUISA BING — FALLBACK
- * ============================================================
- */
-
-async function searchBing(query) {
-
-  const url =
-    'https://www.bing.com/search?q=' +
-    encodeURIComponent(
-      `site:pinterest.com/pin/ ${query}`
-    );
-
-  console.log(
-    `[PINTEREST] Pesquisa Bing: ${query}`
-  );
-
-  const response =
-    await request(
-      url
-    );
-
-  const links = [];
-
-  const regex =
-    /href=["'](https?:\/\/[^"']+)["']/gi;
-
-  let match;
-
-  while (
-    (match = regex.exec(response.body))
-  ) {
-
-    let href =
-      cleanUrl(
-        match[1]
-      );
 
     try {
 
@@ -551,22 +515,24 @@ async function searchBing(query) {
 
       if (
         (
-          host === 'pinterest.com' ||
-          host === 'www.pinterest.com' ||
-          host.endsWith('.pinterest.com')
+          host ===
+            "pinterest.com" ||
+          host ===
+            "www.pinterest.com" ||
+          host.endsWith(
+            ".pinterest.com"
+          )
         ) &&
         /\/pin\//i.test(
           parsed.pathname
         )
       ) {
-
         links.push(
           parsed.toString()
         );
       }
 
     } catch {}
-
   }
 
   return [
@@ -577,336 +543,430 @@ async function searchBing(query) {
 }
 
 
-/*
- * ============================================================
- * SEARCH
- * ============================================================
- */
-
-async function search(query) {
-
-  query =
-    String(query || '')
-      .trim()
-      .replace(/\s+/g, ' ');
-
-  if (!query) {
-
-    return {
-      ok: false,
-      msg:
-        'Digite o que deseja pesquisar.'
-    };
-  }
-
-
-  const cacheKey =
-    `search:${query.toLowerCase()}`;
-
-  const cached =
-    getCached(
-      cacheKey
-    );
-
-  if (cached) {
-
-    console.log(
-      '[PINTEREST] Resultado em cache'
-    );
-
-    return {
-      ok: true,
-      ...cached,
-      cached: true
-    };
-  }
-
-
+async function resolvePinterest(
+  url
+) {
   console.log(
-    `[PINTEREST] Pesquisando: ${query}`
+    "[PINTEREST] Abrindo:",
+    url
   );
 
-
-  let links = [];
-
-
-  /*
-   * PRIMEIRA FONTE
-   */
-
-  try {
-
-    links =
-      await searchDuckDuckGo(
-        query
-      );
-
-  } catch (error) {
-
-    console.error(
-      '[PINTEREST] DDG:',
-      error?.message ||
-      error
-    );
-
-  }
-
-
-  /*
-   * SEGUNDA FONTE
-   */
-
-  if (!links.length) {
-
-    try {
-
-      links =
-        await searchBing(
-          query
-        );
-
-    } catch (error) {
-
-      console.error(
-        '[PINTEREST] Bing:',
-        error?.message ||
-        error
-      );
-
-    }
-
-  }
-
-
-  console.log(
-    `[PINTEREST] Pins encontrados: ${links.length}`
-  );
-
-
-  if (!links.length) {
-
-    return {
-      ok: false,
-
-      msg:
-        '❌ Nenhum Pin do Pinterest foi encontrado.'
-    };
-  }
-
-
-  /*
-   * Tenta abrir vários pins.
-   */
-
-  const images = [];
-
-
-  for (
-    const pin of links.slice(0, 8)
-  ) {
-
-    try {
-
-      const result =
-        await resolvePinterest(
-          pin
-        );
-
-      if (
-        result?.image
-      ) {
-
-        images.push({
-          pin,
-          image:
-            result.image
-        });
-
+  const response =
+    await request(
+      url,
+      {
+        accept:
+          "text/html,application/xhtml+xml,*/*"
       }
+    );
 
-    } catch (error) {
-
-      console.log(
-        `[PINTEREST] Pin ignorado: ${error?.message || error}`
-      );
-
-    }
-
-  }
-
+  const images =
+    extractPinimg(
+      response.body
+    );
 
   if (!images.length) {
-
-    return {
-      ok: false,
-
-      msg:
-        '❌ Os Pins foram encontrados, mas não foi possível obter as imagens.'
-    };
+    throw new Error(
+      "Imagem não encontrada na página."
+    );
   }
 
-
-  const result = {
-
-    criador:
-      'Kyara',
-
-    type:
-      'image',
-
-    mime:
-      'image/jpeg',
-
-    query,
-
-    count:
-      images.length,
-
-    urls:
-      images.map(
-        item => item.image
-      ),
-
-    pins:
-      images.map(
-        item => item.pin
-      )
-
-  };
-
-
-  setCache(
-    cacheKey,
-    result
-  );
-
-
-  console.log(
-    `[PINTEREST] Imagens obtidas: ${result.count}`
-  );
-
-
   return {
-    ok: true,
-    ...result
+    finalUrl:
+      response.url,
+
+    image:
+      images[0],
+
+    images
   };
 }
 
 
-/*
- * ============================================================
- * DOWNLOAD / URL
- * ============================================================
- */
+async function searchBingImages(
+  query
+) {
+  const url =
+    "https://www.bing.com/images/search?q=" +
+    encodeURIComponent(
+      `site:pinterest.com ${query}`
+    ) +
+    "&form=HDRSC2";
 
-async function dl(url) {
+  console.log(
+    "[PINTEREST] Bing Images:",
+    query
+  );
 
-  url =
-    String(url || '')
-      .trim();
-
-  if (!url) {
-
-    return {
-      ok: false,
-      msg:
-        'URL inválida.'
-    };
-  }
-
-
-  if (
-    !isPinterestUrl(url)
-  ) {
-
-    return {
-      ok: false,
-
-      msg:
-        '❌ Essa URL não pertence ao Pinterest.'
-    };
-  }
-
-
-  const cacheKey =
-    `download:${url}`;
-
-
-  const cached =
-    getCached(
-      cacheKey
+  const response =
+    await request(
+      url,
+      {
+        accept:
+          "text/html,application/xhtml+xml,*/*"
+      }
     );
 
-  if (cached) {
+  const body =
+    normalizeEscapes(
+      response.body
+    );
 
-    return {
-      ok: true,
-      ...cached,
-      cached: true
-    };
+  const images = [];
+
+  /*
+   * Bing Images costuma transportar
+   * o endereço original em "murl".
+   */
+  const murl =
+    /"(?:murl|mediaurl|imgurl)"\s*:\s*"([^"]+)"/gi;
+
+  let match;
+
+  while (
+    (match =
+      murl.exec(
+        body
+      ))
+  ) {
+
+    const image =
+      normalizeImage(
+        match[1]
+      );
+
+    if (image) {
+      images.push(image);
+    }
   }
 
+  /*
+   * Fallback: procurar pinimg cru
+   * no HTML inteiro.
+   */
+  images.push(
+    ...extractPinimg(
+      body
+    )
+  );
+
+  return dedupeImages(
+    images
+  );
+}
+
+
+async function searchPinterestPage(
+  query
+) {
+  const url =
+    "https://www.pinterest.com/search/pins/?q=" +
+    encodeURIComponent(
+      query
+    );
+
+  console.log(
+    "[PINTEREST] Página Pinterest:",
+    query
+  );
 
   try {
 
-    const result =
-      await resolvePinterest(
-        url
+    const response =
+      await request(
+        url,
+        {
+          accept:
+            "text/html,application/xhtml+xml,*/*"
+        }
       );
 
-
-    const data = {
-
-      criador:
-        'Kyara',
-
-      type:
-        'image',
-
-      mime:
-        'image/jpeg',
-
-      url:
-        result.image,
-
-      urls:
-        result.images,
-
-      sourceUrl:
-        result.finalUrl
-
-    };
-
-
-    setCache(
-      cacheKey,
-      data
+    return extractPinimg(
+      response.body
     );
-
-
-    return {
-      ok: true,
-      ...data
-    };
 
   } catch (error) {
 
-    console.error(
-      '[PINTEREST] URL:',
+    console.log(
+      "[PINTEREST] Página direta:",
       error?.message ||
       error
     );
 
-    return {
+    return [];
+  }
+}
 
+
+async function searchBingPins(
+  query
+) {
+  const url =
+    "https://www.bing.com/search?q=" +
+    encodeURIComponent(
+      `site:pinterest.com/pin/ ${query}`
+    );
+
+  console.log(
+    "[PINTEREST] Bing Web:",
+    query
+  );
+
+  try {
+
+    const response =
+      await request(
+        url
+      );
+
+    return extractPins(
+      response.body
+    );
+
+  } catch (error) {
+
+    console.log(
+      "[PINTEREST] Bing Web:",
+      error?.message ||
+      error
+    );
+
+    return [];
+  }
+}
+
+
+async function search(query) {
+  const originalQuery = String(query || "").trim();
+
+  if (!originalQuery) {
+    return {
+      ok: false,
+      error: "Informe o que deseja pesquisar no Pinterest."
+    };
+  }
+
+  const searchTerm =
+    /óbito|obito/i.test(originalQuery)
+      ? "Obito Uchiha Naruto"
+      : originalQuery;
+
+  const cacheKey = `search:v8:${originalQuery.toLowerCase()}`;
+  const cached = getCached(cacheKey);
+
+  if (cached?.ok && Array.isArray(cached.urls) && cached.urls.length) {
+    return cached;
+  }
+
+  const found = [];
+
+  const add = (image, pinUrl = "") => {
+    const normalized = normalizeImage(image);
+    if (!normalized) return;
+
+    const key = imageKey(normalized);
+
+    if (found.some(item => imageKey(item.image) === key)) {
+      return;
+    }
+
+    found.push({
+      image: normalized,
+      pinUrl: cleanUrl(pinUrl) || ""
+    });
+  };
+
+  const collect = (results) => {
+    if (!Array.isArray(results)) return;
+
+    for (const item of results) {
+      if (found.length >= 8) break;
+
+      if (typeof item === "string") {
+        add(item);
+        continue;
+      }
+
+      if (!item || typeof item !== "object") continue;
+
+      add(
+        item.image ||
+        item.imageUrl ||
+        item.thumbnail ||
+        item.url ||
+        item.directLink ||
+        item.src ||
+        item.media,
+        item.pinUrl ||
+        item.pin ||
+        item.sourceUrl ||
+        item.link
+      );
+
+      if (Array.isArray(item.images)) {
+        for (const image of item.images) {
+          if (found.length >= 8) break;
+          add(image, item.pinUrl || item.pin || item.sourceUrl || "");
+        }
+      }
+
+      if (Array.isArray(item.urls)) {
+        for (const image of item.urls) {
+          if (found.length >= 8) break;
+          add(image, item.pinUrl || item.pin || item.sourceUrl || "");
+        }
+      }
+    }
+  };
+
+  console.log("[PINTEREST] Pesquisa:", searchTerm);
+
+  // 1 — Bing Images
+  try {
+    console.log("[PINTEREST] Bing Images:", searchTerm);
+    const results = await searchBingImages(searchTerm);
+    collect(results);
+    console.log("[PINTEREST] Bing Images encontrou:", found.length);
+  } catch (error) {
+    console.log(
+      "[PINTEREST] Bing Images ignorado:",
+      error?.message || error
+    );
+  }
+
+  // 2 — Pinterest diretamente
+  if (found.length < 8) {
+    try {
+      console.log("[PINTEREST] Página Pinterest:", searchTerm);
+      const results = await searchPinterestPage(searchTerm);
+      collect(results);
+      console.log("[PINTEREST] Pinterest encontrou:", found.length);
+    } catch (error) {
+      console.log(
+        "[PINTEREST] Página Pinterest ignorada:",
+        error?.message || error
+      );
+    }
+  }
+
+  // 3 — Bing Web / Pins
+  if (found.length < 8) {
+    try {
+      console.log("[PINTEREST] Bing Web:", searchTerm);
+      const results = await searchBingPins(searchTerm);
+      collect(results);
+      console.log("[PINTEREST] Bing Web encontrou:", found.length);
+
+      // Alguns resultados vêm apenas com a URL do Pin.
+      if (found.length < 8 && Array.isArray(results)) {
+        for (const item of results) {
+          if (found.length >= 8) break;
+
+          const pinUrl =
+            typeof item === "string"
+              ? item
+              : item?.pinUrl ||
+                item?.pin ||
+                item?.url ||
+                item?.link ||
+                "";
+
+          if (!/pinterest\./i.test(String(pinUrl))) continue;
+
+          try {
+            const image = await resolvePinterest(pinUrl);
+            add(image, pinUrl);
+          } catch {}
+        }
+      }
+    } catch (error) {
+      console.log(
+        "[PINTEREST] Bing Web ignorado:",
+        error?.message || error
+      );
+    }
+  }
+
+  // 4 — Se alguma fonte devolveu URLs escondidas em objetos,
+  // normaliza novamente antes de desistir.
+  if (found.length < 8) {
+    try {
+      const fallback = await searchPinterestPage(
+        `${searchTerm} pinterest`
+      );
+      collect(fallback);
+    } catch {}
+  }
+
+  const result = {
+    ok: found.length > 0,
+    query: searchTerm,
+    source: "Pinterest",
+    image: found[0]?.image || null,
+    imageUrl: found[0]?.image || null,
+    url: found[0]?.pinUrl || null,
+    directLink: found[0]?.image || null,
+    urls: found.map(item => item.image),
+    results: found
+  };
+
+  console.log(
+    "[PINTEREST] Resultado final:",
+    found.length,
+    "imagem(ns)"
+  );
+
+  if (result.ok) {
+    setCache(cacheKey, result);
+  }
+
+  return result;
+}
+
+async function dl(url) {
+
+  try {
+
+    const resolved =
+      await resolvePinterest(
+        url
+      );
+
+    return {
+      ok: true,
+
+      criador:
+        "Kyara",
+
+      type:
+        "image",
+
+      mime:
+        "image/jpeg",
+
+      url:
+        resolved.image,
+
+      image:
+        resolved.image,
+
+      urls:
+        resolved.images,
+
+      sourceUrl:
+        resolved.finalUrl
+    };
+
+  } catch (error) {
+
+    return {
       ok: false,
 
       msg:
-        '❌ Não foi possível obter a imagem desse Pin.'
+        error?.message ||
+        "Não foi possível obter o Pin."
     };
-
   }
-
 }
 
 

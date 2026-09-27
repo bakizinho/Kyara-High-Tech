@@ -965,6 +965,7 @@ function parseCustomCommandMeta(tokens) {
     ownerOnly: false,
     adminOnly: false,
     context: 'both', // 'group' | 'private' | 'both'
+    category: 'outros',
     params: [], // { name, required, type }
     placeholders: {}
   };
@@ -1012,6 +1013,23 @@ function parseCustomCommandMeta(tokens) {
       case 'private':
         settings.context = 'private';
         break;
+
+      case 'category':
+      case 'cat':
+      case 'categoria':
+        if (
+          parts.length > 1 &&
+          parts.slice(1).join(':').trim()
+        ) {
+          settings.category =
+            parts
+              .slice(1)
+              .join(':')
+              .trim()
+              .toLowerCase();
+        }
+        break;
+
       case 'both':
         settings.context = 'both';
         break;

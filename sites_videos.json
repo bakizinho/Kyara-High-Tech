@@ -1,0 +1,310 @@
+{
+  "youtube": {
+    "nome": "youtube",
+    "url": "https://www.youtube.com"
+  },
+  "tube": {
+    "nome": "tube",
+    "url": "https://www.youtube.com"
+  },
+  "tiktok": {
+    "nome": "tiktok",
+    "url": "https://www.tiktok.com"
+  },
+  "instagram": {
+    "nome": "instagram",
+    "url": "https://www.instagram.com"
+  },
+  "facebook": {
+    "nome": "facebook",
+    "url": "https://www.facebook.com"
+  },
+  "vimeo": {
+    "nome": "vimeo",
+    "url": "https://vimeo.com"
+  },
+  "dailymotion": {
+    "nome": "dailymotion",
+    "url": "https://www.dailymotion.com"
+  },
+  "reddit": {
+    "nome": "reddit",
+    "url": "https://www.reddit.com"
+  },
+  "twitch": {
+    "nome": "twitch",
+    "url": "https://www.twitch.tv"
+  },
+  "streamable": {
+    "nome": "streamable",
+    "url": "https://streamable.com"
+  },
+  "9gag": {
+    "nome": "9gag",
+    "url": "https://9gag.com"
+  },
+  "ted": {
+    "nome": "ted",
+    "url": "https://www.ted.com"
+  },
+  "anime": {
+    "nome": "anime",
+    "url": "https://share.google/ugiwdGA3Gzu26wvbe"
+  },
+  "erome": {
+    "nome": "erome",
+    "url": "https://www.erome.com",
+    "origem": "https://www.erome.com",
+    "hostname": "www.erome.com"
+  },
+  "hentaimama": {
+    "nome": "hentaimama",
+    "url": "https://hentaimama.io",
+    "origem": "https://hentaimama.io",
+    "hostname": "hentaimama.io"
+  },
+  "hams": {
+    "nome": "hams",
+    "url": "https://xhamster.com",
+    "origem": "https://xhamster.com",
+    "hostname": "xhamster.com"
+  },
+  "pornhub": {
+    "url": "https://pt.pornhub.com",
+    "origem": "https://pt.pornhub.com",
+    "hostname": "pt.pornhub.com"
+  },
+  "x": {
+    "nome": "x",
+    "url": "https://x.com",
+    "categoria": "geral"
+  },
+  "twitter": {
+    "nome": "twitter",
+    "url": "https://twitter.com",
+    "categoria": "geral"
+  },
+  "bilibili": {
+    "nome": "bilibili",
+    "url": "https://www.bilibili.com",
+    "categoria": "geral"
+  },
+  "vk": {
+    "nome": "vk",
+    "url": "https://vk.com",
+    "categoria": "geral"
+  },
+  "tumblr": {
+    "nome": "tumblr",
+    "url": "https://www.tumblr.com",
+    "categoria": "geral"
+  },
+  "soundcloud": {
+    "nome": "soundcloud",
+    "url": "https://soundcloud.com",
+    "categoria": "geral"
+  },
+  "mixcloud": {
+    "nome": "mixcloud",
+    "url": "https://www.mixcloud.com",
+    "categoria": "geral"
+  },
+  "bandcamp": {
+    "nome": "bandcamp",
+    "url": "https://bandcamp.com",
+    "categoria": "geral"
+  },
+  "archive": {
+    "nome": "archive",
+    "url": "https://archive.org",
+    "categoria": "geral"
+  },
+  "wikimedia": {
+    "nome": "wikimedia",
+    "url": "https://commons.wikimedia.org",
+    "categoria": "geral"
+  },
+  "vocaroo": {
+    "nome": "vocaroo",
+    "url": "https://vocaroo.com",
+    "categoria": "geral"
+  },
+  "eporner": {
+    "nome": "eporner",
+    "url": "https://www.eporner.com",
+    "categoria": "adulto"
+  },
+  "eroprofile": {
+    "nome": "eroprofile",
+    "url": "https://www.eroprofile.com",
+    "categoria": "adulto"
+  },
+  "pornbox": {
+    "nome": "pornbox",
+    "url": "https://www.pornbox.com",
+    "categoria": "adulto"
+  },
+  "pornerbros": {
+    "nome": "pornerbros",
+    "url": "https://www.pornerbros.com",
+    "categoria": "adulto"
+  },
+  "pornflip": {
+    "nome": "pornflip",
+    "url": "https://www.pornflip.com",
+    "categoria": "adulto"
+  },
+  "pornotube": {
+    "nome": "pornotube",
+    "url": "https://www.pornotube.com",
+    "categoria": "adulto"
+  },
+  "porntop": {
+    "nome": "porntop",
+    "url": "https://www.porntop.com",
+    "categoria": "adulto"
+  },
+  "redgifs": {
+    "nome": "redgifs",
+    "url": "https://www.redgifs.com",
+    "categoria": "adulto"
+  },
+  "redtube": {
+    "nome": "redtube",
+    "url": "https://www.redtube.com",
+    "categoria": "adulto"
+  },
+  "spankbang": {
+    "nome": "spankbang",
+    "url": "https://spankbang.com",
+    "categoria": "adulto"
+  },
+  "stripchat": {
+    "nome": "stripchat",
+    "url": "https://stripchat.com",
+    "categoria": "adulto"
+  },
+  "sunporno": {
+    "nome": "sunporno",
+    "url": "https://www.sunporno.com",
+    "categoria": "adulto"
+  },
+  "thisvid": {
+    "nome": "thisvid",
+    "url": "https://thisvid.com",
+    "categoria": "adulto"
+  },
+  "tnaflix": {
+    "nome": "tnaflix",
+    "url": "https://www.tnaflix.com",
+    "categoria": "adulto"
+  },
+  "drtuber": {
+    "nome": "drtuber",
+    "url": "https://www.drtuber.com",
+    "categoria": "adulto"
+  },
+  "4tube": {
+    "nome": "4tube",
+    "url": "https://www.4tube.com",
+    "categoria": "adulto"
+  },
+  "alphaporno": {
+    "nome": "alphaporno",
+    "url": "https://www.alphaporno.com",
+    "categoria": "adulto"
+  },
+  "xhamster": {
+    "nome": "xhamster",
+    "url": "https://xhamster.com",
+    "categoria": "adulto"
+  },
+  "xnxx": {
+    "nome": "xnxx",
+    "url": "https://www.xnxx.com",
+    "categoria": "adulto"
+  },
+  "xvideos": {
+    "nome": "xvideos",
+    "url": "https://www.xvideos.com",
+    "categoria": "adulto"
+  },
+  "xxxymovies": {
+    "nome": "xxxymovies",
+    "url": "https://www.xxxymovies.com",
+    "categoria": "adulto"
+  },
+  "youjizz": {
+    "nome": "youjizz",
+    "url": "https://www.youjizz.com",
+    "categoria": "adulto"
+  },
+  "youporn": {
+    "nome": "youporn",
+    "url": "https://www.youporn.com",
+    "categoria": "adulto"
+  },
+  "hstream": {
+    "nome": "hstream",
+    "url": "https://hstream.moe",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "oppai": {
+    "nome": "oppai",
+    "url": "https://oppai.stream",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "oppaistream": {
+    "nome": "oppaistream",
+    "url": "https://oppai.stream",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "hentaihaven": {
+    "nome": "hentaihaven",
+    "url": "https://hentaihaven.com",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "hanime": {
+    "nome": "hanime",
+    "url": "https://hanime.tv",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "ohentai": {
+    "nome": "ohentai",
+    "url": "https://ohentai.org",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "hanimered": {
+    "nome": "hanimered",
+    "url": "https://hanime.red",
+    "categoria": "hentai",
+    "engine": "adaptive"
+  },
+  "rule34": {
+    "url": "https://rule34.xxx",
+    "engine": "custom"
+  },
+  "pin": {
+    "url": "https://br.pinterest.com",
+    "origem": "https://br.pinterest.com",
+    "hostname": "br.pinterest.com"
+  },
+  "cosmos": {
+    "url": "https://www.cosmos.so",
+    "origem": "https://www.cosmos.so",
+    "hostname": "www.cosmos.so"
+  },
+  "pinterest": {
+    "nome": "pinterest",
+    "url": "https://br.pinterest.com",
+    "origem": "https://br.pinterest.com",
+    "hostname": "br.pinterest.com",
+    "categoria": "imagem"
+  }
+}

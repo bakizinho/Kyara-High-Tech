@@ -31,6 +31,10 @@ export function getActiveSocket() {
     return activeSocket;
 }
 
+export function hasActiveSocket() {
+    return Boolean(activeSocket && connectionState !== 'close');
+}
+
 export function waitForActiveSocket(timeoutMs = 120000) {
     if (connectionState === 'open' && activeSocket) {
         return Promise.resolve(activeSocket);

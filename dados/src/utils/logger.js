@@ -247,9 +247,9 @@ function footer() {
 ================================================================ */
 
 function online({
-    version = '10.2.1',
+    version = '11.0.0',
     prefix = '/',
-    owner = 'baki'
+    owner = '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠'
 } = {}) {
 
     console.log();

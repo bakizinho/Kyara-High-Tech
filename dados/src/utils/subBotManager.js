@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
 import { getLidFromJidCached } from './helpers.js';
+import { loadAntiDeletePvSettings, handleAntiDeletePvRevocation } from '../features/antiDeletePv.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +32,7 @@ async function getWAVersion() {
 }
 
 const activeSubBots = new Map();
+const subBotMessageCaches = new Map();
 const generatingCode = new Set();
 
 /**
@@ -103,7 +105,7 @@ function createSubBotConfig(botId, phoneNumber, ownerNumber) {
 async function initializeSubBot(botId, phoneNumber, ownerNumber, generatePairingCode = false) {
     try {
         console.log(`🤖 Inicializando sub-bot ${botId}...`);
-        const { dirs } = createSubBotConfig(botId, phoneNumber, ownerNumber);
+        const { config: subBotConfig, dirs } = createSubBotConfig(botId, phoneNumber, ownerNumber);
         
         const { state, saveCreds, signalRepository } = await useMultiFileAuthState(dirs.authDir, makeCacheableSignalKeyStore);
         const version = await getWAVersion();
@@ -210,6 +212,9 @@ pairingCode
             }
         });
 
+        const sharedMessageCache = subBotMessageCaches.get(botId) || new Map();
+        subBotMessageCaches.set(botId, sharedMessageCache);
+
         sock.ev.on('messages.upsert', async (m) => {
             if (!m.messages || m.type !== 'notify') return;
             for (const info of m.messages) {
@@ -219,6 +224,44 @@ pairingCode
 // pareado é o número do amigo, as mensagens dele chegam
 // como fromMe=true neste socket.
 if (!info.message) continue;
+                info.__kyaraSubBotId = botId;
+                if (info.key?.id && info.key?.remoteJid && !info.message?.protocolMessage) {
+                    const cacheJids = [...new Set([info.key.remoteJid, info.key.remoteJidAlt].filter(Boolean))];
+
+                    for (const cacheJid of cacheJids) {
+                        sharedMessageCache.set(`${cacheJid}_${info.key.id}`, info);
+                    }
+
+                    if (sharedMessageCache.size > 2500) {
+                        const removeCount = sharedMessageCache.size - 2100;
+                        let removed = 0;
+
+                        for (const oldKey of sharedMessageCache.keys()) {
+                            sharedMessageCache.delete(oldKey);
+                            if (++removed >= removeCount) break;
+                        }
+                    }
+                }
+
+                const antiDeletePvSettings = loadAntiDeletePvSettings();
+
+                if (antiDeletePvSettings.sourceSubBot === botId) {
+                    if (info.message?.protocolMessage?.type === 0) {
+                        const ownerTarget = subBotConfig.numerodono || ownerNumber || '';
+
+                        await handleAntiDeletePvRevocation({
+                            sock,
+                            info,
+                            messagesCache: sharedMessageCache,
+                            ownerJid: ownerTarget
+                        }).catch(error => console.error('[ANTI-DELETE PV] Sub-bot monitor:', error?.message || error));
+                    }
+
+                    // Este sub-bot é exclusivo do monitor e nunca executa comandos normais.
+                    continue;
+                }
+
+
                 
                 const envs = {
                     CONFIG_PATH: path.join(dirs.databaseDir, 'config.json'),
@@ -234,7 +277,7 @@ if (!info.message) continue;
                     const indexModule = await import('../index.js');
                     const KyaraBotExec = indexModule.default || indexModule;
                     if (typeof KyaraBotExec === 'function') {
-                        await KyaraBotExec(sock, info, null, new Map(), null);
+                        await KyaraBotExec(sock, info, null, sharedMessageCache, null);
                     }
                 } catch (e) {
                     console.error(`❌ Erro no sub-bot ${botId}:`, e.message);

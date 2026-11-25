@@ -1,0 +1,73 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-03T21:14:10.878Z",
+  "groupName": "Geral",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "71949829058681@lid",
+      "msg": 64,
+      "cmd": 0,
+      "figu": 85,
+      "pushname": "Nega",
+      "firstSeen": "2026-09-03T21:14:10.921Z",
+      "lastActivity": "2026-10-07T01:39:14.137Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 5,
+      "cmd": 8,
+      "figu": 5,
+      "pushname": "© 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-03T21:21:30.215Z",
+      "lastActivity": "2026-10-06T22:10:22.992Z"
+    },
+    {
+      "id": "29502767915146@lid",
+      "msg": 20,
+      "cmd": 0,
+      "figu": 20,
+      "pushname": "Akatsuki Pain",
+      "firstSeen": "2026-09-04T11:54:34.849Z",
+      "lastActivity": "2026-09-13T09:10:01.875Z"
+    },
+    {
+      "id": "154056282607744@lid",
+      "msg": 62,
+      "cmd": 4,
+      "figu": 325,
+      "pushname": "Logan",
+      "firstSeen": "2026-09-04T11:55:14.535Z",
+      "lastActivity": "2026-10-07T00:50:53.997Z"
+    },
+    {
+      "id": "273821428899949@lid",
+      "msg": 47,
+      "cmd": 1,
+      "figu": 18,
+      "pushname": "ryan machado",
+      "firstSeen": "2026-09-04T13:22:06.357Z",
+      "lastActivity": "2026-10-07T00:58:59.714Z"
+    },
+    {
+      "id": "86440964784343@lid",
+      "msg": 8,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "João p.",
+      "firstSeen": "2026-09-04T16:14:00.383Z",
+      "lastActivity": "2026-09-11T16:36:49.692Z"
+    }
+  ],
+  "levelingConfigured": true,
+  "modobrincadeira": true
+}

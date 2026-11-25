@@ -8,9 +8,15 @@ import {
   jidNormalizedUser
 } from 'baileys';
 
+import { getConfiguredBotName, getConfiguredPrefix, KYARA_CREATOR_NAME } from '../identity/kyara-identity.js';
+import { applyMenuFont, getMenuDesignWithDefaults } from '../../utils/database.js';
+import { isInteractiveMenu } from '../../menus/menu-mode.js';
+import { areMenuButtonsEnabled } from '../../menus/categorias/sistema/menu-button-state.js';
+
 /*
  * ============================================================
- *                    KYARA MENU ADAPTATIVO
+ *                    KYARA-SYSTΞM MENU ADAPTATIVO
+ * KYARA_MENU_NATIVE_PATCH_V1
  * ============================================================
  *
  * Native Flow real:
@@ -28,7 +34,7 @@ const CONFIG = {
 
     {
       name:
-        '📢 O COMEÇO • Canal Oficial',
+        '↗ O COMEÇO • CANAL OFICIAL',
 
       url:
         'https://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w'
@@ -36,7 +42,7 @@ const CONFIG = {
 
     {
       name:
-        '🤖 BOT-KYARA • Canal Oficial',
+        '↗ 𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠 • CANAL OFICIAL',
 
       url:
         'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r'
@@ -45,7 +51,7 @@ const CONFIG = {
   ],
 
   footer:
-    '🌸 KYARA • Menu Interativo'
+    '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠 • SISTEMA'
 };
 
 /*
@@ -60,10 +66,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '📥 Downloads',
+      'DOWNLOADS',
 
     description:
-      'Baixar músicas, vídeos e mídias',
+      'MÚSICAS • VÍDEOS • MÍDIAS',
 
     id:
       'menudown'
@@ -71,10 +77,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '🎨 Logos',
+      'LOGOS',
 
     description:
-      'Criar logos e artes',
+      'LOGOS • ARTES',
 
     id:
       'menulogos'
@@ -82,7 +88,7 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '✏️ Edits',
+      'EDITS',
 
     description:
       'Efeitos e edições',
@@ -93,10 +99,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '🖼️ Figurinhas',
+      'FIGURINHAS',
 
     description:
-      'Criar e converter figurinhas',
+      'ᴄʀɪᴀʀ • ᴄᴏɴᴠᴇʀᴛᴇʀ',
 
     id:
       'menufig'
@@ -104,10 +110,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '🛠️ Ferramentas',
+      'FERRAMENTAS',
 
     description:
-      'Utilidades da Kyara',
+      'UTILIDADES',
 
     id:
       'ferramentas'
@@ -115,10 +121,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '✨ Alteradores',
+      'ALTERADORES',
 
     description:
-      'Áudio, voz, textos e efeitos',
+      'ÁUDIO • VOZ • TEXTOS • EFEITOS',
 
     id:
       'alteradores'
@@ -126,10 +132,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '🎮 Brincadeiras',
+      'BRINCADEIRAS',
 
     description:
-      'Jogos e diversão',
+      'JOGOS E DIVERSÃO',
 
     id:
       'menubn'
@@ -137,10 +143,10 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '⚔️ RPG',
+      'RPG',
 
     description:
-      'Sistema RPG da Kyara',
+      'SISTEMA RPG',
 
     id:
       'menurpg'
@@ -148,21 +154,27 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '⚙️ Administração',
+      'ADMINISTRAÇÃO',
 
     description:
-      'Ferramentas administrativas',
+      'FERRAMENTAS ADMINISTRATIVAS',
 
     id:
       'menuadm'
   },
 
   {
+    title: 'LEVEL UP',
+    description: 'NÍVEL E RANKING',
+    id: 'menulevel'
+  },
+
+  {
     title:
-      '👥 Membros',
+      'MEMBROS',
 
     description:
-      'Ferramentas para membros',
+      'RECURSOS PARA MEMBROS',
 
     id:
       'menumemb'
@@ -170,21 +182,27 @@ const MENUS_ORIGINAIS = [
 
   {
     title:
-      '⭐ VIP',
+      'VIP',
 
     description:
-      'Sistema VIP',
+      'SISTEMA VIP',
 
     id:
       'menuvip'
   },
 
   {
+    title: 'ATUALIZAÇÕES',
+    description: 'Novos comandos e melhorias',
+    id: 'atualizacoes'
+  },
+
+  {
     title:
-      '👑 Dono',
+      'DONO',
 
     description:
-      'Ferramentas exclusivas do dono',
+      'FERRAMENTAS EXCLUSIVAS',
 
     id:
       'menudono'
@@ -519,22 +537,40 @@ function encontrarMidiaMenu() {
  * ============================================================
  */
 
-function buildRows() {
+function kyaraSmallCapsDisplay(value) {
+  const map = {
+    a: 'ᴀ', b: 'ʙ', c: 'ᴄ', d: 'ᴅ', e: 'ᴇ',
+    f: 'ꜰ', g: 'ɢ', h: 'ʜ', i: 'ɪ', j: 'ᴊ',
+    k: 'ᴋ', l: 'ʟ', m: 'ᴍ', n: 'ɴ', o: 'ᴏ',
+    p: 'ᴘ', q: 'ǫ', r: 'ʀ', s: 's', t: 'ᴛ',
+    u: 'ᴜ', v: 'ᴠ', w: 'ᴡ', x: 'x', y: 'ʏ', z: 'ᴢ'
+  };
 
-  return MENUS_ORIGINAIS.map(
-    item => ({
-
-      title:
-        item.title,
-
-      description:
-        item.description,
-
-      id:
-        item.id
-
+  return Array.from(
+    String(value ?? '').normalize('NFD')
+  )
+    .map(char => {
+      const lower = char.toLowerCase();
+      return map[lower] || char;
     })
-  );
+    .join('');
+}
+
+function buildRows(prefix = '') {
+  const items = [
+    {
+      id: 'menuartista',
+      title: '🎨 ARTISTA',
+      description: 'Menu de artista'
+    },
+    ...MENUS_ORIGINAIS.filter(item => item.id !== 'menuartista')
+  ];
+
+  return items.map(item => ({
+    title: kyaraSmallCapsDisplay(item.title),
+    description: kyaraSmallCapsDisplay(item.description),
+    id: String(prefix) + item.id
+  }));
 }
 
 /*
@@ -543,114 +579,90 @@ function buildRows() {
  * ============================================================
  */
 
-function buildNativeFlowButtons() {
+/*
+ * SANDRO_COMPAT_MENU_V2
+ * Controle global dos botões usando o config existente.
+ */
 
-  const rows =
-    buildRows();
 
-  const first =
-    rows.slice(
-      0,
-      6
-    );
+function buildNativeFlowButtons(prefix = '#', stage = 'home') {
+  const bold = value =>
+    Array.from(String(value), char => {
+      const n = char.codePointAt(0);
+      if (n >= 65 && n <= 90) return String.fromCodePoint(0x1D5D4 + n - 65);
+      if (n >= 97 && n <= 122) return String.fromCodePoint(0x1D5EE + n - 97);
+      if (n >= 48 && n <= 57) return String.fromCodePoint(0x1D7EC + n - 48);
+      return char;
+    }).join('');
 
-  const second =
-    rows.slice(
-      6,
-      12
-    );
+  const categories = buildRows(prefix)
+    .filter(item =>
+      !String(item.id).replace(/^[#!./$]+/, '').endsWith('menudono')
+    )
+    .map(item => ({
+      title: String(item.title || '').slice(0, 24),
+      description: String(item.description || '').slice(0, 72),
+      id: String(item.id)
+    }));
 
-  return [
-
+  const options = [
     {
-      name:
-        'single_select',
-
-      buttonParamsJson:
-        JSON.stringify({
-
-          title:
-            '🌸 CATEGORIAS KYARA',
-
-          sections: [
-
-            {
-              title:
-                '📚 MENU PRINCIPAL',
-
-              rows:
-                first
-            },
-
-            {
-              title:
-                '🌸 MAIS CATEGORIAS',
-
-              rows:
-                second
-            }
-
-          ]
-
-        })
-
+      title: '📂 ' + bold('MENUS'),
+      description: 'Abrir todas as categorias disponíveis',
+      id: String(prefix) + 'kyara_select_menus'
     },
-
     {
-      name:
-        'cta_url',
-
-      buttonParamsJson:
-        JSON.stringify({
-
-          display_text:
-            CONFIG
-              .channels[0]
-              .name,
-
-          url:
-            CONFIG
-              .channels[0]
-              .url,
-
-          merchant_url:
-            CONFIG
-              .channels[0]
-              .url
-
-        })
-
+      title: '↗ ' + bold('O COMEÇO'),
+      description: 'Abrir o canal oficial O Começo',
+      id: String(prefix) + 'kyara_channel_comeco'
     },
-
     {
-      name:
-        'cta_url',
-
-      buttonParamsJson:
-        JSON.stringify({
-
-          display_text:
-            CONFIG
-              .channels[1]
-              .name,
-
-          url:
-            CONFIG
-              .channels[1]
-              .url,
-
-          merchant_url:
-            CONFIG
-              .channels[1]
-              .url
-
-        })
-
+      title: '📢 ' + bold('KYARA-SYSTΞM'),
+      description: 'Abrir o canal oficial fixo da Kyara',
+      id: String(prefix) + 'kyara_channel_bot'
+    },
+    {
+      title: '📋 ' + bold('COPIAR COMANDO'),
+      description: 'Comando: ' + String(prefix) + 'menu',
+      id: String(prefix) + 'kyara_copiar_comando'
     }
-
   ];
-}
 
+  const isCategories = stage === 'categories';
+  const rows = isCategories ? categories : options;
+  const sections = [];
+
+  for (let i = 0; i < rows.length; i += 8) {
+    sections.push({
+      title: i === 0
+        ? (isCategories ? '📚 CATEGORIAS KYARA' : '📚 OPÇÕES')
+        : '🌸 MAIS OPÇÕES',
+      rows: rows.slice(i, i + 8)
+    });
+  }
+
+  const buttons = [];
+
+  if (!isCategories) {
+    buttons.push({
+      name: 'quick_reply',
+      buttonParamsJson: JSON.stringify({
+      display_text: '👤 ' + bold('PERFIL'),
+        id: String(prefix) + 'perfil'
+      })
+    });
+  }
+
+  buttons.push({
+    name: 'single_select',
+    buttonParamsJson: JSON.stringify({
+      title: isCategories ? '📂 ' + bold('MENUS') : bold('SELECIONAR'),
+      sections
+    })
+  });
+
+  return buttons;
+}
 /*
  * ============================================================
  * TEXTO
@@ -663,118 +675,218 @@ function buildMenuText(
   {
     owner = false,
     admin = false,
-    mentionJid = null
+    mentionJid = null,
+    stage = 'home'
   } = {}
 ) {
+  const botName = safeText(getConfiguredBotName(), '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠');
+  const creatorName = KYARA_CREATOR_NAME;
+  const ownerName = safeText(loadOwnerConfig()?.nomedono, creatorName);
+  const mentionNumber = numberFromJid(mentionJid || '');
+  const user = safeText(pushName, 'usuário');
+  const target = mentionNumber ? '@' + mentionNumber : user;
 
-  const role =
-    owner
-      ? '👑 DONO'
-      : admin
-        ? '🛡️ ADM'
-        : '🌸 MEMBRO';
-
-  const mentionNumber =
-    numberFromJid(
-      mentionJid || ''
-    );
-
-  const user =
-    safeText(
-      pushName,
-      'usuário'
-    );
-
-  const greetingTarget =
-    mentionNumber
-      ? '@' + mentionNumber
-      : user;
+  const role = owner
+    ? '👑 DONO'
+    : admin
+      ? '⚙️ ADMIN'
+      : '🌸 MEMBRO';
 
   return [
-
-    `${greeting()}, ${greetingTarget}! 🌸`,
-
+    '╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮',
+    '       ✦ ' + botName + ' ✦',
+    '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
     '',
-
-    `╭━━〔 🌸 *BOT-KYARA* 〕━━╮`,
-
-    `┃ 👤 Acesso: ${role}`,
-
-    `┃ ⚡ Online: ${uptime()}`,
-
-    `┃ 🧠 RAM: ${memory()}`,
-
-    `┃ 📚 Categorias: ${MENUS_ORIGINAIS.length}`,
-
-    `╰━━━━━━━━━━━━━━━━━━━━╯`,
-
+    greeting() + ', ' + target + '!',
+    'Bem-vindo(a) ao menu oficial.',
     '',
-
-    '👇 *Toque em CATEGORIAS KYARA para selecionar um menu.*',
-
-    '📢 Os dois canais oficiais estão nos botões abaixo.'
+    '『 👤 USUÁRIO 』',
+    '╰➤ ' + target,
+    '『 🤖 BOT 』',
+    '╰➤ ' + botName,
+    '『 👑 DONO 』',
+    '╰➤ ' + ownerName,
+    '『 ✦ CRIADOR 』',
+    '╰➤ ' + creatorName,
+    '『 🛡️ PERFIL 』',
+    '╰➤ ' + role,
+    '',
+    String(stage).startsWith('categories')
+      ? '⟢ Selecione uma categoria no menu ⟣'
+      : '⟢ Toque em PERFIL para executar direto ou em SELECIONAR para ver menus, canais e copiar o comando. ⟣',
 
   ].join('\n');
 }
-/*
- * ============================================================
- * MENÇÃO
- * ============================================================
- */
 
-async function resolveMentionJid(
-  sock,
-  sender
+
+function buildPlainMenuText(
+  pushName,
+  {
+    owner = false,
+    admin = false,
+    mentionJid = null,
+    prefix = getConfiguredPrefix()
+  } = {}
 ) {
+  const botName = safeText(
+    getConfiguredBotName(),
+    '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠'
+  );
 
-  if (!sender) {
-    return null;
-  }
+  const ownerName = safeText(
+    loadOwnerConfig()?.nomedono,
+    KYARA_CREATOR_NAME
+  );
 
-  const normalized =
-    jidNormalizedUser(
-      sender
+  const mentionNumber = numberFromJid(mentionJid || '');
+  const user = safeText(pushName, 'usuário');
+  const target = mentionNumber ? '@' + mentionNumber : user;
+  const p = safeText(prefix, getConfiguredPrefix());
+
+  const role = owner
+    ? '👑 DONO'
+    : admin
+      ? '⚙️ ADMIN'
+      : '🌸 MEMBRO';
+
+  // Design editável pelo menuDesign.json.
+  const design = getMenuDesignWithDefaults(botName, target) || {};
+
+  const hour = new Date().getHours();
+  const currentGreeting =
+    hour < 12 ? 'Bom dia' :
+    hour < 18 ? 'Boa tarde' : 'Boa noite';
+
+  const defaultHeader =
+    '╭━━━━━━〔 ✦ {botName} ✦ 〕━━━━━━╮\n' +
+    '┃ 👋 {greeting}, {userName}!\n' +
+    '╰━━━━━━━━━━━━ ◈ ━━━━━━━━━━━━╯';
+
+  const header = String(design.header || defaultHeader)
+    .replace(/\{botName\}/g, botName)
+    .replace(/\{userName\}/g, target)
+    .replace(/#user#/g, target)
+    .replace(/\{greeting\}/g, currentGreeting);
+
+  const top = String(design.menuTopBorder || '╭━━〔 ');
+  const bottom = String(
+    design.bottomBorder || '╰━━━━━━━━━━━━━━━━━━━━╯'
+  );
+  const middle = String(design.middleBorder || '┃');
+  const titleIcon = String(design.menuTitleIcon || '✦');
+  const itemIcon = String(design.menuItemIcon || '✧ ');
+  const separatorIcon = String(design.separatorIcon || '◇');
+
+  const available = buildRows(p).filter(item =>
+    !String(item.id)
+      .replace(/^[#!./$]+/, '')
+      .toLowerCase()
+      .endsWith('menudono')
+  );
+
+  const keyOf = item => {
+    const value = String(item.id || '').toLowerCase();
+
+    return value.startsWith(p.toLowerCase())
+      ? value.slice(p.length).replace(/^[#!./$]+/, '')
+      : value.replace(/^[#!./$]+/, '');
+  };
+
+  const groups = [
+    {
+      title: '🎨 CRIAÇÃO & VISUAL',
+      ids: ['menuartista', 'menulogos', 'menuedits', 'menufig']
+    },
+    {
+      title: '📥 MÍDIA & DOWNLOADS',
+      ids: ['menudown']
+    },
+    {
+      title: '🧰 FERRAMENTAS & EFEITOS',
+      ids: ['ferramentas', 'alteradores']
+    },
+    {
+      title: '🎮 JOGOS & RPG',
+      ids: ['menubn', 'menurpg']
+    },
+    {
+      title: '🛡️ ADMINISTRAÇÃO',
+      ids: ['menuadm']
+    },
+    {
+      title: '👥 COMUNIDADE & PROGRESSO',
+      ids: ['menumemb', 'menuvip', 'menulevel']
+    }
+  ];
+
+  const categoryBlocks = [];
+  const used = new Set();
+
+  for (const group of groups) {
+    const items = available.filter(item =>
+      group.ids.includes(keyOf(item))
     );
 
-  if (
-    !normalized.endsWith(
-      '@lid'
-    )
-  ) {
+    if (!items.length) continue;
 
-    return normalized;
-  }
-
-  try {
-
-    const mapping =
-      sock
-        ?.signalRepository
-        ?.lidMapping;
-
-    if (
-      mapping &&
-      typeof mapping
-        .getPNForLID ===
-        'function'
-    ) {
-
-      const pn =
-        await mapping.getPNForLID(
-          normalized
-        );
-
-      if (pn) {
-
-        return jidNormalizedUser(
-          pn
-        );
-      }
+    for (const item of items) {
+      used.add(keyOf(item));
     }
 
-  } catch {}
+    categoryBlocks.push(
+      '',
+      top + separatorIcon + ' ' + group.title,
+      middle,
+      ...items.map(item =>
+        middle + ' ' + itemIcon +
+        String(item.title) + ': ' + item.id
+      ),
+      bottom
+    );
+  }
 
-  return normalized;
+  const otherItems = available.filter(item =>
+    !used.has(keyOf(item))
+  );
+
+  if (otherItems.length) {
+    categoryBlocks.push(
+      '',
+      top + separatorIcon + ' OUTROS MENUS',
+      middle,
+      ...otherItems.map(item =>
+        middle + ' ' + itemIcon +
+        String(item.title) + ': ' + item.id
+      ),
+      bottom
+    );
+  }
+
+  const content = [
+    header,
+    '',
+    top + titleIcon + ' CENTRAL DE MENUS',
+    middle,
+    middle + ' ✦ Central organizada por categoria',
+    middle + ' 👤 Usuário: ' + target,
+    middle + ' 🤖 Bot: ' + botName,
+    middle + ' 👑 Dono: ' + ownerName,
+    middle + ' ✦ Criador: ' + KYARA_CREATOR_NAME,
+    middle + ' 🛡️ Perfil: ' + role,
+
+    ...categoryBlocks,
+
+    '',
+    'Use ' + p + 'menu para voltar à central.',
+    'Use ' + p + 'perfil para abrir seu perfil.',
+    '',
+    '↗ O COMEÇO • CANAL OFICIAL',
+    'https://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w',
+    '↗ KYARA-SYSTΞM • CANAL OFICIAL',
+    'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r'
+  ].join('\n').replace(/\n{3,}/g, '\n\n');
+
+  return applyMenuFont(content, design.fontStyle, p);
 }
 
 /*
@@ -786,92 +898,72 @@ async function resolveMentionJid(
  * ============================================================
  */
 
-async function prepareMenuMedia(
-  sock
-) {
+async function prepareMenuMedia(sock) {
+  const media = encontrarMidiaMenu();
 
-  const media =
-    encontrarMidiaMenu();
+  if (media?.path && fs.existsSync(media.path)) {
+    try {
+      const buffer = fs.readFileSync(media.path);
 
-  if (!media) {
-    return null;
+      if (buffer.length) {
+        const prepared = media.type === 'video'
+          ? await prepareWAMessageMedia(
+              { video: buffer },
+              { upload: sock.waUploadToServer }
+            )
+          : await prepareWAMessageMedia(
+              { image: buffer },
+              { upload: sock.waUploadToServer }
+            );
+
+        if (media.type === 'video' && prepared?.videoMessage) {
+          return { type: 'video', message: prepared.videoMessage };
+        }
+
+        if (prepared?.imageMessage) {
+          return { type: 'image', message: prepared.imageMessage };
+        }
+      }
+    } catch (error) {
+      console.warn(
+        '[MENU] Foto configurada indisponível:',
+        error?.message || error
+      );
+    }
   }
 
+  // A foto de perfil é somente uma alternativa se não houver mídia de menu.
   try {
+    const botJid = sock?.user?.id;
 
-    const buffer =
-      fs.readFileSync(
-        media.path
-      );
+    if (botJid && typeof sock.profilePictureUrl === 'function') {
+      const profileUrl = await sock
+        .profilePictureUrl(botJid, 'image')
+        .catch(() => null);
 
-    if (
-      media.type ===
-      'video'
-    ) {
+      if (profileUrl) {
+        const response = await fetch(profileUrl);
 
-      const prepared =
-        await prepareWAMessageMedia(
-          {
-            video:
-              buffer
-          },
-          {
-            upload:
-              sock.waUploadToServer
+        if (response.ok) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+
+          if (buffer.length) {
+            const prepared = await prepareWAMessageMedia(
+              { image: buffer },
+              { upload: sock.waUploadToServer }
+            );
+
+            if (prepared?.imageMessage) {
+              return { type: 'image', message: prepared.imageMessage };
+            }
           }
-        );
-
-      if (
-        prepared
-          ?.videoMessage
-      ) {
-
-        return {
-          type:
-            'video',
-
-          message:
-            prepared
-              .videoMessage
-        };
-      }
-
-    } else {
-
-      const prepared =
-        await prepareWAMessageMedia(
-          {
-            image:
-              buffer
-          },
-          {
-            upload:
-              sock.waUploadToServer
-          }
-        );
-
-      if (
-        prepared
-          ?.imageMessage
-      ) {
-
-        return {
-          type:
-            'image',
-
-          message:
-            prepared
-              .imageMessage
-        };
+        }
       }
     }
-
   } catch (error) {
-
     console.warn(
-      '[MENU] Mídia ignorada:',
-      error?.message ||
-      error
+      '[MENU] Foto de perfil alternativa indisponível:',
+      error?.message || error
     );
   }
 
@@ -883,6 +975,24 @@ async function prepareMenuMedia(
  * ENVIO DO NATIVE FLOW
  * ============================================================
  */
+
+function markKyaraMenuCommandHandled(info) {
+  const id = String(info?.key?.id || '');
+  if (!id) return;
+
+  let handled = globalThis.__KYARA_MENU_HANDLED_IDS__;
+
+  if (!(handled instanceof Set)) {
+    handled = new Set();
+    globalThis.__KYARA_MENU_HANDLED_IDS__ = handled;
+  }
+
+  handled.add(id);
+
+  while (handled.size > 300) {
+    handled.delete(handled.values().next().value);
+  }
+}
 
 async function enviarMenuAdaptativo(
   sock,
@@ -927,302 +1037,252 @@ async function enviarMenuAdaptativo(
       options.admin
     );
 
+  const mentionCandidate =
+    options.sender ||
+    (typeof jid === 'string' &&
+      (jid.endsWith('@s.whatsapp.net') || jid.endsWith('@lid'))
+      ? jid
+      : null);
+
   const mentionJid =
-    await resolveMentionJid(
-      sock,
-      options.sender ||
-      jid
+    typeof mentionCandidate === 'string' && mentionCandidate.includes('@')
+      ? jidNormalizedUser(mentionCandidate)
+      : null;
+
+  const buttonsEnabled = areMenuButtonsEnabled();
+
+  const text = buildMenuText(
+    pushName,
+    {
+      owner,
+      admin,
+      mentionJid,
+      stage: options.stage || 'home'
+    }
+  );
+
+  if (!buttonsEnabled) {
+    const rawPlainText = buildPlainMenuText(pushName, {
+      owner,
+      admin,
+      mentionJid,
+      prefix: options.prefix || getConfiguredPrefix()
+    });
+
+    // Mantém o conteúdo e as fontes existentes, reduzindo bordas
+    // muito compridas que quebram a apresentação em telas pequenas.
+    const plainText = String(rawPlainText || '')
+      .split(/\r?\n/)
+      .map((line) => {
+        const clean = line.replace(/[ \t]+$/, '');
+
+        if (/MENUS DISPONÍVEIS/i.test(clean)) {
+          return '╭── 📚 MENUS DISPONÍVEIS ──╮';
+        }
+
+        return clean.replace(/[━═─]{24,}/g, (run) => run.slice(0, 22));
+      })
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const fsModule = await import('node:fs');
+    const pathModule = await import('node:path');
+    const fsLocal = fsModule.default || fsModule;
+    const pathLocal = pathModule.default || pathModule;
+
+    let configuredMedia = null;
+
+    try {
+      const mediaModule = await import('./menu-media.js');
+
+      if (typeof mediaModule.getMenuMedia === 'function') {
+        configuredMedia = await mediaModule.getMenuMedia('global');
+      }
+    } catch (mediaConfigError) {
+      console.warn(
+        '[MENU] Configuração de capa indisponível:',
+        mediaConfigError?.message || mediaConfigError
+      );
+    }
+
+    const configuredPath =
+      typeof configuredMedia?.path === 'string'
+        ? pathLocal.resolve(process.cwd(), configuredMedia.path)
+        : null;
+
+    const imageCandidates = [
+      configuredPath && /\.(jpe?g|png|webp)$/i.test(configuredPath)
+        ? configuredPath
+        : null,
+      pathLocal.resolve(process.cwd(), 'dados', 'midias', 'menu.jpg'),
+      pathLocal.resolve(process.cwd(), 'dados', 'midias', 'menu.jpeg'),
+      pathLocal.resolve(process.cwd(), 'dados', 'midias', 'menu.png'),
+      pathLocal.resolve(process.cwd(), 'dados', 'midias', 'menu.webp')
+    ].filter(Boolean);
+
+    const imagePath = imageCandidates.find((file) =>
+      fsLocal.existsSync(file)
     );
 
-  const text =
-    buildMenuText(
-      pushName,
-      {
-        owner,
-        admin,
-        mentionJid
-      }
+    const defaultVideo = pathLocal.resolve(
+      process.cwd(), 'dados', 'midias', 'menu.mp4'
     );
+
+    const videoPath =
+      configuredPath &&
+      /\.mp4$/i.test(configuredPath) &&
+      fsLocal.existsSync(configuredPath)
+        ? configuredPath
+        : fsLocal.existsSync(defaultVideo)
+          ? defaultVideo
+          : null;
+
+    const mediaPath = imagePath || videoPath;
+    const mentions = mentionJid ? [mentionJid] : [];
+    let delivered = false;
+
+    if (mediaPath) {
+      try {
+        const buffer = fsLocal.readFileSync(mediaPath);
+
+        if (buffer.length && /\.(jpe?g|png|webp)$/i.test(mediaPath)) {
+          await sock.sendMessage(
+            normalizedJid,
+            {
+              image: buffer,
+              caption: plainText,
+              mentions
+            },
+            { quoted: options.info || undefined }
+          );
+
+          delivered = true;
+        } else if (buffer.length && /\.mp4$/i.test(mediaPath)) {
+          await sock.sendMessage(
+            normalizedJid,
+            {
+              video: buffer,
+              mimetype: 'video/mp4',
+              caption: plainText,
+              gifPlayback: true,
+              mentions
+            },
+            { quoted: options.info || undefined }
+          );
+
+          delivered = true;
+        }
+      } catch (mediaError) {
+        console.warn(
+          '[MENU] Capa não enviada; usando texto como fallback:',
+          mediaError?.message || mediaError
+        );
+      }
+    }
+
+    if (!delivered) {
+      await sock.sendMessage(
+        normalizedJid,
+        {
+          text: plainText,
+          mentions
+        },
+        { quoted: options.info || undefined }
+      );
+    }
+
+    markKyaraMenuCommandHandled(options.info);
+
+    console.log(
+      delivered
+        ? '[MENU] Capa e menu enviados sem botões.'
+        : '[MENU] Menu textual enviado; capa indisponível.'
+    );
+
+    return {
+      ok: true,
+      messageId: null,
+      buttons: 0,
+      media: delivered ? mediaPath : null
+    };
+  }
 
   const buttons =
-    buildNativeFlowButtons();
+    buildNativeFlowButtons(
+      options.prefix || getConfiguredPrefix(),
+      options.stage === 'categories' ? 'categories' : 'home'
+    );
 
   /*
    * Primeiro tentamos mídia.
    * Se não funcionar, o Native Flow continua sem mídia.
    */
 
-  const preparedMedia =
-    await prepareMenuMedia(
-      sock
-    );
+  // O menu interativo é leve: Native Flow/RAW sem imagem local.
+  const { sendFlow } = await import('../nativeFlow/native-flow.js');
+  let flowMedia = null;
 
-  const header =
-    preparedMedia
-      ? {
-
-          title:
-            owner
-              ? '👑 KYARA • OWNER MODE'
-              : admin
-                ? '⚙️ KYARA • ADMIN MODE'
-                : '🌸 KYARA • USER MODE',
-
-          hasMediaAttachment:
-            true,
-
-          ...(preparedMedia.type === 'video'
-            ? {
-                videoMessage:
-                  preparedMedia.message
-              }
-            : {
-                imageMessage:
-                  preparedMedia.message
-              })
-
-        }
-      : {
-
-          title:
-            owner
-              ? '👑 KYARA • OWNER MODE'
-              : admin
-                ? '⚙️ KYARA • ADMIN MODE'
-                : '🌸 KYARA • USER MODE',
-
-          hasMediaAttachment:
-            false
-
-        };
-
-  const interactive =
-    proto.Message.InteractiveMessage.create({
-
-      header:
-        proto.Message.InteractiveMessage.Header.create(
-          header
-        ),
-
-      body:
-        proto.Message.InteractiveMessage.Body.create({
-          text
-        }),
-
-      footer:
-        proto.Message.InteractiveMessage.Footer.create({
-          text:
-            CONFIG.footer
-        }),
-
-      nativeFlowMessage:
-        proto.Message.InteractiveMessage
-          .NativeFlowMessage.create({
-
-            buttons,
-
-            /*
-             * Compatibilidade maior:
-             * string vazia em vez de objeto vazio.
-             */
-            messageParamsJson:
-              '',
-
-            messageVersion:
-              1
-
-          })
-
-    });
-
-  interactive.contextInfo = {
-
-    mentionedJid:
-      mentionJid
-        ? [mentionJid]
-        : []
-
-  };
-
-  const msg =
-    generateWAMessageFromContent(
-      normalizedJid,
-      {
-
-        viewOnceMessage: {
-
-          message: {
-
-            messageContextInfo: {
-
-              deviceListMetadata:
-                {},
-
-              deviceListMetadataVersion:
-                2
-
-            },
-
-            interactiveMessage:
-              interactive
-
-          }
-
-        }
-
-      },
-      {
-
-        quoted:
-          options.info ||
-          undefined,
-
-        userJid:
-          sock?.user?.id ||
-          normalizedJid
-
-      }
-    );
-
-  if (
-    !msg?.message ||
-    !msg?.key?.id
-  ) {
-
-    throw new Error(
-      'Native Flow inválido'
-    );
+  try {
+    const mediaModule = await import('./menu-media.js');
+    flowMedia = await mediaModule.getMenuMedia('global');
+  } catch (mediaError) {
+    console.warn('[MENU] Não consegui carregar a capa configurada:', mediaError?.message || mediaError);
   }
 
-  /*
-   * Mantém o nó auxiliar já usado no projeto.
-   */
+  if (!flowMedia?.path || !fs.existsSync(flowMedia.path)) {
+    flowMedia = encontrarMidiaMenu();
+  }
 
-  const bizNode = {
+  try {
+    const result = await sendFlow(sock, normalizedJid, {
+      text,
+      footer: safeText(getConfiguredBotName(), '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠') + ' • ' + KYARA_CREATOR_NAME + ' • SISTEMA',
+      title: owner
+        ? '👑 ' + safeText(getConfiguredBotName(), '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠') + ' • OWNER MODE'
+        : admin
+          ? '⚙️ ' + safeText(getConfiguredBotName(), '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠') + ' • ADMIN MODE'
+          : '🌸 ' + safeText(getConfiguredBotName(), '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠') + ' • USER MODE',
+      buttons,
+      media: flowMedia,
+      mentionedJid: mentionJid ? [mentionJid] : [],
+      viewOnce: false
+    });
 
-    tag:
-      'biz',
+    markKyaraMenuCommandHandled(options.info);
+    console.log('[MENU] Native Flow central enviado:', result?.key?.id || 'OK');
 
-    attrs: {
+    return {
+      ok: true,
+      messageId: result?.key?.id || null,
+      buttons: buttons.length,
+      media: flowMedia ? (flowMedia.type || 'image') : null
+    };
+  } catch (error) {
+    console.error('[MENU] Native Flow central falhou:', error?.stack || error);
 
-      actual_actors:
-        '2',
-
-      host_storage:
-        '2',
-
-      privacy_mode_ts:
-        String(
-          Math.floor(
-            Date.now() / 1000
-          ) -
-          77980457
-        )
-
-    },
-
-    content: [
-
+    await sock.sendMessage(
+      normalizedJid,
       {
-
-        tag:
-          'interactive',
-
-        attrs: {
-
-          type:
-            'native_flow',
-
-          v:
-            '1'
-
-        },
-
-        content: [
-
-          {
-
-            tag:
-              'native_flow',
-
-            attrs: {
-
-              v:
-                '9',
-
-              name:
-                'mixed'
-
-            }
-
-          }
-
-        ]
-
+        text: buildPlainMenuText(pushName, {
+          owner,
+          admin,
+          mentionJid,
+          prefix: options.prefix || getConfiguredPrefix()
+        }),
+        mentions: mentionJid ? [mentionJid] : []
       },
+      { quoted: options.info || undefined }
+    );
 
-      {
+    return {
+      ok: false,
+      messageId: null,
+      buttons: 0,
+      media: null
+    };
+  }
 
-        tag:
-          'quality_control',
-
-        attrs: {
-
-          source_type:
-            'third_party'
-
-        }
-
-      }
-
-    ]
-
-  };
-
-  console.log(
-    '[MENU] Enviando Native Flow:',
-    buttons.length,
-    'botões'
-  );
-
-
-
-
-  await sock.relayMessage(
-    normalizedJid,
-    msg.message,
-    {
-
-      messageId:
-        msg.key.id,
-
-      additionalNodes:
-        [bizNode]
-
-    }
-  );
-
-  console.log(
-    '[MENU] ✅ Native Flow enviado:',
-    msg.key.id
-  );
-
-  return {
-
-    ok:
-      true,
-
-    messageId:
-      msg.key.id,
-
-    buttons:
-      buttons.length,
-
-    media:
-      preparedMedia?.type ||
-      null
-
-  };
 }
 
 /*

@@ -56,114 +56,83 @@ export async function sendKyaraMediaAlbum(
   options = {}
 ) {
   const items = (
-    Array.isArray(rawItems)
-      ? rawItems
-      : []
+    Array.isArray(rawItems) ? rawItems : []
   )
     .map(normalizarItem)
     .filter(Boolean)
     .slice(0, MAX_ALBUM_ITEMS);
 
   if (!items.length) {
-    throw new Error('Nenhuma mídia válida para o álbum.');
+    throw new Error("Nenhuma mídia válida para o álbum.");
   }
 
-  const expectedImageCount = items.filter(
-    item => item.type === 'image'
-  ).length;
+  if (!sock || typeof sock.sendMessage !== "function" || !jid) {
+    throw new Error("Socket ou destino inválido para enviar o álbum.");
+  }
 
-  const expectedVideoCount = items.filter(
-    item => item.type === 'video'
-  ).length;
+  const makePayload = item => {
+    const source =
+      typeof item.source === "string"
+        ? { url: item.source }
+        : item.source;
 
-  const parent = await sock.sendMessage(
+    const payload =
+      item.type === "video"
+        ? {
+            video: source,
+            mimetype: item.mimetype || "video/mp4"
+          }
+        : {
+            image: source,
+            mimetype: item.mimetype || "image/jpeg"
+          };
+
+    if (item.caption) {
+      payload.caption = String(item.caption).slice(0, 1024);
+    }
+
+    return payload;
+  };
+
+  // Uma única mídia é enviada como imagem/vídeo normal.
+  if (items.length === 1) {
+    const result = await sock.sendMessage(
+      jid,
+      makePayload(items[0]),
+      options.childOptions || options.parentOptions || {}
+    );
+
+    return {
+      ok: true,
+      parentKey: result?.key || null,
+      total: 1,
+      enviados: 1,
+      falhas: []
+    };
+  }
+
+  // Nesta versão do Baileys, album deve ser um array de mídias.
+  const albumPayload = items.map(makePayload);
+
+  const result = await sock.sendMessage(
     jid,
-    {
-      album: {
-        expectedImageCount,
-        expectedVideoCount
-      }
-    },
+    { album: albumPayload },
     options.parentOptions || {}
   );
 
-  const parentKey = parent?.key;
-
-  if (!parentKey) {
-    throw new Error(
-      'O WhatsApp não retornou a chave do álbum.'
-    );
-  }
-
-  const enviados = [];
-  const falhas = [];
-
-  for (let index = 0; index < items.length; index++) {
-    const item = items[index];
-
-    try {
-      const mediaSource =
-        typeof item.source === 'string'
-          ? { url: item.source }
-          : item.source;
-
-      const payload =
-        item.type === 'video'
-          ? {
-              video: mediaSource,
-              mimetype: item.mimetype || 'video/mp4'
-            }
-          : {
-              image: mediaSource,
-              mimetype: item.mimetype || 'image/jpeg'
-            };
-
-      if (item.caption) {
-        payload.caption = String(item.caption).slice(0, 1024);
-      }
-
-      await sock.sendMessage(
-        jid,
-        {
-          ...payload,
-          albumParentKey: parentKey
-        },
-        options.childOptions || {}
-      );
-
-      enviados.push(index + 1);
-    } catch (error) {
-      const erroDetalhado =
-        error?.stack ||
-        error?.message ||
-        String(error);
-
-      console.error(
-        `[KYARA MEDIA ALBUM] ❌ Falha ${index + 1}/${items.length}:`,
-        erroDetalhado
-      );
-
-      falhas.push({
-        index: index + 1,
-        error:
-          error?.message ||
-          String(error)
-      });
-    }
-  }
-
-  if (!enviados.length) {
-    throw new Error('Nenhuma mídia do álbum foi enviada.');
-  }
+  console.log(
+    `[KYARA MEDIA ALBUM] ✅ Álbum enviado: ${albumPayload.length} mídia(s)`
+  );
 
   return {
     ok: true,
-    parentKey,
-    total: items.length,
-    enviados: enviados.length,
-    falhas
+    parentKey: result?.key || null,
+    total: albumPayload.length,
+    enviados: albumPayload.length,
+    falhas: []
   };
 }
+
 
 export default {
   sendKyaraMediaAlbum

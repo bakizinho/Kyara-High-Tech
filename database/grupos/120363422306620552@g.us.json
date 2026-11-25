@@ -1,0 +1,45 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-29T19:46:16.499Z",
+  "groupName": "— 𖤐𝓒հᥲ𝗍 gᥱɾᥲᥣ",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "4836821061781@lid",
+      "msg": 3,
+      "cmd": 1,
+      "figu": 3,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-29T19:46:16.521Z",
+      "lastActivity": "2026-10-01T14:58:36.141Z"
+    },
+    {
+      "id": "73083868172343@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": ".",
+      "firstSeen": "2026-10-01T14:52:16.562Z",
+      "lastActivity": "2026-10-01T14:58:00.467Z"
+    },
+    {
+      "id": "26603732115497@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": ".",
+      "firstSeen": "2026-10-01T16:05:51.727Z",
+      "lastActivity": "2026-10-01T16:05:51.727Z"
+    }
+  ]
+}

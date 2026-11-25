@@ -3,7 +3,7 @@
  * 🌸 KYARA STATUS CANAL — PUBLICADOR NATIVO
  * ============================================================
  *
- * BAKI / BAKIZINHO
+ * 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 / BAKIZINHO
  *
  * Comando:
  *   #statuscanal texto
@@ -95,7 +95,7 @@ function normalizeMime(mediaMessage) {
 // Posição:
 //   canto superior esquerdo
 //
-// BAKI / BAKIZINHO
+// 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 / BAKIZINHO
 // ============================================================
 
 const KYARA_STATUS_WATERMARK =

@@ -11,7 +11,7 @@
 ### WhatsApp Bot • AI • Media • RPG • Economy • Games • Groups
 
 <p>
-  <img src="https://img.shields.io/badge/VERSION-10.2.1-8a2be2?style=for-the-badge">
+  <img src="https://img.shields.io/badge/VERSION-11.0.0-8a2be2?style=for-the-badge">
   <img src="https://img.shields.io/badge/NODE.JS-20%2B-00d9ff?style=for-the-badge&logo=node.js">
   <img src="https://img.shields.io/badge/WHATSAPP-BOT-25d366?style=for-the-badge&logo=whatsapp">
   <img src="https://img.shields.io/badge/MODULE-ESM-ff6b9d?style=for-the-badge">
@@ -23,6 +23,31 @@
 </div>
 
 ---
+
+# 📋 ATUALIZAÇÃO — 25/11/2026
+
+- Menus principal, de downloads e de figurinhas reorganizados para mostrar os comandos com menos texto repetido.
+- `playaudio` e `playvideo` destacados no menu de downloads para baixar áudio e vídeo diretamente.
+- Menu de figurinhas atualizado com `audiosticker`, `bratvid`, `figurante2`, `sfig` e `sfiganim`.
+- Ferramentas de figurinha reunidas: `sticker`, `s`, `st2`, `sbg`, `sfundo`, `toimg`, `togif`, `renomear`, `rgtake`, `take` e `randomsticker`.
+- Em grupos, os comandos de criação enviam o nome do grupo em uma mensagem separada após a figurinha; o nome não é escrito na imagem nem nos metadados.
+- Conversão WebP e carregamento dos menus otimizados.
+- Novo histórico dentro do WhatsApp: `atualizacoes` ou `novidades`.
+
+### Comandos em destaque
+
+| Comando | Função |
+|---|---|
+| `playaudio` / `playvideo` | Baixar áudio ou vídeo diretamente |
+| `audiosticker` (`figurinhasom`, `figsom`, `st`, `stk`) | Criar figurinha com som |
+| `brat` / `bratvid` | Criar figurinha Brat estática ou animada |
+| `figurante` / `figurante2` | Criar figurinha grande ou vertical |
+| `sfig` / `sfiganim` | Criar pacotes de figurinhas por tema |
+| `sticker` / `s` / `st2` | Converter imagem ou vídeo em figurinha |
+| `sbg` / `sfundo` | Remover o fundo e enviar como figurinha |
+| `atualizacoes` / `novidades` | Consultar o histórico de atualizações |
+
+> Use o prefixo configurado no bot no lugar de `#` nos exemplos de comandos.
 
 # 🌸 KYARA HIGH-TECH
 

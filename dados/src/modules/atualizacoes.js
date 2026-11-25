@@ -2,9 +2,23 @@
 // 📋 SISTEMA DE ATUALIZAÇÕES — KYARA
 // ============================================================
 
-const VERSAO = '1.0.0';
+const VERSAO = '11.0.0';
 
 const ATUALIZACOES = [
+    {
+        versao: '11.0.0',
+        data: '25/11/2026',
+        titulo: 'Menus mais limpos, comandos e velocidade',
+        itens: [
+            '🎨 Menu principal, downloads e figurinhas reorganizados, com menos informação repetida.',
+            '📥 Novos atalhos no menu: playaudio e playvideo para baixar áudio ou vídeo diretamente.',
+            '🎵 Menu de figurinhas atualizado: audiosticker, bratvid, figurante2, sfig e sfiganim.',
+            '🧩 Comandos de conversão e personalização reunidos: sticker, st2, sbg, toimg, togif, renomear, rgtake e take.',
+            '🏷️ Figurinhas feitas por comandos em grupos passam a identificar o nome do grupo em mensagem separada, sem escrever na arte.',
+            '⚡ Conversão WebP e carregamento dos menus otimizados.',
+            '📋 Histórico público disponível por atualizacoes ou novidades.'
+        ]
+    },
     {
         versao: '1.0.0',
         data: '30/08/2026',
@@ -64,7 +78,7 @@ function formatarAtualizacao(atualizacao) {
 // TODAS AS ATUALIZAÇÕES
 // ============================================================
 
-export function gerarAtualizacoes(limite = 5) {
+export function gerarAtualizacoes(limite = 5, prefixo = '!') {
     const lista = ATUALIZACOES.slice(0, limite);
 
     let texto = '';
@@ -79,7 +93,7 @@ export function gerarAtualizacoes(limite = 5) {
         texto += '\n\n';
     }
 
-    texto += '💡 Use o comando de informações para descobrir detalhes de um comando.';
+    texto += `💡 Use ${prefixo}menu para abrir as categorias e consultar os comandos.`;
 
     return texto.trim();
 }

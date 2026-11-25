@@ -1,0 +1,153 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-27T23:05:35.747Z",
+  "groupName": "Os💯noções",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "54009633222755@lid",
+      "msg": 6,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "Gabriel",
+      "firstSeen": "2026-09-27T23:05:35.773Z",
+      "lastActivity": "2026-09-28T17:16:24.584Z"
+    },
+    {
+      "id": "198986556293355@lid",
+      "msg": 33,
+      "cmd": 1,
+      "figu": 7,
+      "pushname": "cacheadaw",
+      "firstSeen": "2026-09-27T23:56:11.199Z",
+      "lastActivity": "2026-09-28T22:10:28.765Z"
+    },
+    {
+      "id": "197006509248549@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Romário santos",
+      "firstSeen": "2026-09-28T00:00:51.440Z",
+      "lastActivity": "2026-09-28T01:42:13.520Z"
+    },
+    {
+      "id": "94292517351672@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "𝓜𝓲𝓴𝓪 🤍",
+      "firstSeen": "2026-09-28T00:47:32.310Z",
+      "lastActivity": "2026-09-28T22:11:22.445Z"
+    },
+    {
+      "id": "78873467326614@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Daniel",
+      "firstSeen": "2026-09-28T00:48:20.463Z",
+      "lastActivity": "2026-09-28T00:48:20.463Z"
+    },
+    {
+      "id": "266297250209943@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 5,
+      "pushname": "𝕶𝖑𝖆𝖗𝖆",
+      "firstSeen": "2026-09-28T01:47:32.571Z",
+      "lastActivity": "2026-09-28T14:41:37.570Z"
+    },
+    {
+      "id": "86028614402113@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "rique02✌🏼🚩",
+      "firstSeen": "2026-09-28T02:02:12.572Z",
+      "lastActivity": "2026-09-28T02:02:12.572Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "BOT-KYARA",
+      "firstSeen": "2026-09-28T04:32:05.458Z",
+      "lastActivity": "2026-09-28T04:32:05.459Z"
+    },
+    {
+      "id": "230459422310562@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Igor",
+      "firstSeen": "2026-09-28T13:36:44.209Z",
+      "lastActivity": "2026-09-28T13:47:33.771Z"
+    },
+    {
+      "id": "97268862607361@lid",
+      "msg": 9,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Raniel Praia Marinho",
+      "firstSeen": "2026-09-28T13:40:11.483Z",
+      "lastActivity": "2026-09-29T00:28:02.949Z"
+    },
+    {
+      "id": "234939408756943@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "João Victor",
+      "firstSeen": "2026-09-28T13:40:42.880Z",
+      "lastActivity": "2026-09-28T13:51:53.574Z"
+    },
+    {
+      "id": "32204168118504@lid",
+      "msg": 14,
+      "cmd": 0,
+      "figu": 5,
+      "pushname": "Júnior",
+      "firstSeen": "2026-09-28T13:46:33.660Z",
+      "lastActivity": "2026-09-29T00:41:44.360Z"
+    },
+    {
+      "id": "228866559852789@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "André",
+      "firstSeen": "2026-09-28T14:25:22.763Z",
+      "lastActivity": "2026-09-28T17:27:59.534Z"
+    },
+    {
+      "id": "67826878525529@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Neguin",
+      "firstSeen": "2026-09-28T16:35:42.789Z",
+      "lastActivity": "2026-09-28T16:35:42.789Z"
+    },
+    {
+      "id": "9943637835991@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Guiizinn",
+      "firstSeen": "2026-09-28T19:06:14.075Z",
+      "lastActivity": "2026-09-28T19:06:14.075Z"
+    }
+  ]
+}

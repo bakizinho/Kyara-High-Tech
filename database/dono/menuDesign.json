@@ -1,0 +1,9 @@
+{
+  "header": "`╭┈⊰ 『 *{botName}* 』`\n`┊Olá, {userName}!`\n`╰─┈┈┈┈┈◜🥀◞┈┈┈┈┈─╯`",
+  "menuTopBorder": "> `╭─⊰`",
+  "bottomBorder": "> `╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`",
+  "menuTitleIcon": "❁",
+  "menuItemIcon": " 亗⃝ ",
+  "separatorIcon": "❁",
+  "middleBorder": "> `┊`"
+}

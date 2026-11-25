@@ -1,0 +1,108 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-12T23:24:04.868Z",
+  "groupName": "🏹🗡️MINI◈GAME◈RPG🤖💬",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "65292143169648@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "[ 珍妮 ]",
+      "firstSeen": "2026-09-12T23:24:04.892Z",
+      "lastActivity": "2026-09-12T23:24:04.892Z"
+    },
+    {
+      "id": "28145558278209@lid",
+      "msg": 7,
+      "cmd": 1,
+      "figu": 13,
+      "pushname": "© 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-12T23:24:05.904Z",
+      "lastActivity": "2026-10-02T20:40:47.294Z"
+    },
+    {
+      "id": "260056310378693@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mirella Souza",
+      "firstSeen": "2026-09-12T23:24:17.503Z",
+      "lastActivity": "2026-09-12T23:24:17.503Z"
+    },
+    {
+      "id": "226057382842605@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Matheus Souza Machado",
+      "firstSeen": "2026-09-12T23:24:18.235Z",
+      "lastActivity": "2026-09-12T23:24:18.235Z"
+    },
+    {
+      "id": "20736857133310@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 16,
+      "pushname": "Аlves.com",
+      "firstSeen": "2026-09-12T23:30:53.030Z",
+      "lastActivity": "2026-09-30T18:34:03.656Z"
+    },
+    {
+      "id": "139763168325783@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Kauan",
+      "firstSeen": "2026-09-12T23:45:45.614Z",
+      "lastActivity": "2026-09-12T23:46:01.138Z"
+    },
+    {
+      "id": "27281682595920@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 4,
+      "pushname": "𝒦𝒶𝒾𝓆𝓊𝑒",
+      "firstSeen": "2026-09-14T17:52:31.825Z",
+      "lastActivity": "2026-10-02T17:53:01.176Z"
+    },
+    {
+      "id": "79164954693740@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Nina",
+      "firstSeen": "2026-09-20T01:38:48.034Z",
+      "lastActivity": "2026-09-20T01:38:48.034Z"
+    },
+    {
+      "id": "107409162895373@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝐿𝓊𝒾𝓈",
+      "firstSeen": "2026-09-23T09:46:12.996Z",
+      "lastActivity": "2026-09-23T09:46:56.450Z"
+    },
+    {
+      "id": "236756498690245@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 2,
+      "pushname": "Josué Santos S.",
+      "firstSeen": "2026-09-24T21:07:20.268Z",
+      "lastActivity": "2026-09-28T20:48:53.934Z"
+    }
+  ]
+}

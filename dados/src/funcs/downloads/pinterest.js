@@ -9,6 +9,9 @@ const CACHE_TTL =
 const REQUEST_TIMEOUT =
   15000;
 
+// Compartilha pesquisas idênticas que já estão em andamento.
+const activeSearches = new Map();
+
 
 function getCached(key) {
   const item =
@@ -736,7 +739,7 @@ async function searchBingPins(
 }
 
 
-async function search(query) {
+async function searchUncached(query) {
   const originalQuery = String(query || "").trim();
 
   if (!originalQuery) {
@@ -823,7 +826,6 @@ async function search(query) {
 
   // 1 — Bing Images
   try {
-    console.log("[PINTEREST] Bing Images:", searchTerm);
     const results = await searchBingImages(searchTerm);
     collect(results);
     console.log("[PINTEREST] Bing Images encontrou:", found.length);
@@ -921,6 +923,29 @@ async function search(query) {
   }
 
   return result;
+}
+
+
+function search(query) {
+  const text = String(query || "").trim();
+  if (!text) return searchUncached(query);
+
+  const key = text.toLowerCase().replace(/\s+/g, " ");
+  const current = activeSearches.get(key);
+
+  if (current) {
+    console.log("[PINTEREST] ♻️ Reutilizando pesquisa em andamento:", text);
+    return current;
+  }
+
+  const pending = searchUncached(query).finally(() => {
+    if (activeSearches.get(key) === pending) {
+      activeSearches.delete(key);
+    }
+  });
+
+  activeSearches.set(key, pending);
+  return pending;
 }
 
 async function dl(url) {

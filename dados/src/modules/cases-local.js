@@ -8,6 +8,8 @@ import {
     search as pinterestSearch,
     dl as pinterestDl
 } from '../funcs/downloads/pinterest.js';
+import { dl as instagramDownload } from '../funcs/downloads/igdl.js';
+import { sendKyaraMediaAlbum } from '../core/mediaAlbum/index.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -2218,192 +2220,77 @@ function extractInstagramMedia(
 }
 
 
-async function instagram({
-    m,
-    text,
-    systemZR
-}) {
+async function instagram({ m, text, systemZR }) {
+    const url = textoSeguro(text);
 
-    const url =
-        textoSeguro(text);
-
-
-    if (
-        !isInstagramUrl(url)
-    ) {
-
-        return m.reply(
-            `📷 Uso:\n` +
-            `*${prefixoSeguro()}ig ` +
-            `<link do Instagram>*`
-        );
-
+    // Termos de pesquisa seguem para o handler central.
+    if (!isInstagramUrl(url)) {
+        return false;
     }
 
-
-    await react(
-        systemZR,
-        m.chat,
-        m.key,
-        '🔎'
-    );
-
+    await react(systemZR, m.chat, m.key, '🔎');
 
     try {
-
-        const page =
-            await fetchInstagramPage(
-                url
-            );
-
-
-        const media =
-            extractInstagramMedia(
-                page.html
-            );
-
+        const result = await instagramDownload(url);
 
         if (
-            !media.length
+            !result?.ok ||
+            !Buffer.isBuffer(result.buffer) ||
+            !result.buffer.length
         ) {
-
             throw new Error(
-                'A página não expôs mídia pública. ' +
-                'O Instagram pode exigir login ou bloquear a extração.'
+                result?.msg ||
+                'O Instagram não disponibilizou uma mídia pública para download.'
             );
-
         }
 
+        const mime = result.mime || 'video/mp4';
 
-        let sent = 0;
+        const type = String(mime).startsWith('image/')
+            ? 'image'
+            : 'video';
 
-
-        for (
-            const item
-            of media.slice(0, 10)
-        ) {
-
-            const buffer =
-                await fetchMedia(
-                    item.url
-                );
-
-
-            if (
-                !buffer.length
-            ) {
-                continue;
-            }
-
-
-            if (
-                item.type === 'video'
-            ) {
-
-                await systemZR.sendMessage(
-                    m.chat,
-                    {
-
-                        video:
-                            buffer,
-
-                        mimetype:
-                            'video/mp4',
-
-                        caption:
-                            sent === 0
-                                ? (
-                                    `╭─〔 KYARA • INSTAGRAM LOCAL 〕─╮\n` +
-                                    `│ Download direto\n` +
-                                    `│ Sem API externa\n` +
-                                    `╰──────────────────────────────╯`
-                                )
-                                : undefined
-
-                    },
-                    {
-                        quoted: m
-                    }
-                );
-
-            } else {
-
-                await systemZR.sendMessage(
-                    m.chat,
-                    {
-
-                        image:
-                            buffer,
-
-                        mimetype:
-                            'image/jpeg',
-
-                        caption:
-                            sent === 0
-                                ? (
-                                    `╭─〔 KYARA • INSTAGRAM LOCAL 〕─╮\n` +
-                                    `│ Download direto\n` +
-                                    `│ Sem API externa\n` +
-                                    `╰──────────────────────────────╯`
-                                )
-                                : undefined
-
-                    },
-                    {
-                        quoted: m
-                    }
-                );
-
-            }
-
-
-            sent++;
-
-        }
-
-
-        if (
-            !sent
-        ) {
-
-            throw new Error(
-                'Nenhuma mídia pôde ser baixada.'
-            );
-
-        }
-
-
-        await react(
+        await sendKyaraMediaAlbum(
             systemZR,
             m.chat,
-            m.key,
-            '✅'
+            [{
+                type,
+                source: result.buffer,
+                mimetype: mime,
+                caption:
+                    `╭━━〔 ✦ KYARA • DOWNLOAD PRIME ✦ 〕━━╮\n` +
+                    `┃ 📱 Origem: Instagram\n` +
+                    `┃ ✅ Download concluído\n` +
+                    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯\n` +
+                    `🌸 Kyara • © VØX-SYSTΞM`
+            }],
+            {
+                parentOptions: {
+                    quoted: m
+                }
+            }
         );
 
+        await react(systemZR, m.chat, m.key, '✅');
 
     } catch (error) {
-
         console.error(
             '[INSTAGRAM LOCAL]',
-            error
+            error?.stack || error
         );
 
-
-        await react(
-            systemZR,
-            m.chat,
-            m.key,
-            '❌'
-        );
-
+        await react(systemZR, m.chat, m.key, '❌');
 
         await m.reply(
-            `❌ Não consegui extrair esse post diretamente.\n\n` +
-            `${error?.message || 'O Instagram bloqueou o acesso.'}`
+            `╭━━〔 ✦ KYARA DOWNLOADS ✦ 〕━━╮\n` +
+            `┃ ❌ Não foi possível baixar essa mídia.\n` +
+            `┃ ${String(
+                error?.message ||
+                'O Instagram pode exigir login ou limitar o acesso.'
+            ).slice(0, 180)}\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
         );
-
     }
-
 }
 
 
@@ -3604,6 +3491,258 @@ async function editorLocal({
 
 
 
+
+/* KYARA_REPO_API_V1 — integração com repositórios GitHub */
+
+const KYARA_REPO_MAX_BYTES = 25 * 1024 * 1024;
+
+function kyaraRepoToken() {
+    const direto = String(process.env.KYARA_API_TOKEN || '').trim();
+    if (direto) return direto;
+
+    const home = process.env.HOME || '';
+    const candidatos = [
+        path.join(ROOT, '.kyara-client-token'),
+        path.join(home, 'kyara-api', '.kyara-client-token')
+    ];
+
+    for (const arquivo of candidatos) {
+        try {
+            const token = fs.readFileSync(arquivo, 'utf8').trim();
+            if (token && token.length <= 200) return token;
+        } catch {}
+    }
+
+    return '';
+}
+
+async function kyaraRepoRequest(endpoint, opcoes = {}) {
+    const base = String(
+        process.env.KYARA_API_URL || 'http://127.0.0.1:3000'
+    ).replace(/\/+$/, '');
+
+    const token = kyaraRepoToken();
+
+    if (!token) {
+        throw new Error(
+            'Chave da API não encontrada. Configure KYARA_API_TOKEN.'
+        );
+    }
+
+    const metodo = opcoes.method || 'GET';
+    const headers = {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`
+    };
+
+    const pedido = {
+        method: metodo,
+        headers,
+        signal: AbortSignal.timeout(opcoes.timeoutMs || 45000)
+    };
+
+    if (opcoes.body !== undefined) {
+        headers['Content-Type'] = 'application/json';
+        headers.Accept = 'application/zip, application/json';
+        pedido.body = JSON.stringify(opcoes.body);
+    }
+
+    const resposta = await fetch(`${base}${endpoint}`, pedido);
+
+    if (!resposta.ok) {
+        let mensagem = '';
+
+        try {
+            const dados = await resposta.clone().json();
+            mensagem = dados?.erro || dados?.error || '';
+        } catch {}
+
+        throw new Error(
+            mensagem || `A API respondeu HTTP ${resposta.status}.`
+        );
+    }
+
+    return resposta;
+}
+
+async function kyaraRepoListar({ m, text }) {
+    const dono = textoSeguro(text).split(/\s+/)[0] || 'bakikyara-jpg';
+
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(dono)) {
+        await m.reply('Informe um usuário válido do GitHub.');
+        return;
+    }
+
+    try {
+        await m.reply('🔎 Consultando os repositórios públicos...');
+
+        const resposta = await kyaraRepoRequest(
+            `/api/kyara/repositorio?dono=${encodeURIComponent(dono)}`
+        );
+
+        const dados = await resposta.json();
+        const repos = Array.isArray(dados.repositorios)
+            ? dados.repositorios
+            : [];
+
+        if (!repos.length) {
+            await m.reply(`Nenhum repositório público encontrado para ${dono}.`);
+            return;
+        }
+
+        const linhas = repos.slice(0, 12).map((repo, i) => {
+            const nome = String(repo.nome || 'Sem nome');
+            const descricao = String(repo.descricao || 'Sem descrição')
+                .replace(/[\r\n]+/g, ' ')
+                .slice(0, 90);
+
+            return (
+                `${i + 1}. *${nome}* ⭐ ${Number(repo.estrelas) || 0}\n` +
+                `   ${descricao}\n` +
+                `   Branch: ${String(repo.branch || 'main')}`
+            );
+        });
+
+        await m.reply(
+            `╭━━〔 📦 REPOSITÓRIOS 〕━━╮\n` +
+            `👤 GitHub: ${dono}\n` +
+            `📚 Encontrados: ${repos.length}\n\n` +
+            `${linhas.join('\n\n')}\n\n` +
+            `Para baixar:\n` +
+            `${prefixoSeguro()}repobaixar ${dono}/NOME-DO-REPO`
+        );
+    } catch (erro) {
+        await m.reply(
+            `❌ Não consegui listar os repositórios.\n${String(erro.message || erro).slice(0, 180)}`
+        );
+    }
+}
+
+async function kyaraRepoBaixar({ m, text, systemZR }) {
+    const args = textoSeguro(text).split(/\s+/).filter(Boolean);
+
+    if (!args[0]) {
+        await m.reply(
+            `📦 *Download de repositório GitHub*\n\n` +
+            `Uso: ${prefixoSeguro()}repobaixar dono/repositorio [branch]\n` +
+            `Exemplo: ${prefixoSeguro()}repobaixar bakikyara-jpg/Bot-kyara\n\n` +
+            `Também aceita apenas o nome do repositório do usuário padrão:\n` +
+            `${prefixoSeguro()}repobaixar Bot-kyara`
+        );
+        return;
+    }
+
+    const referencia = args[0]
+        .replace(/^https?:\/\/(?:www\.)?github\.com\//i, '')
+        .replace(/\/+$/, '')
+        .replace(/\.git$/i, '');
+
+    const partes = referencia.split('/').filter(Boolean);
+
+    let dono;
+    let repositorio;
+    let branch = args[1] || '';
+
+    if (partes.length >= 2) {
+        dono = partes[0];
+        repositorio = partes[1];
+
+        if (!branch && partes.length >= 4 && partes[2] === 'tree') {
+            branch = partes.slice(3).join('/');
+        }
+    } else {
+        dono = 'bakikyara-jpg';
+        repositorio = partes[0];
+    }
+
+    if (
+        !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(dono) ||
+        !/^[A-Za-z0-9_.-]{1,100}$/.test(repositorio) ||
+        repositorio === '.' ||
+        repositorio === '..'
+    ) {
+        await m.reply('❌ Referência inválida. Use dono/repositorio.');
+        return;
+    }
+
+    try {
+        await m.reply(
+            `📥 Solicitando ZIP de *${dono}/${repositorio}*...\n` +
+            `O código será enviado como arquivo, sem ser executado.`
+        );
+
+        const resposta = await kyaraRepoRequest(
+            '/api/kyara/repositorio/download',
+            {
+                method: 'POST',
+                timeoutMs: 90000,
+                body: { dono, repositorio, branch }
+            }
+        );
+
+        const tamanho = Number(resposta.headers.get('content-length') || 0);
+
+        if (tamanho > KYARA_REPO_MAX_BYTES) {
+            await resposta.body?.cancel().catch(() => {});
+            throw new Error('O ZIP ultrapassa o limite de 25 MiB do bot.');
+        }
+
+        if (!resposta.body) {
+            throw new Error('A API não forneceu o arquivo ZIP.');
+        }
+
+        const leitor = resposta.body.getReader();
+        const blocos = [];
+        let total = 0;
+
+        while (true) {
+            const { done, value } = await leitor.read();
+            if (done) break;
+
+            total += value.byteLength;
+
+            if (total > KYARA_REPO_MAX_BYTES) {
+                await leitor.cancel().catch(() => {});
+                throw new Error('O ZIP ultrapassa o limite de 25 MiB do bot.');
+            }
+
+            blocos.push(Buffer.from(value));
+        }
+
+        if (!total) {
+            throw new Error('O ZIP recebido está vazio.');
+        }
+
+        const zip = Buffer.concat(blocos, total);
+        const chat = m.chat || m.key?.remoteJid;
+
+        if (!chat) {
+            throw new Error('Não consegui identificar a conversa do WhatsApp.');
+        }
+
+        const nomeArquivo =
+            `${repositorio.replace(/[^A-Za-z0-9_.-]/g, '_')}.zip`;
+
+        await systemZR.sendMessage(chat, {
+            document: zip,
+            mimetype: 'application/zip',
+            fileName: nomeArquivo,
+            caption:
+                `✅ *Repositório baixado*\n` +
+                `📦 ${dono}/${repositorio}\n` +
+                `💾 ${(total / 1024 / 1024).toFixed(2)} MiB\n` +
+                `⚠️ O ZIP não foi executado.`
+        });
+
+    } catch (erro) {
+        await m.reply(
+            `❌ Falha no download do repositório.\n` +
+            `${String(erro.message || erro).slice(0, 200)}`
+        );
+    }
+}
+
+
 async function executarCaseLocal({
     command,
     m,
@@ -3676,15 +3815,17 @@ async function executarCaseLocal({
 
         case 'ig':
         case 'instagram':
-        case 'igdl':
-
-            await instagram({
+        case 'igdl': {
+            const handled = await instagram({
                 m,
                 text,
                 systemZR
             });
 
+            if (handled === false) return false;
+
             return true;
+        }
 
 
         case 'pin':
@@ -3732,6 +3873,17 @@ async function executarCaseLocal({
 
             return true;
 
+
+
+        case 'repolistar':
+        case 'repositorios':
+            await kyaraRepoListar({ m, text });
+            return true;
+
+        case 'repobaixar':
+        case 'baixarbotrepo':
+            await kyaraRepoBaixar({ m, text, systemZR });
+            return true;
 
         default:
 

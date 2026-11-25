@@ -1,0 +1,45 @@
+{
+  "nomedono": "baki",
+  "numerodono": "5584987480834",
+  "nomebot": "𝙑Ø𝙓-𝙈𝘿",
+  "prefixo": "#",
+  "lidowner": "28145558278209@lid",
+  "github_ofc": "https://github.com/bakizinho/Kyara-High-Tech",
+  "autor": "baki",
+  "repositorio": "Kyara-High-Tech",
+  "WA_WEB_VERSION": {
+    "aviso": "Não mexa aqui, pode afetar o funcionamento do BOT.",
+    "value": [
+      2,
+      3000,
+      1034740716
+    ]
+  },
+  "globalMode": true,
+  "channels": {
+    "oComeco": "https://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w",
+    "botKyara": "https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r"
+  },
+  "ownerMenu": {
+    "title": "👑 KYARA • DONO MODE",
+    "footer": "👑 KYARA • DONO MODE",
+    "panelTitle": "📂 PAINEL KYARA",
+    "panelDescription": "Cada categoria abre seus comandos organizados.",
+    "channelText": "📢 Acompanhe os canais oficiais O COMEÇO e BOT-KYARA nos botões abaixo.",
+    "categories": {},
+    "channels": {}
+  },
+  "menu": {
+    "title": "🌸 KYARA • MENU",
+    "footer": "🌸 KYARA • KYARA OS",
+    "mode": "auto"
+  },
+  "kyaraChannel": {
+    "enabled": true,
+    "name": "BOT-KYARA",
+    "invite": "0029VbCs39EIyPtbsseKIP3r",
+    "url": "https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r"
+  },
+  "API_KEY_TED": "tedzinho",
+  "APIKEY_SYS": "tedbot2026"
+}

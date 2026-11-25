@@ -94,7 +94,7 @@ async function convertToWebp(mediaBuffer, isVideo = false, forceSquare = false) 
           .webp({
             quality,
             alphaQuality: 100,
-            effort: 6
+            effort: 3
           })
           .toBuffer();
 
@@ -197,7 +197,7 @@ async function convertToWebp(mediaBuffer, isVideo = false, forceSquare = false) 
               '0',
 
               '-compression_level',
-              '6',
+              '4',
 
               '-q:v',
               String(quality),
@@ -310,7 +310,7 @@ async function resolveInputToBuffer(input) {
 /**
  * Envia sticker
  */
-const sendSticker = async (nazu, jid, {
+const sendSticker = async (kya, jid, {
   sticker: input,
   type = "image",
   packname = "",
@@ -331,7 +331,7 @@ const sendSticker = async (nazu, jid, {
     webpBuffer = await writeExif(webpBuffer, { packname, author });
   }
 
-  await nazu.sendMessage(jid, { sticker: webpBuffer }, { quoted });
+  await kya.sendMessage(jid, { sticker: webpBuffer }, { quoted });
   return webpBuffer;
 };
 

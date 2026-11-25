@@ -109,6 +109,33 @@ export function setCurrentPrefix(
   return value
 }
 
+export function saveRuntimeConfig(patch = {}) {
+  const current = getRuntimeConfig() || {};
+  const changes =
+    patch && typeof patch === 'object' && !Array.isArray(patch)
+      ? patch
+      : {};
+
+  const next = { ...current, ...changes };
+
+  fs.writeFileSync(
+    CONFIG_FILE,
+    JSON.stringify(next, null, 2) + '\n',
+    'utf8'
+  );
+
+  cache = next;
+
+  try {
+    cacheMtime = fs.statSync(CONFIG_FILE).mtimeMs;
+  } catch {
+    cache = null;
+    cacheMtime = 0;
+  }
+
+  return next;
+}
+
 export function getCurrentPrefix(
   jid
 ) {

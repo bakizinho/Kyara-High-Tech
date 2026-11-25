@@ -1,237 +1,289 @@
-import sharp from 'sharp';
+import axios from 'axios';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-function escapar(texto) {
-    return String(texto || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const FLAMINGTEXT = new Set([
+  'fluffy-logo',
+  'lava-logo',
+  'cool-logo',
+  'comic-logo',
+  'fire-logo',
+  'water-logo',
+  'ice-logo',
+  'elegant-logo',
+  'gold-logo',
+  'fortune-logo',
+  'blue-logo',
+  'silver-logo',
+  'neon-logo',
+  'skate-name',
+  'retro-logo',
+  'candy-logo',
+  'glossy-logo'
+]);
+
+function lerChaveArquivo(arquivo, origem) {
+  try {
+    if (!fs.existsSync(arquivo)) return null;
+
+    const dados = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+    const chave = String(
+      dados.API_KEY_LOGOS || dados.API_KEY_TED || dados.APIKEY_TED || ''
+    ).trim();
+
+    if (!chave) return null;
+
+    return { chave, origem };
+  } catch {
+    return null;
+  }
 }
 
-function limitar(texto, tamanho = 22) {
-    const t = String(texto || '');
+function obterChave() {
+  const ambiente = String(process.env.API_KEY_LOGOS || process.env.API_KEY_TED || '').trim();
 
-    if (t.length <= tamanho) {
-        return t;
+  if (ambiente) {
+    return { chave: ambiente, origem: 'variável de ambiente' };
+  }
+
+  const kyaraConfig = path.resolve(__dirname, '../../config.json');
+  return lerChaveArquivo(
+    kyaraConfig,
+    'configuração da KYARA-SYSTΞM'
+  ) || null;
+}
+
+function detectarMime(buffer, contentType = '') {
+  if (!buffer || !buffer.length) return null;
+
+  if (buffer.length >= 8 &&
+      buffer.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) {
+    return 'image/png';
+  }
+  if (buffer.length >= 3 &&
+      buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (buffer.length >= 12 &&
+      buffer.toString('ascii', 0, 4) === 'RIFF' &&
+      buffer.toString('ascii', 8, 12) === 'WEBP') {
+    return 'image/webp';
+  }
+  if (buffer.toString('ascii', 0, 3) === 'GIF') return 'image/gif';
+
+  // Arquivo MP4: assinatura ftyp.
+  if (buffer.length >= 12 && buffer.toString('ascii', 4, 8) === 'ftyp') {
+    return 'video/mp4';
+  }
+
+  const mime = String(contentType).split(';')[0].trim().toLowerCase();
+  return mime.startsWith('image/') || mime.startsWith('video/') ? mime : null;
+}
+
+function explicarResposta(buffer) {
+  const texto = Buffer.from(buffer).toString('utf8').trim();
+
+  try {
+    const json = JSON.parse(texto);
+    return String(
+      json.message || json.mensagem || json.error ||
+      json.erro || json.msg || texto
+    ).slice(0, 240);
+  } catch {
+    return texto.replace(/\s+/g, ' ').slice(0, 240);
+  }
+}
+
+async function solicitarLogo({ query, query2, type }) {
+  const texto = String(query ?? '').trim();
+  const texto2 = String(query2 ?? '').trim();
+  const comando = String(type ?? '').toLowerCase().trim();
+
+  if (!texto) {
+    return { ok: false, msg: 'Digite o texto do logotipo.' };
+  }
+
+  if (!comando) {
+    return { ok: false, msg: 'Comando de logo não identificado.' };
+  }
+
+  const credencial = obterChave();
+
+  if (!credencial) {
+    return {
+      ok: false,
+      msg: 'Chave do serviço de logos não encontrada. Verifique a configuração da KYARA-SYSTΞM.'
+    };
+  }
+
+  const encodedText = encodeURIComponent(texto);
+  const apiComando = ({ pubvideo: 'pubgvideo', pornhub: 'phlogo' })[comando] || comando;
+  const encodedCommand = encodeURIComponent(apiComando);
+  const encodedKey = encodeURIComponent(credencial.chave);
+
+  let url;
+  if (FLAMINGTEXT.has(comando)) {
+    url = `https://tedzinho.com.br/api/flamingtext?command=${encodedCommand}&text=${encodedText}&apikey=${encodedKey}`;
+  } else {
+    const params = new URLSearchParams({
+      apikey: credencial.chave,
+      text: texto
+    });
+    if (texto2) params.set('text2', texto2);
+    url = `https://tedzinho.com.br/api/ephoto/${encodedCommand}?${params.toString()}`;
+  }
+
+  try {
+    console.log(`[KYARA-SYSTΞM LOGOS] ${comando} — usando ${FLAMINGTEXT.has(comando) ? 'FlamingText' : 'Ephoto'}`);
+
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 60000,
+      validateStatus: () => true,
+      headers: {
+        'Accept': 'image/*, application/json',
+        'User-Agent': 'Mozilla/5.0 Kyara-OS'
+      }
+    });
+
+    let buffer = Buffer.from(response.data || []);
+    let mime = detectarMime(buffer, response.headers?.['content-type']);
+
+    if (response.status < 200 || response.status >= 300) {
+      return {
+        ok: false,
+        msg: response.status === 404
+          ? 'A rota deste efeito não existe no serviço (HTTP 404).'
+          : response.status === 401 || response.status === 403
+            ? 'A chave do serviço foi recusada (HTTP ' + response.status + ').'
+            : response.status === 429
+              ? 'O limite de requisições do serviço foi atingido (HTTP 429).'
+              : 'O serviço de logos respondeu com HTTP ' + response.status + '.'
+      };
     }
 
-    return t.slice(0, tamanho - 3) + '...';
-}
+    // O serviço Ephoto pode devolver a imagem codificada em Base64.
+    // Também aceita respostas JSON com a imagem dentro de um campo.
+    if (!mime) {
+      const textoResposta = buffer.toString('utf8').trim();
+      const candidatos = [];
 
-async function svgParaPng(svg) {
-    return await sharp(Buffer.from(svg))
-        .png()
-        .resize(1000, 500, {
-            fit: 'contain'
-        })
-        .toBuffer();
+      function coletar(valor, profundidade = 0) {
+        if (profundidade > 6 || valor == null) return;
+        if (typeof valor === 'string') {
+          candidatos.push(valor);
+          return;
+        }
+        if (Array.isArray(valor)) {
+          for (const item of valor) coletar(item, profundidade + 1);
+          return;
+        }
+        if (typeof valor === 'object') {
+          for (const [chave, item] of Object.entries(valor)) {
+            if (/image|imagem|base64|result|resultado|data|buffer|output/i.test(chave)) {
+              coletar(item, profundidade + 1);
+            }
+          }
+        }
+      }
+
+      try {
+        coletar(JSON.parse(textoResposta));
+      } catch {
+        candidatos.push(textoResposta);
+      }
+
+      for (const item of candidatos) {
+        const valor = String(item || '').trim();
+        const dataUri = valor.match(/^data:image\/[a-z0-9.+-]+;base64,([\s\S]+)$/i);
+        const base64 = (dataUri ? dataUri[1] : valor).replace(/\s+/g, '');
+
+        if (base64.length < 80 || !/^[A-Za-z0-9+/_=-]+$/.test(base64)) continue;
+
+        const tentativa = Buffer.from(
+          base64.replace(/-/g, '+').replace(/_/g, '/'),
+          'base64'
+        );
+        const mimeTentativa = detectarMime(tentativa);
+
+        if (mimeTentativa) {
+          buffer = tentativa;
+          mime = mimeTentativa;
+          break;
+        }
+      }
+    }
+
+    if (!mime) {
+      const detalhe = explicarResposta(buffer);
+      console.error(
+        `[KYARA-SYSTΞM LOGOS] HTTP ${response.status}; não foi possível decodificar o retorno como imagem.`
+      );
+      return {
+        ok: false,
+        msg: `A API respondeu, mas não retornou imagem reconhecível. ${detalhe || 'Confira o formato da resposta Ephoto.'}`
+      };
+    }
+
+    return {
+      ok: true,
+      criador: 'KYARA-SYSTΞM',
+      type: mime.startsWith('video/') ? 'video' : 'image',
+      mime,
+      buffer
+    };
+  } catch (error) {
+    console.error('[KYARA-SYSTΞM LOGOS]', error.message);
+
+    return {
+      ok: false,
+      msg: `Não consegui acessar o serviço de logos: ${
+        error.code === 'ECONNABORTED'
+          ? 'tempo de espera esgotado.'
+          : error.message
+      }`
+    };
+  }
 }
 
 async function gerarLogo({ query, type }) {
-    try {
-        if (!query) {
-            return {
-                ok: false,
-                msg: 'Digite o texto do logotipo.'
-            };
-        }
-
-        console.log(
-            `[LOGO LOCAL] 🎨 Gerando "${type}" para "${query}"`
-        );
-
-        const texto = escapar(limitar(query));
-
-        const svg = `
-<svg width="1000" height="500" viewBox="0 0 1000 500"
-     xmlns="http://www.w3.org/2000/svg">
-
-    <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#111111"/>
-            <stop offset="50%" stop-color="#292929"/>
-            <stop offset="100%" stop-color="#050505"/>
-        </linearGradient>
-
-        <filter id="shadow">
-            <feGaussianBlur stdDeviation="12"/>
-        </filter>
-
-        <linearGradient id="text" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="50%" stop-color="#dddddd"/>
-            <stop offset="100%" stop-color="#888888"/>
-        </linearGradient>
-    </defs>
-
-    <rect width="1000" height="500" rx="35" fill="url(#bg)"/>
-
-    <ellipse
-        cx="500"
-        cy="300"
-        rx="360"
-        ry="90"
-        fill="#000000"
-        opacity="0.7"
-        filter="url(#shadow)"
-    />
-
-    <text
-        x="500"
-        y="285"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="92"
-        font-weight="900"
-        fill="#000000"
-        opacity="0.8">
-        ${texto}
-    </text>
-
-    <text
-        x="500"
-        y="270"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="92"
-        font-weight="900"
-        fill="url(#text)"
-        stroke="#000000"
-        stroke-width="4"
-        paint-order="stroke">
-        ${texto}
-    </text>
-
-    <text
-        x="500"
-        y="370"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="28"
-        fill="#aaaaaa"
-        letter-spacing="8">
-        ${escapar(String(type || 'KYARA').toUpperCase())}
-    </text>
-
-</svg>`;
-
-        const buffer = await svgParaPng(svg);
-
-        return {
-            ok: true,
-            criador: 'Kyara',
-            type: 'image',
-            mime: 'image/png',
-            buffer
-        };
-
-    } catch (err) {
-        console.error('[LOGO LOCAL] ❌', err);
-
-        return {
-            ok: false,
-            msg: `Erro ao gerar logotipo: ${err.message}`
-        };
-    }
+  return solicitarLogo({ query, type });
 }
 
 async function gerarLogo2({ query, query2, type }) {
-    try {
-        if (!query || !query2) {
-            return {
-                ok: false,
-                msg: 'Digite os dois textos do logotipo.'
-            };
-        }
+  const texto1 = String(query ?? '').trim();
+  const texto2 = String(query2 ?? '').trim();
 
-        console.log(
-            `[LOGO2 LOCAL] 🎨 "${query}" + "${query2}"`
-        );
+  if (!texto1 || !texto2) {
+    return {
+      ok: false,
+      msg: 'Digite os dois textos separados por /. Exemplo: KYARA/BOT'
+    };
+  }
 
-        const texto1 = escapar(limitar(query));
-        const texto2 = escapar(limitar(query2));
+  // A API recebe os dois textos no mesmo parâmetro, separados por /.
+  return solicitarLogo({
+    query: texto1,
+    query2: texto2,
+    type
+  });
+}
 
-        const svg = `
-<svg width="1000" height="500" viewBox="0 0 1000 500"
-     xmlns="http://www.w3.org/2000/svg">
+function verificarConfiguracao() {
+  const credencial = obterChave();
 
-    <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#101010"/>
-            <stop offset="100%" stop-color="#303030"/>
-        </linearGradient>
-
-        <linearGradient id="a" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="#ffffff"/>
-            <stop offset="100%" stop-color="#888888"/>
-        </linearGradient>
-    </defs>
-
-    <rect width="1000" height="500" rx="35" fill="url(#bg)"/>
-
-    <text
-        x="500"
-        y="245"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="78"
-        font-weight="900"
-        fill="url(#a)"
-        stroke="#000"
-        stroke-width="5"
-        paint-order="stroke">
-        ${texto1}
-    </text>
-
-    <text
-        x="500"
-        y="335"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="70"
-        font-weight="700"
-        fill="#eeeeee"
-        stroke="#000"
-        stroke-width="4"
-        paint-order="stroke">
-        ${texto2}
-    </text>
-
-    <text
-        x="500"
-        y="410"
-        text-anchor="middle"
-        font-family="Arial, sans-serif"
-        font-size="24"
-        fill="#999999"
-        letter-spacing="7">
-        ${escapar(String(type || 'KYARA').toUpperCase())}
-    </text>
-
-</svg>`;
-
-        const buffer = await svgParaPng(svg);
-
-        return {
-            ok: true,
-            criador: 'Kyara',
-            type: 'image',
-            mime: 'image/png',
-            buffer
-        };
-
-    } catch (err) {
-        console.error('[LOGO2 LOCAL] ❌', err);
-
-        return {
-            ok: false,
-            msg: `Erro ao gerar logotipo: ${err.message}`
-        };
-    }
+  return {
+    chaveConfigurada: Boolean(credencial?.chave),
+    origem: credencial?.origem || 'nenhuma',
+    flamingText: [...FLAMINGTEXT]
+  };
 }
 
 export {
-    gerarLogo,
-    gerarLogo2
+  gerarLogo,
+  gerarLogo2,
+  verificarConfiguracao
 };

@@ -5,7 +5,7 @@ const config = JSON.parse(
 );
 
 // Nossa API local
-const LOCAL_API = "http://127.0.0.1:3000";
+const LOCAL_API = String(process.env.KYARA_API_URL || "http://127.0.0.1:3000").replace(/\/+$/, "");
 
 async function verificarAPI(responseData = null) {
 
@@ -35,7 +35,7 @@ async function verificarAPI(responseData = null) {
 
         const data = await res.json();
 
-        if (data?.status === true) {
+        if (data?.status === true || data?.status === 'online' || data?.nome === 'Kyara API') {
             return true;
         }
 

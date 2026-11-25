@@ -28,7 +28,11 @@ import { format as nodeFormat } from 'node:util';
 
 let started = false;
 let connected = false;
+let showProcessLogs = false;
 let rl = null;
+let terminalInputBusy = false;
+let lastCommandKey = "";
+let lastCommandAt = 0;
 
 let commandExecutor = null;
 let messageExecutor = null;
@@ -54,13 +58,14 @@ const C = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
-  gray: '\x1b[90m',
-  white: '\x1b[97m',
-  cyan: '\x1b[96m',
-  green: '\x1b[92m',
-  yellow: '\x1b[93m',
-  red: '\x1b[91m',
-  magenta: '\x1b[95m'
+  blue: '\x1b[38;2;55;135;255m',
+  cyan: '\x1b[38;2;65;205;255m',
+  green: '\x1b[38;2;80;210;155m',
+  yellow: '\x1b[38;2;245;195;85m',
+  red: '\x1b[38;2;250;105;115m',
+  white: '\x1b[38;2;235;242;255m',
+  gray: '\x1b[38;2;135;155;185m',
+  magenta: '\x1b[38;2;55;135;255m'
 };
 
 function paint(value, color = C.white) {
@@ -77,6 +82,7 @@ function clean(value) {
 
 function time() {
   return new Date().toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Fortaleza',
     hour12: false
   });
 }
@@ -141,35 +147,57 @@ function mediaLabel(type) {
     locationMessage: '📍 Localização',
     messageContextInfo: '🧩 Interativo',
     interactiveMessage: '🧩 Interativo',
-    interactiveResponseMessage: '🧩 Interativo'
+    interactiveResponseMessage: '🧩 Interativo',
+    reactionMessage: '↩️ Reação',
+    pollCreationMessage: '📊 Enquete',
+    pollUpdateMessage: '📊 Voto'
   }[type] || `[${type}]`;
 }
 
-function printLine(type, user, text, color = C.white) {
-  let who = clean(user) || 'desconhecido';
+function writeTerminalLine(line) {
+  const redrawPrompt = Boolean(
+    rl &&
+    process.stdin?.isTTY &&
+    !terminalInputBusy
+  );
 
-  if (who.length > 28) {
-    who = `${who.slice(0, 27)}…`;
+  if (redrawPrompt) {
+    try {
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+    } catch {}
   }
 
-  let body = clean(text);
+  nativeConsole.log(line);
+
+  if (redrawPrompt && rl) {
+    try { rl.prompt(true); } catch {}
+  }
+}
+
+function printLine(type, user, text, color = C.white) {
+  const who = kyaraTerminalCompactText(
+    clean(user) || 'sistema',
+    22
+  );
+
+  const body = kyaraTerminalCompactText(
+    text,
+    Math.max(28, (process.stdout.columns || 80) - 38)
+  );
 
   if (!body) return;
 
-  const max = Math.max(
-    30,
-    (process.stdout.columns || 80) - 30
-  );
+  const tag = String(type || 'SYS')
+    .toUpperCase()
+    .slice(0, 3)
+    .padEnd(3, ' ');
 
-  if (body.length > max) {
-    body = `${body.slice(0, max - 1)}…`;
-  }
-
-  nativeConsole.log(
-    `  ${paint(time(), C.gray)} ` +
-    `${paint(type, color)} ` +
-    `${paint(who, C.bold + C.white)} ` +
-    `${paint('›', C.gray)} ` +
+  writeTerminalLine(
+    `  ${paint(time(), C.gray)}  ` +
+    `${paint(tag, color)}  ` +
+    `${paint(who, C.bold + C.white)}  ` +
+    `${paint('—', C.blue)}  ` +
     `${paint(body, C.white)}`
   );
 }
@@ -244,7 +272,7 @@ function printHeader() {
   nativeConsole.log(
     `${paint('│', C.magenta)} ` +
     paint(
-      '🌸 KYARA OS  •  TERMINAL',
+      '🌸 KYARA-SYSTΞM  •  TERMINAL',
       C.bold + C.white
     )
   )
@@ -252,8 +280,8 @@ function printHeader() {
   nativeConsole.log(
     `${paint('│', C.magenta)} ` +
     paint(
-      '────────────────────────────────────────',
-      C.gray
+      'AUTOMAÇÃO  •  WHATSAPP  •  VØX CORE',
+      C.cyan
     )
   )
 
@@ -294,65 +322,56 @@ function printHeader() {
 
 function printError(message) {
   const text = clean(message);
-
   if (!text) return;
-
-  nativeConsole.error(
-    `  ${paint(time(), C.gray)} ` +
-    `${paint('ERR', C.red)} ` +
-    `${paint('›', C.gray)} ` +
-    `${paint(text, C.red)}`
-  );
+  printLine('ERR', 'SISTEMA', text, C.red);
 }
 
 function printCommand(data = {}) {
-  const command =
-    clean(data.command) ||
-    clean(data.content);
-
+  const command = clean(data.command) || clean(data.content);
   if (!command) return;
 
-  const user =
-    clean(data.user) ||
-    clean(data.group) ||
-    'sistema';
+  const user = clean(data.user) || clean(data.group) || 'WhatsApp';
+  const key = `${user.toLowerCase()}|${command.toLowerCase()}`;
+  const now = Date.now();
 
-  printLine(
-    'CMD',
-    user,
-    command,
-    C.cyan
-  );
+  // Evita imprimir duas vezes o mesmo evento recebido pelo Baileys.
+  if (key === lastCommandKey && now - lastCommandAt < 2500) return;
+
+  lastCommandKey = key;
+  lastCommandAt = now;
+
+  printLine('CMD', user, command, C.cyan);
 }
 
 function printIncoming(info) {
   const jid = info?.key?.remoteJid;
+  if (!jid || jid === 'status@broadcast') return;
 
-  if (!jid || jid === 'status@broadcast') {
+  const type = extractMessageType(info);
+
+  // Eventos internos do protocolo não são mensagens de usuário.
+  if ([
+    'protocolMessage',
+    'senderKeyDistributionMessage',
+    'messageContextInfo'
+  ].includes(type)) return;
+
+  const text = extractMessageText(info);
+  const label = text || mediaLabel(type);
+
+  if (!label || label === '[unknown]' || label === '[protocolMessage]') {
     return;
   }
 
-  const type = extractMessageType(info);
-  const text = extractMessageText(info);
-
-  const sender =
-    clean(info?.pushName) ||
-    jidNumber(
-      info?.key?.participantPn ||
-      info?.key?.participant ||
-      jid
-    );
-
-  printLine(
-    'MSG',
-    sender,
-    text || mediaLabel(type),
-    C.green
+  const sender = clean(info?.pushName) || jidNumber(
+    info?.key?.participantPn || info?.key?.participant || jid
   );
+
+  printLine('MSG', sender, label, C.green);
 }
 
 function printOutgoing(data = {}) {
-  const jid = data?.jid || '';
+  const jid = String(data?.jid || '');
   const content = data?.content || {};
 
   const text =
@@ -362,42 +381,49 @@ function printOutgoing(data = {}) {
     (content?.video ? '🎥 Vídeo' : '') ||
     (content?.audio ? '🎵 Áudio' : '') ||
     (content?.sticker ? '🎨 Figurinha' : '') ||
+    (content?.document ? `📄 Documento ${content?.fileName || ''}` : '') ||
+    (content?.contact ? '👤 Contato' : '') ||
+    (content?.location ? '📍 Localização' : '') ||
     '';
 
   if (!text) return;
 
-  printLine(
-    'BOT',
-    jidNumber(jid) || 'Kyara',
-    text,
-    C.magenta
-  );
+  const destination = jid.endsWith('@g.us')
+    ? 'GRUPO'
+    : jid.endsWith('@newsletter')
+      ? 'CANAL'
+      : jid === 'status@broadcast'
+        ? 'STATUS'
+        : 'CONTATO';
+
+  // Não exibe IDs longos de WhatsApp no terminal.
+  printLine('BOT', 'KYARA', `${destination} · ${text}`, C.blue);
 }
 
 function event(type, data = {}) {
   if (type === 'connected') {
     connected = true;
+    printLine('SYS', 'WHATSAPP', 'KYARA-SYSTΞM conectada • pronta para receber mensagens', C.green);
     emit(type, data);
     return;
   }
 
-  if (
-    type === 'connecting' ||
-    type === 'reconnecting'
-  ) {
+  if (type === 'connecting' || type === 'reconnecting') {
     connected = false;
+    printLine(
+      'SYS',
+      'WHATSAPP',
+      type === 'connecting' ? 'Abrindo conexão segura…' : 'Conexão interrompida • verificando recuperação…',
+      C.yellow
+    );
     emit(type, data);
     return;
   }
 
-  if (
-    type === 'incoming' ||
-    type === 'message'
-  ) {
+  if (type === 'incoming' || type === 'message') {
     if (data?.info) {
       printIncoming(data.info);
     }
-
     emit('message', data);
     return;
   }
@@ -526,13 +552,8 @@ async function executeBotCommand(text) {
       command.replace(/^[.#/!]+/, '');
   }
 
-  event('command', {
-    command,
-    user: commandConfig.defaultName,
-    group: commandConfig.defaultJid
-  });
-
   try {
+    terminalInputBusy = true;
     return await commandExecutor({
       jid: commandConfig.defaultJid,
       text: command
@@ -546,6 +567,8 @@ async function executeBotCommand(text) {
     });
 
     throw error;
+  } finally {
+    terminalInputBusy = false;
   }
 }
 
@@ -566,34 +589,71 @@ function attachWhatsAppSocket(newSock) {
 }
 
 function installConsoleErrorBridge() {
-  if (console.__kyaraCleanTerminalBridge) {
-    return;
+  if (console.__kyaraCleanTerminalBridge) return;
+
+  let panelLinesRemaining = 0;
+
+  for (const method of ['log', 'info', 'warn', 'debug']) {
+    console[method] = (...args) => {
+      const message = clean(nodeFormat(...args));
+
+      const startsPanel =
+        /💬\s*MENSAGEM(?:\s|$)/u.test(message);
+
+      const isPanelLine =
+        /💬\s*MENSAGEM|👤\s*Usuário:|📱\s*Número:|📦\s*Tipo:|🕒\s*Hora:|📎\s*Texto:/u.test(message);
+
+      const expectedMissingImage =
+        /imagem ignorada.*status code 404/i.test(message);
+
+      const looksLikeError =
+        !expectedMissingImage &&
+        /erro|error|falha|failed|exception|rejected|denied|status code [45]\d\d|ECONN|ETIMEDOUT|EPROTO/i.test(message);
+
+      if (
+        showProcessLogs ||
+        isPanelLine ||
+        panelLinesRemaining > 0 ||
+        looksLikeError
+      ) {
+        nativeConsole[method](...args);
+      }
+
+      if (startsPanel && !message.includes('\n')) {
+        panelLinesRemaining = 12;
+      } else if (panelLinesRemaining > 0) {
+        panelLinesRemaining--;
+      }
+    };
   }
 
-  const originalError =
-    nativeConsole.error;
+  const originalError = nativeConsole.error;
 
   console.error = (...args) => {
-    const message = clean(
-      nodeFormat(...args)
-    );
-
-    if (started) {
-      printError(message);
-    } else {
-      originalError(...args);
-    }
+    const message = clean(nodeFormat(...args));
+    if (started) printError(message);
+    else originalError(...args);
   };
 
-  Object.defineProperty(
-    console,
-    '__kyaraCleanTerminalBridge',
-    {
-      value: true,
-      configurable: false,
-      enumerable: false
-    }
-  );
+  Object.defineProperty(console, '__kyaraCleanTerminalBridge', {
+    value: true,
+    configurable: false,
+    enumerable: false
+  });
+}
+
+function printHelp() {
+  nativeConsole.log('');
+  nativeConsole.log(paint('  KYARA-SYSTΞM • COMANDOS', C.bold + C.magenta));
+  nativeConsole.log('  ' + paint('ping', C.cyan) + '       Executa #ping no WhatsApp');
+  nativeConsole.log('  ' + paint('#menu', C.cyan) + '       Executa qualquer comando com prefixo');
+  nativeConsole.log('  ' + paint('logs on', C.cyan) + '    Mostra logs internos');
+  nativeConsole.log('  ' + paint('logs off', C.cyan) + '   Oculta logs internos');
+  nativeConsole.log('  ' + paint('logs status', C.cyan) + ' Consulta o estado dos logs');
+  nativeConsole.log('  ' + paint('status', C.cyan) + '     Mostra o estado da conexão');
+  nativeConsole.log('  ' + paint('clear', C.cyan) + '      Limpa a tela');
+  nativeConsole.log('  ' + paint('help', C.cyan) + '       Mostra esta ajuda');
+  nativeConsole.log('');
 }
 
 function start() {
@@ -614,10 +674,7 @@ function start() {
     rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
-      prompt: paint(
-        '🌸 kyara › ',
-        C.magenta
-      ),
+      prompt: paint('VØX $ ', C.blue),
       terminal: true
     });
 
@@ -631,6 +688,47 @@ function start() {
       }
 
       try {
+        if (/^(?:help|ajuda|\?)$/i.test(text)) {
+          printHelp();
+          rl.prompt();
+          return;
+        }
+
+        if (/^(?:clear|cls|limpar)$/i.test(text)) {
+          nativeConsole.log(A.clear);
+          printHeader();
+          rl.prompt();
+          return;
+        }
+
+        if (/^status$/i.test(text)) {
+          printLine(
+            'SYS',
+            'WHATSAPP',
+            connected ? 'ONLINE • pronto para comandos' : 'Aguardando conexão',
+            connected ? C.green : C.yellow
+          );
+          rl.prompt();
+          return;
+        }
+
+        const logControl = text.match(/^logs?\s+(on|off|status)$/i);
+        if (logControl) {
+          const action = logControl[1].toLowerCase();
+
+          if (action === 'on') showProcessLogs = true;
+          if (action === 'off') showProcessLogs = false;
+
+          nativeConsole.log(
+            action === 'status'
+              ? '🌸 Logs de processamento: ' + (showProcessLogs ? 'ATIVADOS' : 'DESATIVADOS')
+              : '🌸 Logs de processamento ' + (showProcessLogs ? 'ATIVADOS' : 'DESATIVADOS')
+          );
+
+          rl.prompt();
+          return;
+        }
+
         await executeBotCommand(text);
       } catch {
         /*

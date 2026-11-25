@@ -1,3 +1,4 @@
+import { getConfiguredBotName } from '../core/identity/kyara-identity.js'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -242,60 +243,33 @@ async function mainMenu(
   prefix,
   info
 ) {
-  return sendList(
-    sock,
+  const botName =
+    getConfiguredBotName()
+
+  const text = [
+    `╭┈⊰ ${botName}-ᴀʀᴛɪsᴛᴀ`,
+    `┊ ᴍᴇɴᴜ ᴅᴀ ᴄᴏᴍᴜɴɪᴅᴀᴅᴇ`,
+    `╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
+    '',
+    `╭┈❁ ᴀʀᴛᴇ & ᴄᴏᴍᴜɴɪᴅᴀᴅᴇ`,
+    `┊`,
+    `┊ 亗⃝ ${prefix}artista perfil`,
+    `┊ 亗⃝ ${prefix}artista desafio`,
+    `┊ 亗⃝ ${prefix}artista destaque`,
+    `┊ 亗⃝ ${prefix}artista ranking`,
+    `┊ 亗⃝ ${prefix}artista conquistas`,
+    `┊ 亗⃝ ${prefix}artista collab`,
+    `┊ 亗⃝ ${prefix}artista guia`,
+    `╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`
+  ].join('\n')
+
+  await sock.sendMessage(
     jid,
-    '🌸 MENU ARTISTA',
-    `🌸 *MENU ARTISTA*
-
-A comunidade voltou. Escolha uma categoria:
-
-🎨 Perfil • sua identidade artística
-🏆 Desafios • atividades e participação
-⭐ Destaques • showcases e artistas
-📈 Ranking • XP da comunidade
-🏅 Conquistas • evolução artística
-🤝 Collabs • encontre parceiros
-📚 Guias • regras e funcionamento`,
-    [
-      {
-        title: '🎨 Meu Perfil',
-        description: 'Ver e editar seu perfil artístico',
-        id: `${prefix}artista perfil`
-      },
-      {
-        title: '🏆 Desafios',
-        description: 'Desafio atual, participação e histórico',
-        id: `${prefix}artista desafio`
-      },
-      {
-        title: '⭐ Destaques',
-        description: 'Artista da semana e Showcase',
-        id: `${prefix}artista destaque`
-      },
-      {
-        title: '📈 Ranking',
-        description: 'XP geral, semanal e sua posição',
-        id: `${prefix}artista ranking`
-      },
-      {
-        title: '🏅 Conquistas',
-        description: 'Suas conquistas e próximas metas',
-        id: `${prefix}artista conquistas`
-      },
-      {
-        title: '🤝 Collabs',
-        description: 'Procurar artistas e colaborações',
-        id: `${prefix}artista collab`
-      },
-      {
-        title: '📚 Guias',
-        description: 'Participação, regras e XP',
-        id: `${prefix}artista guia`
-      }
-    ],
-    info
+    { text },
+    info ? { quoted: info } : {}
   )
+
+  return true
 }
 
 function readGeneralLevel(id) {

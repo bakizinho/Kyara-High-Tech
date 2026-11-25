@@ -484,7 +484,7 @@ async function sendBrowserHtml(options, html) {
 
   const socket =
     options.sock ||
-    options.nazu;
+    options.kya;
 
 
   if (!jid) {

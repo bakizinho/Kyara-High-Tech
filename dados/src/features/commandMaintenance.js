@@ -17,11 +17,65 @@ const DATA_FILE =
     '../database/commands-maintenance.json'
   )
 
+/* SANDRO_COMPAT_COMMAND_LIST_V2 */
 const SPECIAL_COMMANDS = [
   'baixar',
   'play2',
   'pinterest',
-  'pin'
+  'pin',
+
+  'botoes',
+  'botões',
+
+  'gerarsenha',
+  'bhaskara',
+  'raizquadrada',
+  'caracoroa',
+  'aleatorio',
+  'gerarnick2',
+  'fatos',
+
+  'biografia',
+  'wiki',
+  'wikipedia',
+
+  'google',
+  'googlesearch',
+
+  'cep',
+  'ddd',
+  'feriados',
+  'cotacao',
+  'pokemon',
+
+  'tinyur',
+  'tinyurl',
+  'traduzir',
+  'tagme',
+
+  'play1',
+  'play3',
+  'play4',
+  'play5',
+  'playmix',
+  'playvid2',
+
+  'ytsearch',
+  'ytsearch2',
+  'pesquisaytb',
+
+  'tiktok2',
+  'tiktok3',
+  'tiktok4',
+  'tiktok5',
+
+  'instagram2',
+  'instagramaudio',
+
+  'facebook2',
+
+  'twitteraudio',
+  'twittervideo'
 ]
 
 const MENU_LABELS = {
@@ -989,6 +1043,42 @@ export function recordCommandFailure(
   return true
 }
 
+
+/**
+ * Retorna o último erro registrado de um comando.
+ * Não lança exceção: o sistema de manutenção nunca pode
+ * derrubar o dispatcher principal.
+ */
+export function getCommandFailure(command) {
+  try {
+    const root = rootCommand(command)
+
+    if (!root) {
+      return null
+    }
+
+    const data = readData()
+
+    return (
+      data.failures.find(
+        item =>
+          rootCommand(item.command) === root
+      ) || null
+    )
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Retorna true quando existe erro técnico registrado.
+ */
+export function hasCommandFailure(command) {
+  return Boolean(
+    getCommandFailure(command)
+  )
+}
+
 export function searchCaseCommands(
   term = ''
 ) {
@@ -1162,15 +1252,17 @@ export function buildMaintenanceMenu(
     data.failures.length
 
   const lines = [
-    '╭━━━〔 🧪 KYARA • CENTRAL DE AJUSTES 〕━━━╮',
+    '╭━━━〔 🛠️ KYARA OS • CENTRAL DE AJUSTES 〕━━━╮',
     '┃',
-    `┃ 📦 Cases reais : ${getCaseCommands().length}`,
-    `┃ 🔧 Em ajuste   : ${marked}`,
-    `┃ ⚠️ Com erro    : ${failures}`,
+    `┃ 📦 Comandos reais : ${getCaseCommands().length}`,
+    `┃ 🔧 Em ajuste      : ${marked}`,
+    `┃ 🚨 Falhas técnicas: ${failures}`,
     '┃',
-    '┃ ✅ Comandos inexistentes ficam fora.',
-    '┃ ⚠️ Falhas técnicas entram no menu de origem.',
-    '┃ 🧹 Dados antigos são limpos automaticamente.',
+    '┃ 🧠 O sistema registra automaticamente',
+    '┃    comandos que apresentam erro técnico.',
+    '┃',
+    '┃ 📂 O comando é colocado no menu de origem.',
+    '┃ 🧹 Comandos inexistentes são ignorados.',
     '┃'
   ]
 

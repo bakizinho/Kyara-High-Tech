@@ -1,3 +1,4 @@
+import { MENU_DESIGN_DEFAULTS } from '../menus/menu-system.js';
 import fs from 'fs';
 import pathz from 'path';
 import crypto from 'crypto';
@@ -133,7 +134,7 @@ ensureJsonFileExists(MENU_DESIGN_FILE, {
   menuTopBorder: "╭┈",
   bottomBorder: "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
   menuTitleIcon: "🍧ฺꕸ▸",
-  menuItemIcon: "•.̇𖥨֗💜⭟",
+  menuItemIcon: " 亗⃝ ",
   separatorIcon: "❁",
   middleBorder: "┊"
 });
@@ -341,12 +342,12 @@ ensureJsonFileExists(MSGBOTON_FILE, {
 
 Estou online e pronta para uso! 🤗💖
 
-Muito obrigada por ter me escolhido! Sou a nova versão desenvolvida pelo *Dev Tokyo* e são vocês usuários da bot que me motivam a seguir evoluindo! 🌸💕
+Muito obrigada por ter me escolhido! Sou uma assistente em constante evolução, aprimorada por *𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠* com carinho e dedicação. Obrigada por fazer parte dessa jornada! 🌸💕
 
 Espero que você goste da bot! ✨
 
-💬 *Considere entrar no meu canal para ficar por dentro das novidades:*
-https://whatsapp.com/channel/0029Vb7bjAK7j6gEdyp6g13D
+💬 *Entre no canal oficial 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 para ficar por dentro das novidades:*
+https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r
 
 _Para desativar esta mensagem de inicialização, use o comando *msgboton*_`
 });
@@ -519,12 +520,12 @@ const loadMsgBotOn = () => {
 
 Estou online e pronta para uso! 🤗💖
 
-Muito obrigada por ter me escolhido! Sou a nova versão desenvolvida pelo *Dev Tokyo* e são vocês usuários da bot que me motivam a seguir evoluindo! 🌸💕
+Muito obrigada por ter me escolhido! Sou uma assistente em constante evolução, aprimorada por *𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠* com carinho e dedicação. Obrigada por fazer parte dessa jornada! 🌸💕
 
 Espero que você goste da bot! ✨
 
-💬 *Considere entrar no meu canal para ficar por dentro das novidades:*
-https://whatsapp.com/channel/0029Vb7bjAK7j6gEdyp6g13D
+💬 *Entre no canal oficial 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 para ficar por dentro das novidades:*
+https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r
 
 _Para desativar esta mensagem de inicialização, use o comando *msgboton*_`
   });
@@ -934,7 +935,7 @@ const isSubdono = userId => {
   });
 };
 
-const addSubdono = async (userId, numerodono, nazu = null) => {
+const addSubdono = async (userId, numerodono, kya = null) => {
   if (!userId || typeof userId !== 'string' || (!isUserId(userId) && !isValidJid(userId))) {
     return {
       success: false,
@@ -942,9 +943,9 @@ const addSubdono = async (userId, numerodono, nazu = null) => {
     };
   }
   // Normalizar JID para LID se possível
-  if (nazu && isValidJid(userId)) {
+  if (kya && isValidJid(userId)) {
     try {
-      const lid = await getLidFromJidCached(nazu, userId);
+      const lid = await getLidFromJidCached(kya, userId);
       if (lid && lid.includes('@lid')) {
         userId = lid;
       }
@@ -1000,16 +1001,16 @@ const addSubdono = async (userId, numerodono, nazu = null) => {
   }
 };
 
-const removeSubdono = async (userId, nazu = null) => {
+const removeSubdono = async (userId, kya = null) => {
   if (!userId || typeof userId !== 'string' || (!isUserId(userId) && !isValidJid(userId))) {
     return {
       success: false,
       message: 'ID de usuário inválido. Use o LID ou marque o usuário.'
     };
   }
-  if (nazu && isValidJid(userId)) {
+  if (kya && isValidJid(userId)) {
     try {
-      const lid = await getLidFromJidCached(nazu, userId);
+      const lid = await getLidFromJidCached(kya, userId);
       if (lid && lid.includes('@lid')) userId = lid;
     } catch (e) {
       console.warn('Erro ao normalizar JID para LID em removeSubdono:', e.message);
@@ -2343,7 +2344,7 @@ function getLevelingUser(levelingData, userId) {
   }
 }
 
-function checkLevelUp(userId, userData, levelingData, nazu, from) {
+function checkLevelUp(userId, userData, levelingData, kya, from) {
   try {
     // Validação de entrada
     if (!userData || typeof userData !== 'object') return;
@@ -2440,7 +2441,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
       levelUpText += `╰━━━━━━━━━━━━━━━━━━━━━━╯\n`;
       levelUpText += `\n🎊 *Parabéns pelo progresso!* 🎊`;
 
-      if (nazu && from) {
+      if (kya && from) {
         /*
          * =====================================================
          * LEVEL UP COM IMAGEM
@@ -2481,7 +2482,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
                 levelUpImage
               );
 
-            nazu.sendMessage(
+            kya.sendMessage(
               from,
               {
                 image: imageBuffer,
@@ -2502,7 +2503,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
               /*
                * Se a imagem falhar, manda o texto.
                */
-              return nazu.sendMessage(
+              return kya.sendMessage(
                 from,
                 {
                   text: levelUpText,
@@ -2518,7 +2519,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
              * Nesse caso o sistema continua funcionando
              * normalmente com a mensagem de texto.
              */
-            nazu.sendMessage(
+            kya.sendMessage(
               from,
               {
                 text: levelUpText,
@@ -2542,7 +2543,7 @@ function checkLevelUp(userId, userData, levelingData, nazu, from) {
           /*
            * Fallback absoluto para texto.
            */
-          nazu.sendMessage(
+          kya.sendMessage(
             from,
             {
               text: levelUpText,
@@ -2728,7 +2729,7 @@ const deleteAutoResponse = (groupId, responseId, isGlobal = false) => {
   }
 };
 
-const processAutoResponse = async (nazu, from, triggerText, info) => {
+const processAutoResponse = async (kya, from, triggerText, info) => {
   try {
     const normalizedTrigger = normalizar(triggerText);
 
@@ -2736,7 +2737,7 @@ const processAutoResponse = async (nazu, from, triggerText, info) => {
     const globalResponses = loadCustomAutoResponses();
     for (const response of globalResponses) {
       if (normalizedTrigger.includes(response.trigger || response.received)) {
-        await sendAutoResponse(nazu, from, response, info);
+        await sendAutoResponse(kya, from, response, info);
         return true;
       }
     }
@@ -2746,7 +2747,7 @@ const processAutoResponse = async (nazu, from, triggerText, info) => {
       const groupResponses = loadGroupAutoResponses(from);
       for (const response of groupResponses) {
         if (normalizedTrigger.includes(response.trigger)) {
-          await sendAutoResponse(nazu, from, response, info);
+          await sendAutoResponse(kya, from, response, info);
           return true;
         }
       }
@@ -2759,13 +2760,13 @@ const processAutoResponse = async (nazu, from, triggerText, info) => {
   }
 };
 
-const sendAutoResponse = async (nazu, from, response, quotedMessage) => {
+const sendAutoResponse = async (kya, from, response, quotedMessage) => {
   try {
     const responseData = response.response || response;
 
     // Compatibilidade com sistema antigo (apenas texto)
     if (typeof responseData === 'string') {
-      await nazu.sendMessage(from, { text: responseData }, { quoted: quotedMessage });
+      await kya.sendMessage(from, { text: responseData }, { quoted: quotedMessage });
       return;
     }
 
@@ -2822,7 +2823,7 @@ const sendAutoResponse = async (nazu, from, response, quotedMessage) => {
         messageContent.text = responseData.content || 'Resposta automática';
     }
 
-    await nazu.sendMessage(from, messageContent, sendOptions);
+    await kya.sendMessage(from, messageContent, sendOptions);
   } catch (error) {
     console.error('❌ Erro ao enviar auto-resposta:', error);
   }
@@ -2884,17 +2885,17 @@ const saveGlobalBlacklist = data => {
   }
 };
 
-const addGlobalBlacklist = async (userId, reason, addedBy, nazu = null) => {
+const addGlobalBlacklist = async (userId, reason, addedBy, kya = null) => {
   if (!userId || typeof userId !== 'string' || (!isUserId(userId) && !isValidJid(userId))) {
     return {
       success: false,
       message: 'ID de usuário inválido. Use o LID ou marque o usuário.'
     };
   }
-  // Se userId é um JID e temos o nazu, tentamos normalizar para LID
-  if (nazu && isValidJid(userId)) {
+  // Se userId é um JID e temos o kya, tentamos normalizar para LID
+  if (kya && isValidJid(userId)) {
     try {
-      const lid = await getLidFromJidCached(nazu, userId);
+      const lid = await getLidFromJidCached(kya, userId);
       if (lid && lid.includes('@lid')) userId = lid;
     } catch (e) {
       console.warn('Erro ao normalizar JID para LID em addGlobalBlacklist:', e.message);
@@ -2927,17 +2928,17 @@ const addGlobalBlacklist = async (userId, reason, addedBy, nazu = null) => {
   }
 };
 
-const removeGlobalBlacklist = async (userId, nazu = null) => {
+const removeGlobalBlacklist = async (userId, kya = null) => {
   if (!userId || typeof userId !== 'string' || (!isUserId(userId) && !isValidJid(userId))) {
     return {
       success: false,
       message: 'ID de usuário inválido. Use o LID ou marque o usuário.'
     };
   }
-  // Tenta normalizar para LID se tivermos acesso ao nazu
-  if (nazu && isValidJid(userId)) {
+  // Tenta normalizar para LID se tivermos acesso ao kya
+  if (kya && isValidJid(userId)) {
     try {
-      const lid = await getLidFromJidCached(nazu, userId);
+      const lid = await getLidFromJidCached(kya, userId);
       if (lid && lid.includes('@lid')) userId = lid;
     } catch (e) {
       console.warn('Erro ao normalizar JID para LID em removeGlobalBlacklist:', e.message);
@@ -2979,30 +2980,119 @@ const getGlobalBlacklist = () => {
 const loadMenuDesign = () => {
   try {
     if (fs.existsSync(MENU_DESIGN_FILE)) {
-      return JSON.parse(fs.readFileSync(MENU_DESIGN_FILE, 'utf-8'));
-    } else {
-      return {
-        header: `╭┈⊰ 🌸 『 *{botName}* 』\n┊Olá, {userName}!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
-        menuTopBorder: "╭┈",
-        bottomBorder: "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
-        menuTitleIcon: "🍧ฺꕸ▸",
-        menuItemIcon: "•.̇𖥨֗💜⭟",
-        separatorIcon: "❁",
-        middleBorder: "┊"
-      };
+      const saved = JSON.parse(fs.readFileSync(MENU_DESIGN_FILE, 'utf-8'));
+
+      if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
+        throw new Error('Configuração de design inválida.');
+      }
+
+      return saved;
     }
+
+    return { ...MENU_DESIGN_DEFAULTS };
   } catch (error) {
     console.error(`❌ Erro ao carregar design do menu: ${error.message}`);
-    return {
-      header: `╭┈⊰ 🌸 『 *{botName}* 』\n┊Olá, {userName}!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
-      menuTopBorder: "╭┈",
-      bottomBorder: "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
-      menuTitleIcon: "🍧ฺꕸ▸",
-      menuItemIcon: "•.̇𖥨֗💜⭟",
-      separatorIcon: "❁",
-      middleBorder: "┊"
-    };
+    return { ...MENU_DESIGN_DEFAULTS };
   }
+};
+
+const applyMenuFont = function applyMenuFont(value, style = 'normal', prefix = '#') {
+  const input = String(value ?? '');
+  const kind = String(style || 'normal').toLowerCase();
+
+  const small = {
+    a:'ᴀ', b:'ʙ', c:'ᴄ', d:'ᴅ', e:'ᴇ', f:'ꜰ', g:'ɢ',
+    h:'ʜ', i:'ɪ', j:'ᴊ', k:'ᴋ', l:'ʟ', m:'ᴍ', n:'ɴ',
+    o:'ᴏ', p:'ᴘ', q:'ǫ', r:'ʀ', s:'s', t:'ᴛ', u:'ᴜ',
+    v:'ᴠ', w:'ᴡ', x:'x', y:'ʏ', z:'ᴢ'
+  };
+
+  const smallReverse = Object.fromEntries(
+    Object.entries(small)
+      .filter(([plain, styled]) => plain !== styled)
+      .map(([plain, styled]) => [styled, plain])
+  );
+
+  // Normaliza letras que já chegaram estilizadas de outros menus.
+  // Símbolos, emojis e bordas permanecem intactos.
+  const plainText = Array.from(input, ch => {
+    if (ch === 'ℎ') return 'h';
+
+    const cp = ch.codePointAt(0);
+    if (cp >= 0x1D400 && cp <= 0x1D7FF) {
+      const normalized = ch.normalize('NFKD');
+      if (/^[A-Za-z0-9]$/.test(normalized)) return normalized;
+    }
+
+    return smallReverse[ch] || ch;
+  }).join('');
+
+  const ranges = {
+    bold:       [0x1D400, 0x1D41A, 0x1D7CE],
+    italic:     [0x1D434, 0x1D44E, null],
+    bolditalic: [0x1D468, 0x1D482, null],
+    mono:       [0x1D670, 0x1D68A, 0x1D7F6]
+  };
+
+  if (kind === 'normal') return plainText;
+  if (kind !== 'small' && !ranges[kind]) return plainText;
+
+  // Escapa o prefixo para que também funcionem prefixos especiais.
+  const regexSpecials = '\\^$.*+?()[]{}|';
+  const escapedPrefix = Array.from(String(prefix || '#').slice(0, 1))
+    .map(ch => regexSpecials.includes(ch) ? '\\' + ch : ch)
+    .join('');
+
+  // Não transforma os nomes dos comandos.
+  const protectedTokens = [];
+  const protectToken = value => {
+    if (protectedTokens.length >= 0x1700) return value;
+    const marker = String.fromCharCode(0xE200 + protectedTokens.length);
+    protectedTokens.push(value);
+    return marker;
+  };
+
+  // Preserva links, e-mails e código copiável.
+  const nonStylizedPattern = /\u0060\u0060\u0060[\s\S]*?\u0060\u0060\u0060|\u0060[^\u0060\n]+\u0060|(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>{}]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gi;
+  const linkAndCodeProtected = plainText.replace(
+    nonStylizedPattern,
+    match => protectToken(match)
+  );
+
+  // Preserva os comandos do bot.
+  const pattern = new RegExp(
+    '(^|\\s)(' + escapedPrefix + '[A-Za-z][A-Za-z0-9_-]*)',
+    'g'
+  );
+  const protectedText = linkAndCodeProtected.replace(
+    pattern,
+    (whole, gap, command) => gap + protectToken(command)
+  );
+
+  const range = ranges[kind];
+
+  const styled = Array.from(protectedText, ch => {
+    if (kind === 'small') return small[ch.toLowerCase()] || ch;
+    if (kind === 'italic' && ch === 'h') return 'ℎ';
+
+    const cp = ch.codePointAt(0);
+
+    if (cp >= 65 && cp <= 90) {
+      return String.fromCodePoint(range[0] + cp - 65);
+    }
+
+    if (cp >= 97 && cp <= 122) {
+      return String.fromCodePoint(range[1] + cp - 97);
+    }
+
+    if (range[2] && cp >= 48 && cp <= 57) {
+      return String.fromCodePoint(range[2] + cp - 48);
+    }
+
+    return ch;
+  }).join('');
+
+  return styled.replace(/[\uE200-\uF8FF]/g, token => protectedTokens[token.charCodeAt(0) - 0xE200] || '');
 };
 
 const saveMenuDesign = (design) => {
@@ -3017,15 +3107,74 @@ const saveMenuDesign = (design) => {
 };
 
 const getMenuDesignWithDefaults = (botName, userName) => {
-  const design = loadMenuDesign();
+  const defaults = MENU_DESIGN_DEFAULTS;
 
-  // Substitui os placeholders pelos valores atuais
+  let design = loadMenuDesign();
+
+  if (!design || typeof design !== 'object') {
+    design = {};
+  }
+
+  design = {
+    ...defaults,
+    ...design
+  };
+
+  const header = String(design.header || '');
+
+  /*
+   * Migra somente os padrões antigos do próprio Kyara.
+   * Personalizações feitas pelo dono continuam preservadas.
+   */
+  const oldHeader =
+    header.includes('🌸 『 *{botName}* 』') ||
+    header.includes('🌸『 *{botName}* 』') ||
+    (
+      header.includes('╭┈⊰ {botName}-ᴍᴇɴᴜ') &&
+      header.includes('┊Olá, {userName}!')
+    );
+
+  if (oldHeader) {
+    design.header = defaults.header;
+  }
+
+  const itemIcon = String(
+    design.menuItemIcon || ''
+  ).trim();
+
+  if (
+    itemIcon === '•.̇𖥨֗🍓⭟' ||
+    itemIcon === '•.̇𖥨֗💜⭟'
+  ) {
+    design.menuItemIcon = defaults.menuItemIcon;
+  }
+
+  const hour = new Date().getHours();
+
+  const greeting =
+    hour >= 5 && hour < 12
+      ? 'Bom dia'
+      : hour >= 12 && hour < 18
+        ? 'Boa tarde'
+        : 'Boa noite';
+
   const processedDesign = {};
+
   for (const [key, value] of Object.entries(design)) {
     if (typeof value === 'string') {
       processedDesign[key] = value
-        .replace(/{botName}/g, botName)
-        .replace(/{userName}/g, userName);
+        .replace(
+          /{botName}/g,
+          String(botName ?? 'KYARA')
+        )
+        .replace(
+          /{userName}/g,
+          String(userName ?? 'Usuário')
+        )
+        .replace(
+          /{greeting}/g,
+          greeting
+        );
     } else {
       processedDesign[key] = value;
     }
@@ -3438,7 +3587,7 @@ const getMenuLerMaisText = () => {
 
 // =========================================================
 // SISTEMA DE RESTRIÇÕES POR GRUPO
-// Créditos: Baki
+// Créditos: 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠
 //
 // Estrutura:
 // {
@@ -3709,6 +3858,7 @@ export {
   getGlobalBlacklist,
   loadMenuDesign,
   saveMenuDesign,
+  applyMenuFont,
   getMenuDesignWithDefaults,
   loadRelationships,
   saveRelationships,

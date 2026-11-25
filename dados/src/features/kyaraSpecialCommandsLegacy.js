@@ -700,7 +700,7 @@ async function handleStickers({
   isGroup,
   sender,
   from,
-  nazu,
+  kya,
   info,
   reply
 }) {
@@ -752,11 +752,11 @@ async function handleStickers({
 
   const result =
     await sendThemeStickers({
-      nazu,
+      kya,
       destino,
       tema: theme,
       quantidade: quantity,
-      author: 'Baki',
+      author: '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
       packname: 'Kyara',
       quoted:
         isGroup
@@ -764,7 +764,7 @@ async function handleStickers({
           : info
     });
 
-  await nazu.sendMessage(
+  await kya.sendMessage(
     destino,
     {
       text:
@@ -775,7 +775,7 @@ async function handleStickers({
         `│ ⚠️ Falhas: *${result?.failed ?? 0}*\n` +
         `│\n` +
         `│ 🎨 Pacote: *Kyara*\n` +
-        `│ ✨ Créditos: *Baki*\n` +
+        `│ ✨ Créditos: *𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠*\n` +
         `╰━━━━━━━━━━━━━━━━━━━━╯`
     }
   );
@@ -877,7 +877,7 @@ function formatViews(value) {
 }
 
 async function enviarPlayUniversal({
-  nazu,
+  kya,
   from,
   info,
   reply,
@@ -996,7 +996,7 @@ async function enviarPlayUniversal({
               },
               {
                 upload:
-                  nazu.waUploadToServer
+                  kya.waUploadToServer
               }
             );
 
@@ -1020,7 +1020,7 @@ async function enviarPlayUniversal({
 
     footer: {
       text:
-        '🌸 Kyara • © Baki'
+        '🌸 Kyara • © 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠'
     },
 
     nativeFlowMessage: {
@@ -1058,7 +1058,7 @@ async function enviarPlayUniversal({
       {
         quoted: info,
         userJid:
-          nazu?.user?.id
+          kya?.user?.id
       }
     );
 
@@ -1126,7 +1126,7 @@ async function enviarPlayUniversal({
           bizNode
         ];
 
-  await nazu.relayMessage(
+  await kya.relayMessage(
     from,
     msg.message,
     {
@@ -1151,7 +1151,7 @@ async function baixarVideoUniversal(
 }
 
 async function enviarVideoResult({
-  nazu,
+  kya,
   from,
   info,
   reply,
@@ -1172,7 +1172,7 @@ async function enviarVideoResult({
   }
 
   try {
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         video:
@@ -1209,7 +1209,7 @@ async function enviarVideoResult({
         '📦 O vídeo é grande; enviando como documento...'
       );
 
-      await nazu.sendMessage(
+      await kya.sendMessage(
         from,
         {
           document:
@@ -1244,6 +1244,9 @@ async function handleMediaSpecialCommand(
   // responsável pelos comandos de mídia.
 
   const __kyaraCentralMediaCommands = new Set([
+    'play2',
+    'play2audio',
+    'play2video',
     'play',
     'playaudio',
     'playvideo',
@@ -1265,6 +1268,27 @@ async function handleMediaSpecialCommand(
       .trim()
       .toLowerCase();
 
+  if (
+    [
+      'play2',
+      'play2audio',
+      'play2video'
+    ].includes(
+      __kyaraCurrentMediaCommand
+    )
+  ) {
+    const {
+      handle: handleMediaCommand
+    } =
+      await import(
+        './kyaraMediaCommands.js'
+      );
+
+    return handleMediaCommand(
+      options
+    );
+  }
+
   if (__kyaraCentralMediaCommands.has(__kyaraCurrentMediaCommand)) {
     return false;
   }
@@ -1274,7 +1298,7 @@ async function handleMediaSpecialCommand(
     q,
     prefix = '/',
     from,
-    nazu,
+    kya,
     info,
     reply
   } = options;
@@ -1438,7 +1462,7 @@ async function handleMediaSpecialCommand(
         }
 
         await enviarPlayUniversal({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -1493,7 +1517,7 @@ async function handleMediaSpecialCommand(
       }
 
       await enviarPlayUniversal({
-        nazu,
+        kya,
         from,
         info,
         reply,
@@ -1559,7 +1583,7 @@ async function handleMediaSpecialCommand(
         return true;
       }
 
-      await nazu.sendMessage(
+      await kya.sendMessage(
         from,
         {
           audio:
@@ -1625,7 +1649,7 @@ async function handleMediaSpecialCommand(
         );
 
       await enviarVideoResult({
-        nazu,
+        kya,
         from,
         info,
         reply,
@@ -1681,7 +1705,7 @@ async function handleMediaSpecialCommand(
           );
 
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -1729,7 +1753,7 @@ async function handleMediaSpecialCommand(
         downloaded?.ok
       ) {
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -1737,7 +1761,7 @@ async function handleMediaSpecialCommand(
         });
 
       } else {
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
             video: {
@@ -1802,7 +1826,7 @@ async function handleMediaSpecialCommand(
 
       if (result?.ok) {
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -1839,7 +1863,7 @@ async function handleMediaSpecialCommand(
           continue;
         }
 
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
             [item.type || 'video']: {
@@ -1899,7 +1923,7 @@ async function handleMediaSpecialCommand(
 
       if (result?.ok) {
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -1928,7 +1952,7 @@ async function handleMediaSpecialCommand(
       }
 
       await enviarVideoResult({
-        nazu,
+        kya,
         from,
         info,
         reply,
@@ -1979,7 +2003,7 @@ async function handleMediaSpecialCommand(
 
       if (result?.ok) {
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -2018,7 +2042,7 @@ async function handleMediaSpecialCommand(
           continue;
         }
 
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
             video:
@@ -2086,7 +2110,7 @@ async function handleMediaSpecialCommand(
 
       if (result?.ok) {
         await enviarVideoResult({
-          nazu,
+          kya,
           from,
           info,
           reply,
@@ -2124,7 +2148,7 @@ async function handleMediaSpecialCommand(
         if (
           media.type === 'photo'
         ) {
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               image: {
@@ -2142,7 +2166,7 @@ async function handleMediaSpecialCommand(
         }
 
         if (media.url) {
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               video: {
@@ -2218,7 +2242,7 @@ async function handleMediaSpecialCommand(
             meta?.ok &&
             meta.data?.thumbnail
           ) {
-            await nazu.sendMessage(
+            await kya.sendMessage(
               from,
               {
                 image: {
@@ -2246,7 +2270,7 @@ async function handleMediaSpecialCommand(
           const imageUrl of
           result.urls
         ) {
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               image: {
@@ -2283,7 +2307,7 @@ async function handleMediaSpecialCommand(
         return true;
       }
 
-      await nazu.sendMessage(
+      await kya.sendMessage(
         from,
         {
           image: {
@@ -2334,7 +2358,7 @@ export async function handleKyaraSpecialCommand(
     prefix,
     isGroup,
     from,
-    nazu,
+    kya,
     info,
     reply,
     groupMembers,
@@ -2763,15 +2787,13 @@ export async function handleKyaraSpecialCommand(
       }
 
     case 'figurinhas':
-    case 'stickerpack':
-    case 'packfig':
       await handleStickers({
         q,
         prefix,
         isGroup,
         sender,
         from,
-        nazu,
+        kya,
         info,
         reply
       });

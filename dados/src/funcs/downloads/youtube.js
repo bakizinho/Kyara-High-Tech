@@ -5,6 +5,381 @@ import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 
+
+/*
+ * ============================================================
+ * KYARA TED API — DIRECT PLAY
+ * ============================================================
+ *
+ * Usa a API já configurada no config.json.
+ *
+ * Pesquisa:
+ *   /api/pesquisa/youtube
+ *
+ * Áudio:
+ *   /api/download/play_audio/v9
+ *
+ * Vídeo:
+ *   /api/download/play_video/v5
+ *
+ * O áudio NÃO é baixado para o Termux.
+ * A URL da API é entregue diretamente ao Baileys.
+ * ============================================================
+ */
+
+const KYARA_TED_API_V5 = 'https://tedzinho.com.br';
+
+function kyaraTedConfig() {
+
+  try {
+
+    const configPath =
+      new URL(
+        '../../config.json',
+        import.meta.url
+      );
+
+    return JSON.parse(
+      fs.readFileSync(
+        configPath,
+        'utf8'
+      )
+    );
+
+  } catch {
+
+    return {};
+
+  }
+
+}
+
+function kyaraTedKey() {
+
+  const cfg =
+    kyaraTedConfig();
+
+  return String(
+    cfg.API_KEY_TED ||
+    ''
+  ).trim();
+
+}
+
+function kyaraTedUrl(url) {
+
+  return (
+    KYARA_TED_API_V5 +
+    '/api/download/play_audio/v9' +
+    '?apikey=' +
+    encodeURIComponent(
+      kyaraTedKey()
+    ) +
+    '&nome_url=' +
+    encodeURIComponent(
+      String(url || '').trim()
+    )
+  );
+
+}
+
+function kyaraTedExtractUrl(data) {
+
+  const candidates = [
+
+    data?.url,
+
+    data?.download,
+
+    data?.link,
+
+    data?.result?.url,
+
+    data?.result?.download,
+
+    data?.resultado?.url,
+
+    data?.resultado?.download,
+
+    data?.resultado?.link,
+
+    data?.data?.url,
+
+    data?.data?.download
+
+  ];
+
+  for (const value of candidates) {
+
+    if (
+      typeof value === 'string' &&
+      /^https?:\/\//i.test(value)
+    ) {
+
+      return value;
+
+    }
+
+  }
+
+  return '';
+
+}
+
+async function kyaraTedSearch(query) {
+
+  const key =
+    kyaraTedKey();
+
+  if (!key) {
+    return null;
+  }
+
+  const termo =
+    String(query || '').trim();
+
+  if (!termo) {
+    return null;
+  }
+
+  try {
+
+    const endpoint =
+      KYARA_TED_API_V5 +
+      '/api/pesquisa/youtube' +
+      '?apikey=' +
+      encodeURIComponent(key) +
+      '&query=' +
+      encodeURIComponent(termo);
+
+    const response =
+      await fetch(
+        endpoint,
+        {
+          signal:
+            AbortSignal.timeout(6500),
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0'
+          }
+        }
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data =
+      await response.json();
+
+    const lista =
+      Array.isArray(
+        data?.resultado
+      )
+        ? data.resultado
+        : Array.isArray(data)
+          ? data
+          : [];
+
+    const video =
+      lista.find(
+        item =>
+          item &&
+          (
+            item.videoId ||
+            item.id ||
+            item.url
+          )
+      );
+
+    if (!video) {
+      return null;
+    }
+
+    const videoId =
+      video.videoId ||
+      video.id ||
+      '';
+
+    const url =
+      video.url ||
+      (
+        videoId
+          ? `https://www.youtube.com/watch?v=${videoId}`
+          : ''
+      );
+
+    if (!url) {
+      return null;
+    }
+
+    return {
+      ok: true,
+
+      data: {
+
+        videoId,
+
+        title:
+          video.title ||
+          video.titulo ||
+          'Sem título',
+
+        url,
+
+        thumbnail:
+          video.thumbnail ||
+          video.thumb ||
+          video.image ||
+          '',
+
+        author: {
+
+          name:
+            video.author?.name ||
+            video.author ||
+            video.channel ||
+            'Desconhecido'
+
+        },
+
+        seconds:
+          Number(
+            video.seconds ||
+            video.duration ||
+            video.duracao ||
+            0
+          ) || 0,
+
+        timestamp:
+          video.timestamp ||
+          video.duration ||
+          video.duracao ||
+          '',
+
+        views:
+          Number(
+            video.views ||
+            video.visualizacoes ||
+            0
+          ) || 0,
+
+        ago:
+          video.ago ||
+          ''
+
+      }
+
+    };
+
+  } catch (error) {
+
+    console.warn(
+      '[TED API] Pesquisa falhou:',
+      error?.message ||
+      error
+    );
+
+    return null;
+
+  }
+
+}
+
+async function kyaraTedAudio(url) {
+  const key = kyaraTedKey();
+
+  if (!key) {
+    return null;
+  }
+
+  const source =
+    String(url || '').trim();
+
+  if (!/^https?:\/\//i.test(source)) {
+    return null;
+  }
+
+  // ⚡ ULTRA:
+  // Não faz HEAD antes do áudio.
+  // A própria URL já pode ser entregue ao Baileys.
+  return kyaraTedUrl(source);
+}
+
+async function kyaraTedVideo(url) {
+
+  const key =
+    kyaraTedKey();
+
+  if (!key) {
+    return null;
+  }
+
+  const source =
+    String(url || '').trim();
+
+  if (
+    !/^https?:\/\//i.test(source)
+  ) {
+    return null;
+  }
+
+  try {
+
+    const endpoint =
+      KYARA_TED_API_V5 +
+      '/api/download/play_video/v5' +
+      '?apikey=' +
+      encodeURIComponent(key) +
+      '&url=' +
+      encodeURIComponent(source);
+
+    const response =
+      await fetch(
+        endpoint,
+        {
+          signal:
+            AbortSignal.timeout(30000),
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0'
+          }
+        }
+      );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data =
+      await response.json();
+
+    const direct =
+      kyaraTedExtractUrl(
+        data
+      );
+
+    if (!direct) {
+      return null;
+    }
+
+    return direct;
+
+  } catch (error) {
+
+    console.warn(
+      '[TED API] Vídeo falhou:',
+      error?.message ||
+      error
+    );
+
+    return null;
+
+  }
+
+}
+
+
 function limparNome(nome) {
   return String(nome || 'arquivo')
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
@@ -77,7 +452,7 @@ function executarComando(comando, args, options = {}) {
 }
 
 const PLAY_STREAM_CACHE_TTL =
-  60 * 1000;
+  75 * 1000;
 
 const playStreamCache =
   new Map();
@@ -140,9 +515,9 @@ function prepararArgsYtDlp(args = []) {
   return lista;
 }
 
-async function executarYtDlp(args) {
+async function executarYtDlp(args, options = {}) {
   try {
-    return await executarComando('yt-dlp', prepararArgsYtDlp(args));
+    return await executarComando('yt-dlp', prepararArgsYtDlp(args), options);
   } catch (error) {
     throw new Error(
       error?.message ||
@@ -469,7 +844,316 @@ function dadosNormalizados(
  *
  * Nunca usar esta função para URL.
  */
-async function search(query) {
+function executarBuscaYtDlpRapida(
+  termo,
+  timeoutMs = 12000
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const args =
+        prepararArgsYtDlp([
+          '--no-warnings',
+          '--flat-playlist',
+          '--dump-single-json',
+          `ytsearch1:${termo}`
+        ]);
+
+      const child =
+        spawn(
+          'yt-dlp',
+          args,
+          {
+            stdio: [
+              'ignore',
+              'pipe',
+              'pipe'
+            ]
+          }
+        );
+
+      let stdout = '';
+      let stderr = '';
+      let terminou = false;
+
+      let timer;
+
+      const finalizar =
+        (
+          erro,
+          valor
+        ) => {
+
+          if (
+            terminou
+          ) {
+            return;
+          }
+
+          terminou = true;
+
+          clearTimeout(
+            timer
+          );
+
+          if (
+            erro
+          ) {
+            reject(
+              erro
+            );
+          } else {
+            resolve(
+              valor
+            );
+          }
+
+        };
+
+      child.stdout?.on(
+        'data',
+        chunk => {
+          stdout +=
+            chunk.toString();
+        }
+      );
+
+      child.stderr?.on(
+        'data',
+        chunk => {
+          stderr +=
+            chunk.toString();
+        }
+      );
+
+      child.on(
+        'error',
+        finalizar
+      );
+
+      child.on(
+        'close',
+        code => {
+
+          if (
+            code === 0
+          ) {
+
+            finalizar(
+              null,
+              {
+                stdout,
+                stderr
+              }
+            );
+
+          } else {
+
+            finalizar(
+              new Error(
+                stderr.trim() ||
+                stdout.trim() ||
+                `yt-dlp encerrou com código ${code}`
+              )
+            );
+
+          }
+
+        }
+      );
+
+      timer =
+        setTimeout(
+          () => {
+
+            try {
+              child.kill(
+                'SIGTERM'
+              );
+            } catch {}
+
+            finalizar(
+              new Error(
+                `Pesquisa excedeu ${timeoutMs}ms.`
+              )
+            );
+
+          },
+          timeoutMs
+        );
+
+    }
+  );
+}
+
+const PLAY_SEARCH_CACHE_TTL =
+  5 * 60 * 1000;
+
+const playSearchCache =
+  new Map();
+
+function executarBuscaYoutubeRapida(
+  termo,
+  timeoutMs = 12000
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const child =
+        spawn(
+          'yt-dlp',
+          prepararArgsYtDlp([
+            '--no-warnings',
+            '--flat-playlist',
+            '--dump-single-json',
+            `ytsearch1:${termo}`
+          ]),
+          {
+            stdio: [
+              'ignore',
+              'pipe',
+              'pipe'
+            ]
+          }
+        );
+
+      let stdout = '';
+      let stderr = '';
+      let encerrado = false;
+
+      const timer =
+        setTimeout(
+          () => {
+
+            if (
+              encerrado
+            ) {
+              return;
+            }
+
+            encerrado = true;
+
+            try {
+              child.kill(
+                'SIGTERM'
+              );
+            } catch {}
+
+            reject(
+              new Error(
+                `yt-dlp excedeu ${timeoutMs}ms.`
+              )
+            );
+
+          },
+          timeoutMs
+        );
+
+      const finalizar =
+        (
+          fn,
+          valor
+        ) => {
+
+          if (
+            encerrado
+          ) {
+            return;
+          }
+
+          encerrado = true;
+
+          clearTimeout(
+            timer
+          );
+
+          fn(
+            valor
+          );
+
+        };
+
+      child.stdout?.on(
+        'data',
+        chunk => {
+
+          stdout +=
+            chunk.toString();
+
+        }
+      );
+
+      child.stderr?.on(
+        'data',
+        chunk => {
+
+          stderr +=
+            chunk.toString();
+
+        }
+      );
+
+      child.on(
+        'error',
+        error => {
+
+          finalizar(
+            reject,
+            error
+          );
+
+        }
+      );
+
+      child.on(
+        'close',
+        code => {
+
+          if (
+            code === 0
+          ) {
+
+            finalizar(
+              resolve,
+              {
+                stdout,
+                stderr
+              }
+            );
+
+          } else {
+
+            finalizar(
+              reject,
+              new Error(
+                stderr.trim() ||
+                stdout.trim() ||
+                `yt-dlp encerrou com código ${code}`
+              )
+            );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+}
+
+const KYARA_PLAY_SEARCH_CACHE =
+  new Map();
+
+const KYARA_PLAY_SEARCH_INFLIGHT =
+  new Map();
+
+const KYARA_PLAY_SEARCH_TTL =
+  10 * 60 * 1000;
+
+async function searchLegacy(query) {
   const termo =
     String(query || '').trim();
 
@@ -480,16 +1164,82 @@ async function search(query) {
     };
   }
 
-  try {
-    const resultado =
-      await ytSearch(termo);
+  /*
+   * ⚡ CORRIDA DE PESQUISA
+   *
+   * O primeiro resultado válido ganha.
+   */
 
-    const video =
-      resultado?.videos?.[0];
+  const tedJob =
+    (async () => {
+      const resultado =
+        await Promise.race([
+          kyaraTedSearch(termo),
 
-    if (video?.videoId) {
+          new Promise((_, reject) => {
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    'TED search timeout'
+                  )
+                ),
+              4500
+            );
+          })
+        ]);
+
+      if (
+        !resultado?.ok ||
+        !resultado?.data?.url
+      ) {
+        throw new Error(
+          'TED sem resultado'
+        );
+      }
+
+      console.log(
+        '[YOUTUBE SEARCH] ⚡ TED API'
+      );
+
+      return resultado;
+    })();
+
+  const ytJob =
+    (async () => {
+      const resultado =
+        await Promise.race([
+          ytSearch(termo),
+
+          new Promise((_, reject) => {
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    'yt-search timeout'
+                  )
+                ),
+              4500
+            );
+          })
+        ]);
+
+      const video =
+        resultado?.videos?.[0];
+
+      if (!video?.videoId) {
+        throw new Error(
+          'yt-search sem resultado'
+        );
+      }
+
+      console.log(
+        '[YOUTUBE SEARCH] ⚡ yt-search'
+      );
+
       return {
         ok: true,
+
         data: {
           videoId:
             video.videoId,
@@ -515,15 +1265,20 @@ async function search(query) {
           },
 
           seconds:
-            segundos(video.seconds),
+            segundos(
+              video.seconds
+            ),
 
           timestamp:
             video.timestamp ||
-            formatarDuracao(video.seconds),
+            formatarDuracao(
+              video.seconds
+            ),
 
           views:
-            Number(video.views) ||
-            0,
+            Number(
+              video.views
+            ) || 0,
 
           ago:
             video.ago ||
@@ -534,104 +1289,172 @@ async function search(query) {
             ''
         }
       };
-    }
+    })();
 
+  try {
+    return await Promise.any([
+      tedJob,
+      ytJob
+    ]);
   } catch (error) {
     console.warn(
-      '[YOUTUBE SEARCH] yt-search falhou:',
+      '[YOUTUBE SEARCH] ⚠️ TED/yt-search:',
       error?.message ||
       error
     );
   }
 
   /*
-   * Fallback local com yt-dlp.
+   * Fallback final.
    */
   try {
-    const resultado =
-      await executarYtDlp([
-        '--no-warnings',
-        '--flat-playlist',
-        '--dump-single-json',
-        `ytsearch1:${termo}`
-      ]);
+    const resultadoBruto =
+      await executarBuscaYtDlpRapida(
+        termo,
+        4000
+      );
 
-    const dados =
-      extrairJson(resultado.stdout);
+    const informacoes =
+      extrairJson(
+        resultadoBruto?.stdout
+      );
 
-    const entrada =
-      dados?.entries?.[0] ||
-      dados;
+    const video =
+      Array.isArray(
+        informacoes?.entries
+      )
+        ? informacoes.entries[0]
+        : informacoes;
 
-    if (!entrada?.id) {
+    if (
+      video?.id ||
+      video?.videoId
+    ) {
+      const id =
+        video.videoId ||
+        video.id;
+
+      const endereco =
+        video.webpage_url ||
+        `https://www.youtube.com/watch?v=${id}`;
+
       return {
-        ok: false,
-        msg: 'Nenhum resultado encontrado.'
+        ok: true,
+
+        data:
+          dadosNormalizados(
+            {
+              ...video,
+              id
+            },
+            endereco
+          )
       };
     }
 
-    return {
-      ok: true,
-      data: {
-        videoId:
-          entrada.id,
-
-        title:
-          entrada.title ||
-          'Sem título',
-
-        url:
-          entrada.webpage_url ||
-          `https://www.youtube.com/watch?v=${entrada.id}`,
-
-        thumbnail:
-          entrada.thumbnail ||
-          '',
-
-        author: {
-          name:
-            entrada.uploader ||
-            entrada.channel ||
-            'Desconhecido'
-        },
-
-        seconds:
-          segundos(
-            entrada.duration
-          ),
-
-        timestamp:
-          formatarDuracao(
-            entrada.duration
-          ),
-
-        views:
-          Number(
-            entrada.view_count
-          ) || 0,
-
-        ago:
-          '',
-
-        description:
-          entrada.description ||
-          ''
-      }
-    };
-
   } catch (error) {
-    console.error(
-      '[YOUTUBE SEARCH] fallback falhou:',
+    console.warn(
+      '[YOUTUBE SEARCH] yt-dlp fallback:',
       error?.message ||
       error
     );
+  }
 
+  return {
+    ok: false,
+    msg:
+      'Não foi possível encontrar o vídeo agora. Tente novamente em alguns segundos.'
+  };
+}
+
+
+
+async function search(query) {
+
+  const termo =
+    String(query || '').trim();
+
+  if (!termo) {
     return {
       ok: false,
-      msg: 'Nenhum resultado encontrado.'
+      msg:
+        'Digite algo para pesquisar.'
     };
   }
+
+  const key =
+    termo
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const cached =
+    KYARA_PLAY_SEARCH_CACHE.get(
+      key
+    );
+
+  if (
+    cached &&
+    cached.expires >
+      Date.now()
+  ) {
+    return cached.result;
+  }
+
+  const running =
+    KYARA_PLAY_SEARCH_INFLIGHT.get(
+      key
+    );
+
+  if (running) {
+    return running;
+  }
+
+  const job =
+    (async () => {
+
+      const result =
+        await searchLegacy(
+          termo
+        );
+
+      if (result?.ok) {
+
+        KYARA_PLAY_SEARCH_CACHE.set(
+          key,
+          {
+            result,
+            expires:
+              Date.now() +
+              KYARA_PLAY_SEARCH_TTL
+          }
+        );
+
+      }
+
+      return result;
+
+    })();
+
+  KYARA_PLAY_SEARCH_INFLIGHT.set(
+    key,
+    job
+  );
+
+  try {
+
+    return await job;
+
+  } finally {
+
+    KYARA_PLAY_SEARCH_INFLIGHT.delete(
+      key
+    );
+
+  }
 }
+
+
 
 /*
  * Obtém metadados de qualquer URL
@@ -737,6 +1560,7 @@ async function mp3(url, onProgress, options = {}) {
 
   const pasta =
     prepararPasta('audio');
+  let manterPasta = false;
 
   try {
     const saida =
@@ -798,6 +1622,25 @@ async function mp3(url, onProgress, options = {}) {
         arquivo
       );
 
+    const nomeFinal = `${limparNome(
+      path.basename(arquivo, path.extname(arquivo))
+    )}.mp3`;
+
+    if (options?.returnFile) {
+      manterPasta = true;
+      return {
+        ok: true,
+        path: caminho,
+        filename: nomeFinal,
+        mimetype: 'audio/mpeg',
+        cleanup: () => {
+          try {
+            fs.rmSync(pasta, { recursive: true, force: true });
+          } catch {}
+        }
+      };
+    }
+
     const buffer =
       fs.readFileSync(caminho);
 
@@ -806,13 +1649,7 @@ async function mp3(url, onProgress, options = {}) {
 
       buffer,
 
-      filename:
-        `${limparNome(
-          path.basename(
-            arquivo,
-            path.extname(arquivo)
-          )
-        )}.mp3`,
+      filename: nomeFinal,
 
       mimetype:
         'audio/mpeg'
@@ -833,15 +1670,11 @@ async function mp3(url, onProgress, options = {}) {
     };
 
   } finally {
-    try {
-      fs.rmSync(
-        pasta,
-        {
-          recursive: true,
-          force: true
-        }
-      );
-    } catch {}
+    if (!manterPasta) {
+      try {
+        fs.rmSync(pasta, { recursive: true, force: true });
+      } catch {}
+    }
   }
 }
 
@@ -1065,13 +1898,24 @@ async function garantirMp4Compativel(
  * disponíveis e faz fallback para o melhor formato único.
  */
 async function mp4(url, onProgress) {
+  // Um número como 360 significa limite de resolução.
+  // Callbacks continuam funcionando como antes.
+  const limiteAltura =
+    typeof onProgress === 'number' &&
+    Number.isFinite(onProgress) &&
+    onProgress > 0
+      ? Math.min(480, Math.max(144, Math.round(onProgress)))
+      : 0;
+
+  const callback = limiteAltura ? null : onProgress;
+
   const progress =
-    typeof onProgress === 'function'
-      ? onProgress
+    typeof callback === 'function'
+      ? callback
       : (
-          onProgress &&
-          typeof onProgress.onProgress === 'function'
-            ? onProgress.onProgress
+          callback &&
+          typeof callback.onProgress === 'function'
+            ? callback.onProgress
             : null
         );
 
@@ -1098,8 +1942,9 @@ async function mp4(url, onProgress) {
      * pela etapa garantirMp4Compativel().
      */
 
-    const formato =
-      'bestvideo*+bestaudio/best';
+    const formato = limiteAltura
+      ? `bestvideo*[height<=${limiteAltura}]+bestaudio/best[height<=${limiteAltura}]`
+      : 'bestvideo*+bestaudio/best';
 
     await executarYtDlpComProgresso(
       [
@@ -1113,7 +1958,7 @@ async function mp4(url, onProgress) {
         'mp4',
 
         '--concurrent-fragments',
-        '8',
+        String(limiteAltura ? 2 : 8),
 
         '--retries',
         '3',
@@ -1505,7 +2350,7 @@ async function stream(url) {
 const playVideoStreamCache = new Map();
 const playVideoStreamInflight = new Map();
 
-const PLAY_VIDEO_STREAM_CACHE_TTL = 60 * 1000;
+const PLAY_VIDEO_STREAM_CACHE_TTL = 75 * 1000;
 
 function limparPlayVideoStreamCache() {
   const agora = Date.now();
@@ -1523,13 +2368,213 @@ function limparPlayVideoStreamCache() {
   }
 }
 
-async function streamVideo(url) {
-  const endereco =
-    normalizarUrl(url);
 
-  if (
-    !/^https?:\/\//i.test(endereco)
-  ) {
+/* KYARA_TED_DIRECT_V1 */
+
+const KYARA_TED_BASE =
+  'https://tedzinho.com.br';
+
+async function kyaraTedVideoDirect(
+  youtubeUrl
+) {
+  const apiKey =
+    String(
+      process.env.TED_API_KEY ||
+      process.env.API_KEY_TED ||
+      process.env.APIKEY_SYS ||
+      ''
+    ).trim();
+
+  if (!apiKey) {
+    return {
+      ok: false,
+      msg: 'API_KEY_TED não configurada.'
+    };
+  }
+
+  const endpoint =
+    new URL(
+      `${KYARA_TED_BASE}/api/download/play_video/v5`
+    );
+
+  endpoint.searchParams.set(
+    'apikey',
+    apiKey
+  );
+
+  endpoint.searchParams.set(
+    'url',
+    youtubeUrl
+  );
+
+  const controller =
+    new AbortController();
+
+  const timer =
+    setTimeout(
+      () => controller.abort(),
+      5000
+    );
+
+  try {
+    const response =
+      await fetch(
+        endpoint.toString(),
+        {
+          method: 'GET',
+
+          signal:
+            controller.signal,
+
+          headers: {
+            'user-agent':
+              'Mozilla/5.0',
+
+            accept:
+              'application/json,text/plain,*/*'
+          }
+        }
+      );
+
+    const text =
+      await response.text();
+
+    let data = null;
+
+    try {
+      data =
+        JSON.parse(text);
+    } catch {}
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message ||
+        data?.error ||
+        `TED HTTP ${response.status}`
+      );
+    }
+
+    function procurarUrl(
+      value,
+      depth = 0
+    ) {
+      if (
+        !value ||
+        depth > 6
+      ) {
+        return '';
+      }
+
+      if (
+        typeof value === 'string'
+      ) {
+        return /^https?:\/\//i.test(
+          value.trim()
+        )
+          ? value.trim()
+          : '';
+      }
+
+      if (
+        Array.isArray(value)
+      ) {
+        for (
+          const item
+          of value
+        ) {
+          const found =
+            procurarUrl(
+              item,
+              depth + 1
+            );
+
+          if (found) {
+            return found;
+          }
+        }
+
+        return '';
+      }
+
+      if (
+        typeof value !== 'object'
+      ) {
+        return '';
+      }
+
+      const prioridade = [
+        'url',
+        'video',
+        'video_url',
+        'videoUrl',
+        'download',
+        'download_url',
+        'downloadUrl',
+        'link'
+      ];
+
+      for (
+        const chave
+        of prioridade
+      ) {
+        const found =
+          procurarUrl(
+            value[chave],
+            depth + 1
+          );
+
+        if (found) {
+          return found;
+        }
+      }
+
+      for (
+        const valueItem
+        of Object.values(data)
+      ) {
+        const found =
+          procurarUrl(
+            valueItem,
+            depth + 1
+          );
+
+        if (found) {
+          return found;
+        }
+      }
+
+      return '';
+    }
+
+    const directUrl =
+      procurarUrl(data);
+
+    if (!directUrl) {
+      throw new Error(
+        'TED não retornou URL direta de vídeo.'
+      );
+    }
+
+    console.log(
+      '[TED DIRECT] ⚡ Vídeo resolvido'
+    );
+
+    return {
+      ok: true,
+      url: directUrl,
+      mimetype: 'video/mp4',
+      source: 'ted-play_video-v5'
+    };
+
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function streamVideo(url) {
+  const endereco = normalizarUrl(url);
+
+  if (!/^https?:\/\//i.test(endereco)) {
     return {
       ok: false,
       msg: 'URL inválida.'
@@ -1538,148 +2583,256 @@ async function streamVideo(url) {
 
   limparPlayVideoStreamCache();
 
-  const cached =
-    playVideoStreamCache.get(endereco);
+  const cached = playVideoStreamCache.get(endereco);
 
   if (
     cached &&
-    cached.expires > Date.now()
+    cached.expires > Date.now() &&
+    cached.url
   ) {
-    console.log(
-      '[YOUTUBE VIDEO STREAM] ⚡ CACHE'
-    );
+    console.log('[PLAY VIDEO] ⚡ CACHE');
 
     return {
       ok: true,
       url: cached.url,
-      mimetype: 'video/mp4'
+      mimetype: cached.mimetype || 'video/mp4'
     };
   }
 
-  const running =
-    playVideoStreamInflight.get(endereco);
+  const running = playVideoStreamInflight.get(endereco);
 
   if (running) {
-    console.log(
-      '[YOUTUBE VIDEO STREAM] ⚡ REUTILIZANDO EXTRAÇÃO'
-    );
-
+    console.log('[PLAY VIDEO] ⚡ INFLIGHT');
     return running;
   }
 
   const job = (async () => {
-    const tentativas = [
-      {
-        formato:
-          'best[ext=mp4][vcodec!=none][acodec!=none]/best[ext=mp4][vcodec!=none][acodec!=none]'
-      },
-      {
-        formato:
-          'best[vcodec!=none][acodec!=none]/best'
-      },
-      {
-        formato:
-          'best[ext=mp4]/best'
-      }
+    const started = Date.now();
+
+    console.log(
+      '[PLAY VIDEO] 🔎 Resolvendo vídeo direto via yt-dlp...'
+    );
+
+    /*
+     * ==========================================================
+     * 🎬 YT-DLP DIRECT
+     * ==========================================================
+     *
+     * Não usa TED.
+     *
+     * Não baixa arquivo.
+     * Não usa Buffer.
+     * Não usa FFmpeg.
+     *
+     * Procuramos somente um formato MP4 progressivo,
+     * ou seja:
+     *
+     *   vídeo + áudio no mesmo endereço.
+     *
+     * Isso é importante porque o WhatsApp precisa receber
+     * uma única URL de mídia.
+     */
+
+    const formatos = [
+      // Preferência: MP4 H.264/AAC progressivo.
+      'best[ext=mp4][vcodec^=avc1][acodec^=mp4a]',
+
+      // Aceita outros codecs quando AVC1/AAC não estiver disponível.
+      'best[ext=mp4][vcodec!=none][acodec!=none]',
+
+      // Última tentativa direta: qualquer MP4 progressivo.
+      'best[ext=mp4]'
     ];
 
     let ultimoErro = null;
 
-    for (
-      const tentativa
-      of tentativas
-    ) {
+    for (const formato of formatos) {
       try {
         console.log(
-          '[YOUTUBE VIDEO STREAM] ⚡ Extraindo URL...'
+          `[PLAY VIDEO] 🔎 formato: ${formato}`
         );
 
         const args = [
           '--quiet',
           '--no-warnings',
           '--no-playlist',
-          '--no-check-formats',
+
           '--socket-timeout',
-          '10',
+          '8',
+
           '--extractor-retries',
           '1',
+
+          '--fragment-retries',
+          '1',
+
+          '--retries',
+          '1',
+
           '-f',
-          tentativa.formato,
+          formato,
+
           '--get-url',
+
           endereco
         ];
 
-        const resultado =
-          await executarYtDlp(args);
+        const resultado = await executarYtDlp(args, { timeout: 15000, killSignal: 'SIGKILL' });
 
-        const urls =
-          String(
-            resultado.stdout || ''
-          )
-            .split(/\r?\n/)
-            .map(
-              linha =>
-                linha.trim()
-            )
-            .filter(
-              linha =>
-                /^https?:\/\//i.test(linha)
-            );
+        const streamUrl = String(
+          resultado?.stdout || ''
+        )
+          .split(/\r?\n/)
+          .map(item => item.trim())
+          .filter(item => /^https?:\/\//i.test(item))
+          .at(-1) || '';
 
-        /*
-         * Para formato progressivo deve existir uma única
-         * URL. Se houver mais de uma, usamos a última.
-         */
-        const streamUrl =
-          urls.at(-1) || '';
-
-        if (
-          streamUrl
-        ) {
-          playVideoStreamCache.set(
-            endereco,
-            {
-              url: streamUrl,
-              expires:
-                Date.now() +
-                PLAY_VIDEO_STREAM_CACHE_TTL
-            }
+        if (!streamUrl) {
+          throw new Error(
+            'yt-dlp não retornou URL direta.'
           );
-
-          console.log(
-            '[YOUTUBE VIDEO STREAM] ✅ URL direta pronta'
-          );
-
-          return {
-            ok: true,
-            url: streamUrl,
-            mimetype: 'video/mp4'
-          };
         }
 
-        ultimoErro =
-          new Error(
-            'yt-dlp não retornou URL de vídeo.'
-          );
+        console.log(
+          `[PLAY VIDEO] ✅ URL encontrada em ${Date.now() - started}ms`
+        );
+
+        const resposta = {
+          ok: true,
+          url: streamUrl,
+          mimetype: 'video/mp4'
+        };
+
+        playVideoStreamCache.set(
+          endereco,
+          {
+            url: streamUrl,
+            mimetype: 'video/mp4',
+            expires:
+              Date.now() +
+              PLAY_VIDEO_STREAM_CACHE_TTL
+          }
+        );
+
+        return resposta;
 
       } catch (error) {
-        ultimoErro =
-          error;
+        ultimoErro = error;
 
         console.warn(
-          '[YOUTUBE VIDEO STREAM] tentativa falhou:',
-          error?.message ||
-          error
+          '[PLAY VIDEO] ⚠️ tentativa falhou:',
+          error?.message || error
         );
       }
     }
+
+
+    /*
+     * FALLBACK PLAY VIDEO:
+     * Quando não existe URL progressiva, baixa para arquivo
+     * temporário, evitando guardar o vídeo inteiro num Buffer.
+     */
+    const pastaFallback = prepararPasta('playvideo');
+    const saidaFallback = path.join(
+      pastaFallback,
+      'video.%(ext)s'
+    );
+
+    try {
+      console.log(
+        '[PLAY VIDEO] 💾 Tentando arquivo temporário em até 360p...'
+      );
+
+      await executarYtDlp(
+        [
+          '--quiet',
+          '--no-warnings',
+          '--no-playlist',
+          '--socket-timeout',
+          '12',
+          '--retries',
+          '2',
+          '--fragment-retries',
+          '2',
+          '--concurrent-fragments',
+          '4',
+          '-f',
+          'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4][vcodec!=none][acodec!=none]/best[ext=mp4]/best',
+          '--merge-output-format',
+          'mp4',
+          '--output',
+          saidaFallback,
+          endereco
+        ],
+        {
+          timeout: 600000,
+          killSignal: 'SIGKILL'
+        }
+      );
+
+      const nomes = fs.readdirSync(pastaFallback);
+      const arquivo =
+        nomes.find(nome => /^video\.(mp4|m4v|webm|mkv)$/i.test(nome)) ||
+        nomes.find(nome => /\.(mp4|m4v|webm|mkv)$/i.test(nome));
+
+      if (!arquivo) {
+        throw new Error('O yt-dlp não gerou o arquivo de vídeo.');
+      }
+
+      const caminhoVideo = path.join(pastaFallback, arquivo);
+      const extensao = path.extname(arquivo).toLowerCase();
+
+      if (!fs.existsSync(caminhoVideo) || fs.statSync(caminhoVideo).size === 0) {
+        throw new Error('O arquivo de vídeo ficou vazio.');
+      }
+
+      console.log(
+        `[PLAY VIDEO] ✅ Arquivo pronto: ${(fs.statSync(caminhoVideo).size / 1048576).toFixed(1)} MB`
+      );
+
+      // Limpeza automática caso o envio não remova o temporário.
+      const temporizadorLimpeza = setTimeout(() => {
+        try {
+          fs.rmSync(pastaFallback, { recursive: true, force: true });
+        } catch {}
+      }, 10 * 60 * 1000);
+
+      temporizadorLimpeza.unref?.();
+
+      return {
+        ok: true,
+        url: caminhoVideo,
+        local: true,
+        mimetype: extensao === '.webm' ? 'video/webm' : 'video/mp4'
+      };
+
+    } catch (erroFallback) {
+      try {
+        fs.rmSync(pastaFallback, {
+          recursive: true,
+          force: true
+        });
+      } catch {}
+
+      console.warn(
+        '[PLAY VIDEO] ⚠️ Fallback local falhou:',
+        erroFallback?.message || erroFallback
+      );
+
+      ultimoErro = erroFallback || ultimoErro;
+    }
+
+    console.error(
+      '[PLAY VIDEO] ❌ Nenhum formato progressivo disponível.'
+    );
 
     return {
       ok: false,
       msg:
         ultimoErro?.message ||
-        'Não foi possível obter o stream de vídeo.'
+        'Não foi possível obter um vídeo MP4 direto.'
     };
+
   })();
 
   playVideoStreamInflight.set(
@@ -1690,9 +2843,7 @@ async function streamVideo(url) {
   try {
     return await job;
   } finally {
-    playVideoStreamInflight.delete(
-      endereco
-    );
+    playVideoStreamInflight.delete(endereco);
   }
 }
 
@@ -1887,197 +3038,189 @@ async function prefetchVoiceFile(url) {
 }
 
 
-/* KYARA_REAL_AUDIO_CACHE_V2 */
+/* KYARA_REAL_AUDIO_CACHE_V3_DIRECT_URL */
 
 const __kyaraRealAudioCache = new Map();
 const __kyaraRealAudioInflight = new Map();
+
+const KYARA_REAL_AUDIO_TTL = 3 * 60 * 1000;
+
+/*
+ * ============================================================
+ * ⚡ PREFETCH DE ÁUDIO DIRETO
+ * ============================================================
+ *
+ * NÃO baixa o arquivo.
+ *
+ * NÃO cria arquivo em /tmp.
+ *
+ * NÃO usa FFmpeg.
+ *
+ * NÃO converte para OGG/Opus.
+ *
+ * Apenas:
+ *
+ *   1. resolve a URL direta do áudio;
+ *   2. guarda essa URL por poucos segundos;
+ *   3. reutiliza a mesma Promise para chamadas simultâneas.
+ *
+ * O WhatsApp/Baileys recebe a URL quando o botão é clicado.
+ * ============================================================
+ */
 
 async function prefetchAudioFile(url) {
   const source = String(url || '').trim();
 
   if (!source) {
-    throw new Error('URL do YouTube vazia.');
+    throw new Error(
+      'URL do YouTube vazia.'
+    );
   }
 
   const now = Date.now();
 
-  const cached = __kyaraRealAudioCache.get(source);
+  const cached =
+    __kyaraRealAudioCache.get(source);
 
   if (
     cached &&
-    cached.expiresAt > now
+    cached.expiresAt > now &&
+    cached.url
   ) {
-    return cached.path;
+    console.log(
+      '[PLAY AUDIO] ⚡ CACHE HIT'
+    );
+
+    return cached.url;
   }
 
   const running =
     __kyaraRealAudioInflight.get(source);
 
   if (running) {
+    console.log(
+      '[PLAY AUDIO] 🔄 REUTILIZANDO PREFETCH'
+    );
+
     return running;
   }
 
   const job = (async () => {
-    const fs =
-      await import('node:fs/promises');
+    const started = Date.now();
 
-    const os =
-      await import('node:os');
-
-    const path =
-      await import('node:path');
-
-    const crypto =
-      await import('node:crypto');
-
-    const dir =
-      path.join(
-        os.tmpdir(),
-        'kyara-play-audio'
-      );
-
-    await fs.mkdir(
-      dir,
-      {
-        recursive: true
-      }
+    console.log(
+      '[PLAY AUDIO] 🔎 Resolvendo áudio direto via yt-dlp...'
     );
 
-    const key =
-      crypto
-        .createHash('sha1')
-        .update(source)
-        .digest('hex');
+    /*
+     * ==========================================================
+     * 🎵 YT-DLP DIRECT AUDIO
+     * ==========================================================
+     *
+     * NÃO usa TED.
+     *
+     * NÃO baixa MP3.
+     * NÃO usa FFmpeg.
+     * NÃO cria arquivo temporário.
+     * NÃO cria Buffer.
+     *
+     * Apenas resolve a URL direta do stream de áudio.
+     */
 
-    const finalPath =
-      path.join(
-        dir,
-        `${key}.m4a`
-      );
+    const formatos = [
+      'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio',
+      'bestaudio/best'
+    ];
 
-    const tempPath =
-      `${finalPath}.part`;
+    let ultimoErro = null;
 
-    try {
-
-      /*
-       * PRIMEIRO:
-       * obtém a URL direta usando o cache/inflight
-       * normal do youtube.js.
-       */
-      const stream =
-        await stream(source);
-
-      if (
-        !stream ||
-        !stream.url
-      ) {
-        throw new Error(
-          'URL direta de áudio não encontrada.'
-        );
-      }
-
-      /*
-       * SEGUNDO:
-       * baixa os bytes para o armazenamento local.
-       *
-       * Isso acontece enquanto o usuário ainda está
-       * vendo o card do /play.
-       */
-      console.log(
-        '[PLAY CACHE] ⚡ Baixando áudio real...'
-      );
-
-      const response =
-        await fetch(
-          stream.url
-        );
-
-      if (
-        !response.ok ||
-        !response.body
-      ) {
-        throw new Error(
-          `Falha ao baixar áudio: HTTP ${response.status}`
-        );
-      }
-
-      const file =
-        await fs.open(
-          tempPath,
-          'w'
-        );
-
-      let total = 0;
-
+    for (const formato of formatos) {
       try {
+        console.log(
+          `[PLAY AUDIO] 🔎 formato: ${formato}`
+        );
 
-        const reader =
-          response.body.getReader();
+        const args = [
+          '--quiet',
+          '--no-warnings',
+          '--no-playlist',
 
-        while (true) {
+          '--socket-timeout',
+          '8',
 
-          const result =
-            await reader.read();
+          '--extractor-retries',
+          '1',
 
-          if (result.done) {
-            break;
-          }
+          '--fragment-retries',
+          '1',
 
-          if (
-            result.value &&
-            result.value.length
-          ) {
-            await file.write(
-              result.value
-            );
+          '--retries',
+          '1',
 
-            total +=
-              result.value.length;
-          }
+          '-f',
+          formato,
+
+          '--get-url',
+
+          source
+        ];
+
+        const resultado =
+          await executarYtDlp(args);
+
+        const streamUrl =
+          String(
+            resultado?.stdout || ''
+          )
+            .split(/\r?\n/)
+            .map(
+              item => item.trim()
+            )
+            .filter(
+              item =>
+                /^https?:\/\//i.test(item)
+            )
+            .at(-1) || '';
+
+        if (!streamUrl) {
+          throw new Error(
+            'yt-dlp não retornou URL direta de áudio.'
+          );
         }
 
-      } finally {
-        await file.close();
-      }
+        __kyaraRealAudioCache.set(
+          source,
+          {
+            url: streamUrl,
+            expiresAt:
+              Date.now() +
+              KYARA_REAL_AUDIO_TTL
+          }
+        );
 
-      if (total <= 0) {
-        throw new Error(
-          'O áudio baixado ficou vazio.'
+        console.log(
+          `[PLAY AUDIO] ✅ URL encontrada em ${Date.now() - started}ms`
+        );
+
+        return streamUrl;
+
+      } catch (error) {
+        ultimoErro = error;
+
+        console.warn(
+          '[PLAY AUDIO] ⚠️ tentativa falhou:',
+          error?.message || error
         );
       }
-
-      await fs.rename(
-        tempPath,
-        finalPath
-      );
-
-      __kyaraRealAudioCache.set(
-        source,
-        {
-          path: finalPath,
-          expiresAt:
-            Date.now() +
-            (10 * 60 * 1000)
-        }
-      );
-
-      console.log(
-        `[PLAY CACHE] ✅ ÁUDIO PRONTO: ${Math.round(total / 1024)} KB`
-      );
-
-      return finalPath;
-
-    } catch (error) {
-
-      try {
-        await fs.unlink(
-          tempPath
-        );
-      } catch {}
-
-      throw error;
     }
+
+    throw (
+      ultimoErro ||
+      new Error(
+        'Não foi possível obter o áudio diretamente.'
+      )
+    );
+
   })();
 
   __kyaraRealAudioInflight.set(
@@ -2095,6 +3238,7 @@ async function prefetchAudioFile(url) {
 }
 
 
+
 export {
   search,
   info,
@@ -2103,7 +3247,10 @@ export {
   streamVideo,
   prefetchAudioFile,
   mp4,
-  prefetchVoiceFile
+  prefetchVoiceFile,
+  kyaraTedSearch,
+  kyaraTedAudio,
+  kyaraTedVideo
 };
 
 export async function mp3Rich(

@@ -1,6 +1,7 @@
 import {
   generateWAMessageFromContent,
-  prepareWAMessageMedia
+  prepareWAMessageMedia,
+  proto
 } from 'baileys';
 
 import * as youtube from '../funcs/downloads/youtube.js';
@@ -16,12 +17,21 @@ import {
 } from '../funcs/downloads/cosmos.js';
 import * as twitter from '../funcs/utils/twitter.js';
 import { isOwner } from '../core/menuDono/menu-dono.js';
-import { handlePlay2 } from './kyaraPlay2.js';
+import {
+  handlePlay2,
+  handlePlay2Audio,
+  handlePlay2Video
+} from './kyaraPlay2.js';
 import {
   handlePinterest,
   kyaraPinterestNativeCarousel
 } from './kyaraPinterest.js';
 import { sendHtmlGameFromOptions } from '../utils/htmlGame.js';
+import { sendKyaraMediaAlbum } from '../core/mediaAlbum/index.js';
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { arePlayButtonsEnabled } from '../menus/categorias/sistema/menu-button-state.js';
 
 const searchCache = new Map();
 
@@ -255,7 +265,7 @@ document.addEventListener(
  */
 
 async function handleCosmos({
-  nazu,
+  kya,
   from,
   info,
   reply,
@@ -612,7 +622,7 @@ function showImage(index){
     );
 
     await kyaraPinterestNativeCarousel(
-      nazu,
+      kya,
       from,
       requesterId,
       result?.query || query,
@@ -893,6 +903,9 @@ async function webSearch(platform, query) {
       await fetch(
         endpoint,
         {
+          signal:
+            AbortSignal.timeout(8000),
+
           headers: {
             'user-agent':
               'Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36'
@@ -985,14 +998,19 @@ async function downloadVideo(url) {
    * Primeira tentativa:
    * yt-dlp + melhor qualidade.
    */
-  const result =
-    await youtube.mp4(
-      source
-    );
+  let result;
 
-  if (result?.ok) {
-    return result;
+  try {
+    result = await youtube.mp4(source);
+  } catch (error) {
+    result = {
+      ok: false,
+      msg: error?.message ||
+        'yt-dlp não conseguiu baixar a mídia.'
+    };
   }
+
+  if (result?.ok) return result;
 
   /*
    * Fallbacks dos módulos existentes.
@@ -1005,27 +1023,32 @@ async function downloadVideo(url) {
     if (
       platform === 'Instagram'
     ) {
-      const r =
-        await instagram.dl(
-          source
-        );
+      const r = await instagram.dl(source);
 
-      const item =
-        r?.data?.find(
-          x =>
-            x.type === 'video'
-        ) ||
-        r?.data?.[0];
-
-      if (item?.url) {
+      if (
+        r?.ok &&
+        Buffer.isBuffer(r.buffer) &&
+        r.buffer.length
+      ) {
         return {
           ok: true,
-          remoteUrl: item.url,
-          mimetype:
-            item.mime ||
-            'video/mp4',
-          filename:
-            'instagram.mp4'
+          buffer: r.buffer,
+          mimetype: r.mime || 'video/mp4',
+          filename: 'instagram.mp4'
+        };
+      }
+
+      const item =
+        r?.data?.find(x => x.type === 'video') ||
+        r?.data?.[0];
+
+      if (item?.buff || item?.url) {
+        return {
+          ok: true,
+          buffer: item.buff || undefined,
+          remoteUrl: item.url || undefined,
+          mimetype: item.mime || 'video/mp4',
+          filename: 'instagram.mp4'
         };
       }
     }
@@ -1082,24 +1105,31 @@ async function downloadVideo(url) {
     if (
       platform === 'TikTok'
     ) {
-      const r =
-        await tiktok.dl(
-          source
-        );
+      const r = await tiktok.dl(source);
 
-      const media =
-        Array.isArray(r?.urls)
-          ? r.urls[0]
-          : r?.urls;
+      if (
+        r?.ok &&
+        Buffer.isBuffer(r.buffer) &&
+        r.buffer.length
+      ) {
+        return {
+          ok: true,
+          buffer: r.buffer,
+          mimetype: r.mime || 'video/mp4',
+          filename: 'tiktok.mp4'
+        };
+      }
+
+      const media = Array.isArray(r?.urls)
+        ? r.urls[0]
+        : r?.urls;
 
       if (media) {
         return {
           ok: true,
           remoteUrl: media,
-          mimetype:
-            'video/mp4',
-          filename:
-            'tiktok.mp4'
+          mimetype: 'video/mp4',
+          filename: 'tiktok.mp4'
         };
       }
     }
@@ -1261,47 +1291,109 @@ function rememberButton(url) {
  */
 
 function prefetchPlayMedia(url) {
+
   const source =
     cleanUrl(url);
 
   if (
     !source ||
-    platformOf(source) !== 'YouTube'
+    platformOf(source) !==
+      'YouTube'
   ) {
     return;
   }
 
+  const tarefas = [];
+
   /*
-   * IMPORTANTE:
-   *
-   * Não fazemos mais streamVideo().
-   *
-   * O /play prepara somente o áudio REAL.
-   *
-   * O download acontece em segundo plano enquanto
-   * o usuário ainda está vendo o card.
+   * 🎙️ VOZ
    */
+  if (
+    typeof youtube.prefetchAudioFile ===
+    'function'
+  ) {
+
+    tarefas.push(
+
+      youtube
+        .prefetchAudioFile(
+          source
+        )
+
+        .then(url => {
+
+          console.log(
+            '[PLAY TURBO] 🎵 Áudio pronto:',
+            url ? 'SIM' : 'NÃO'
+          );
+
+        })
+
+        .catch(error => {
+
+          console.warn(
+            '[PLAY TURBO] Áudio:',
+            error?.message ||
+            error
+          );
+
+        })
+
+    );
+
+  }
+
+  /*
+   * 🎬 VÍDEO
+   */
+  if (
+    typeof youtube.streamVideo ===
+    'function'
+  ) {
+
+    tarefas.push(
+
+      youtube
+        .streamVideo(
+          source
+        )
+
+        .then(result => {
+
+          if (
+            result?.url
+          ) {
+
+            console.log(
+              '[PLAY TURBO] 🎬 Vídeo pronto'
+            );
+
+          }
+
+        })
+
+        .catch(error => {
+
+          console.warn(
+            '[PLAY TURBO] Vídeo:',
+            error?.message ||
+            error
+          );
+
+        })
+
+    );
+
+  }
 
   if (
-    typeof youtube.prefetchVoiceFile === 'function'
+    tarefas.length
   ) {
-    void youtube.prefetchVoiceFile(source)
-      .then(file => {
-        console.log(
-          '[PLAY VOICE] 🚀 OGG/OPUS PRONTO:',
-          file
-        );
-      })
-      .catch(error => {
-        console.warn(
-          '[PLAY VOICE] Prefetch de voz falhou:',
-          error?.message || error
-        );
-      });
-  } else {
-    console.warn(
-      '[PLAY VOICE] prefetchVoiceFile não está disponível.'
+
+    void Promise.allSettled(
+      tarefas
     );
+
   }
 }
 
@@ -1496,38 +1588,342 @@ async function search(platform, query) {
   return getInfo(found);
 }
 
+/*
+ * SANDRO_COMPAT_PLAY_V2
+ *
+ * Usa o mesmo config do menu.
+ */
+function readPlayButtonsEnabled() {
+  return arePlayButtonsEnabled();
+}
+
+function isPublicResultUrl(platform, value) {
+  try {
+    const u = new URL(String(value || '').trim());
+
+    if (platformOf(u.href) !== platform) return false;
+
+    const p = u.pathname.toLowerCase();
+
+    if (platform === 'TikTok') {
+      return /\/@[^/]+\/video\/\d+/.test(p);
+    }
+
+    if (platform === 'Instagram') {
+      return /^\/(?:reel|reels|p|tv)\//.test(p);
+    }
+
+    if (platform === 'Facebook') {
+      return /(?:watch|reel|videos?|share\/v|watch\.php)/.test(p);
+    }
+
+    if (platform === 'Kwai') {
+      return /(?:video|photo|short-video|@)/.test(p);
+    }
+
+    if (platform === 'Twitter/X') {
+      return /\/status\/\d+/.test(p);
+    }
+
+    return false;
+
+  } catch {
+    return false;
+  }
+}
+
+async function searchMany(platform, query, limit = 10) {
+  const term = String(query || '').trim();
+
+  if (!term) return [];
+
+  if (platform === 'TikTok') {
+    const result = await tiktok.search(term);
+
+    const values = Array.isArray(result?.urls)
+      ? result.urls
+      : (result?.link ? [result.link] : []);
+
+    return [
+      ...new Set(
+        values.filter(url =>
+          isPublicResultUrl(platform, url)
+        )
+      )
+    ].slice(0, limit);
+  }
+
+  const domain = searchDomain(platform);
+
+  if (!domain) return [];
+
+  const key = `multi:${platform}:${term.toLowerCase()}`;
+  const cached = searchCache.get(key);
+
+  if (
+    cached &&
+    Date.now() - cached.time < SEARCH_TTL &&
+    Array.isArray(cached.urls)
+  ) {
+    return cached.urls.slice(0, limit);
+  }
+
+  const endpoint =
+    `https://html.duckduckgo.com/html/?q=${
+      encodeURIComponent(`site:${domain} ${term}`)
+    }`;
+
+  const found = new Set();
+
+  try {
+    const response = await fetch(endpoint, {
+      signal: AbortSignal.timeout(12000),
+      headers: {
+        'user-agent':
+          'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36'
+      }
+    });
+
+    if (response.ok) {
+      const html = (await response.text())
+        .replace(/&amp;/gi, '&');
+
+      for (const match of html.matchAll(/uddg=([^&"']+)/g)) {
+        try {
+          const u = new URL(decodeURIComponent(match[1]));
+
+          u.search = '';
+          u.hash = '';
+
+          if (isPublicResultUrl(platform, u.href)) {
+            found.add(u.href);
+          }
+
+        } catch {}
+
+        if (found.size >= limit) break;
+      }
+    }
+
+  } catch (error) {
+    console.warn(
+      `[KYARA SEARCH ${platform}]`,
+      error?.message || error
+    );
+  }
+
+  const urls = [...found].slice(0, limit);
+
+  searchCache.set(key, {
+    urls,
+    time: Date.now()
+  });
+
+  return urls;
+}
+
+async function mapSocialResults(urls, concurrency = 2) {
+  const output = new Array(urls.length);
+  let cursor = 0;
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, urls.length) },
+      async () => {
+        while (true) {
+          const i = cursor++;
+
+          if (i >= urls.length) return;
+
+          try {
+            const result = await downloadVideo(urls[i]);
+
+            const source =
+              result?.buffer ||
+              result?.remoteUrl ||
+              result?.path;
+
+            if (!result?.ok || !source) {
+              output[i] = null;
+              continue;
+            }
+
+            const size = Buffer.isBuffer(source)
+              ? source.length
+              : 0;
+
+            if (size > 35 * 1024 * 1024) {
+              output[i] = null;
+              continue;
+            }
+
+            const mime =
+              result.mimetype ||
+              result.mime ||
+              'video/mp4';
+
+            output[i] = {
+              type: String(mime).startsWith('image/')
+                ? 'image'
+                : 'video',
+              source,
+              mimetype: mime
+            };
+
+          } catch (error) {
+            console.warn(
+              '[KYARA ALBUM ITEM]',
+              urls[i],
+              error?.message || error
+            );
+
+            output[i] = null;
+          }
+        }
+      }
+    )
+  );
+
+  return output.filter(Boolean).slice(0, 10);
+}
+
+async function sendPlatformSearchAlbum({
+  kya,
+  from,
+  info,
+  reply,
+  platform,
+  query,
+  urls
+}) {
+  await reply(
+    `╭━━〔 ✦ KYARA DOWNLOADS ✦ 〕━━╮\n` +
+    `┃ 🔎 Pesquisa: ${String(query || 'link direto').slice(0, 90)}\n` +
+    `┃ 📱 Plataforma: ${platform}\n` +
+    `┃ 📦 Links encontrados: ${urls.length}\n` +
+    `┃ ⚡ Preparando coleção...\n` +
+    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯`
+  );
+
+  const items = await mapSocialResults(urls, 2);
+
+  if (!items.length) {
+    await reply(
+      '❌ Não consegui baixar nenhuma mídia pública. ' +
+      'O conteúdo pode exigir login, estar indisponível ou ter bloqueado a extração.'
+    );
+
+    return true;
+  }
+
+  const totalBytes = items.reduce(
+    (sum, item) =>
+      sum + (
+        Buffer.isBuffer(item.source)
+          ? item.source.length
+          : 0
+      ),
+    0
+  );
+
+  if (totalBytes > 120 * 1024 * 1024) {
+    await reply(
+      '❌ A coleção ultrapassou o limite seguro de memória para envio.'
+    );
+
+    return true;
+  }
+
+  const album = items.map((item, index) => ({
+    type: item.type,
+    source: item.source,
+    mimetype: item.mimetype,
+
+    caption: index === 0
+      ? `╭━━〔 ✦ KYARA • DOWNLOAD PRIME ✦ 〕━━╮\n` +
+        `┃ 🔎 Pesquisa: ${String(query || 'Link direto').slice(0, 90)}\n` +
+        `┃ 📱 Origem: ${platform}\n` +
+        `┃ 📦 Mídias: ${items.length}/10\n` +
+        `┃ ✅ Coleção preparada\n` +
+        `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯\n` +
+        `🌸 Kyara • © VØX-SYSTΞM`
+      : ''
+  }));
+
+  try {
+    await sendKyaraMediaAlbum(
+      kya,
+      from,
+      album,
+      {
+        parentOptions: info
+          ? { quoted: info }
+          : {}
+      }
+    );
+
+    console.log(
+      `[KYARA DOWNLOAD PRIME] Álbum ${items.length}/${urls.length} • ${platform}`
+    );
+
+  } catch (error) {
+    console.error(
+      '[KYARA DOWNLOAD PRIME] Falha no álbum:',
+      error?.stack || error
+    );
+
+    await reply(
+      `❌ Não consegui enviar o álbum: ${
+        error?.message || 'erro no WhatsApp.'
+      }`
+    );
+  }
+
+  if (items.length < urls.length) {
+    await reply(
+      `ℹ️ ${items.length} de ${urls.length} resultados estavam disponíveis para download.`
+    );
+  }
+
+  return true;
+}
+
+async function sendPlatformDirectDownload({
+  kya,
+  from,
+  info,
+  reply,
+  platform,
+  url
+}) {
+  return sendPlatformSearchAlbum({
+    kya,
+    from,
+    info,
+    reply,
+    platform,
+    query: 'Link enviado',
+    urls: [url]
+  });
+}
+
 async function sendCard({
-  nazu,
+  kya,
   from,
   info,
   reply,
   prefix,
   data
 }) {
-
-  /*
-   * 🔒 Apenas um card para a mesma solicitação.
-   */
-  if (
-    !allowPlayCard(
-      from,
-      data
-    )
-  ) {
+  if (!allowPlayCard(from, data)) {
     return true;
   }
 
-
-
-  /*
-   * 🔒 DEDUPLICAÇÃO
-   *
-   * Se dois caminhos chamarem sendCard() para o mesmo
-   * resultado ao mesmo tempo, somente o primeiro envia.
-   */
-const mediaUrl =
+  const mediaUrl = String(
     data?.sourceUrl ||
-    data?.url;
+    data?.url ||
+    ''
+  ).trim();
 
   if (!mediaUrl) {
     throw new Error(
@@ -1535,273 +1931,411 @@ const mediaUrl =
     );
   }
 
-  const title =
-    String(
-      data?.title ||
-      'Mídia'
-    ).slice(0, 180);
-
-  const author =
-    String(
-      data?.author?.name ||
-      data?.uploader ||
-      data?.channel ||
-      data?.platform ||
-      'Desconhecido'
-    ).slice(0, 100);
-
-  const duration =
-    String(
-      data?.timestamp ||
-      'Desconhecida'
-    );
-
-  const views =
-    formatViews(
-      data?.views
-    );
-
   const platform =
     data?.platform ||
-    platformOf(
-      mediaUrl
-    ) ||
+    platformOf(mediaUrl) ||
     'Mídia';
 
-  const thumbnail =
-    data?.thumbnail ||
-    (
-      data?.videoId
-        ? `https://i.ytimg.com/vi/${data.videoId}/hqdefault.jpg`
-        : ''
-    );
+  const title = String(
+    data?.title ||
+    'Mídia'
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180);
 
+  const author = String(
+    data?.author?.name ||
+    data?.uploader ||
+    data?.channel ||
+    platform ||
+    'Desconhecido'
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+
+  const duration = String(
+    data?.timestamp ||
+    'Não informado'
+  );
 
   /*
-   * ⚡ PRIMEIRA COISA DEPOIS DE CONHECER A URL
-   *
-   * Não aguardamos.
-   * Enquanto o card, thumbnail e mensagem são preparados,
-   * áudio e vídeo já estão sendo resolvidos.
+   * ========================================================
+   * TOKENS
+   * ========================================================
    */
-  prefetchPlayMedia(mediaUrl);
+
+  const audioToken =
+    rememberButton(mediaUrl);
+
+  const videoToken =
+    rememberButton(mediaUrl);
 
   /*
-   * ⚡ Começa a resolver o stream imediatamente.
+   * ========================================================
+   * PREFETCH
+   * ========================================================
    *
-   * Não usamos await aqui.
-   * Assim a pesquisa/card não fica mais lento.
-   * O stream é preparado em paralelo enquanto a
-   * mensagem é montada/enviada.
+   * Continua em segundo plano.
+   * Não bloqueia o card.
    */
-    const buttons = [
+
+  /*
+   * ========================================================
+   * TÍTULO
+   * ========================================================
+   */
+
+  let playTitle =
+    title
+      .split('|')
+      .map(
+        item =>
+          item.trim()
+      )
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(' • ');
+
+  if (
+    playTitle.length >
+    56
+  ) {
+    playTitle =
+      `${playTitle.slice(
+        0,
+        55
+      ).trimEnd()}…`;
+  }
+
+  const caption =
+    `╔━᳀『 🎬 𝗬𝗢𝗨𝗧𝗨𝗕𝗘 𝗣𝗟𝗔𝗬 』═᳀\n` +
+    `┃\n` +
+    `⌬ ✦ 𝗧𝗶́𝘁𝘂𝗹𝗼 : ${playTitle}\n` +
+    `┃\n` +
+    `⌬ ✦ 𝗖𝗮𝗻𝗮𝗹 : ${author}\n` +
+    `┃ ✦ 𝗗𝘂𝗿𝗮𝗰̧𝗮̃𝗼 : ${duration}\n` +
+    `┃\n` +
+    `⌬ ✦ 𝗘𝘀𝗰𝗼𝗹𝗵𝗮 𝘂𝗺𝗮 𝗼𝗽𝗰̧𝗮̃𝗼 𝗮𝗯𝗮𝗶𝘅𝗼\n` +
+    `┃\n` +
+    `╚═━═━═━═━═━═━═━═━═᳀\n` +
+    `\n💫 𝗖𝗹𝗶𝗾𝘂𝗲 𝗻𝗼 𝗯𝗼𝘁𝗮̃𝗼 𝗱𝗲𝘀𝗲𝗷𝗮𝗱𝗼 💫`;
+
+  /*
+   * ========================================================
+   * BOTÕES TED
+   * ========================================================
+   *
+   * OS DOIS ficam dentro do mesmo Native Flow.
+   */
+
+  const buttons = [
     {
-      name: 'quick_reply',
+      name:
+        'quick_reply',
 
       buttonParamsJson:
         JSON.stringify({
           display_text:
-            '🎵 Baixar Áudio',
+            '🎵 Áudio (MP3)',
 
           id:
-            `${prefix}playaudio ${rememberButton(mediaUrl)}`
+            `play_mp3|${audioToken}`
         })
     },
 
     {
-      name: 'quick_reply',
+      name:
+        'quick_reply',
 
       buttonParamsJson:
         JSON.stringify({
           display_text:
-            '🎬 Baixar Vídeo',
+            '🎥 Vídeo (MP4)',
 
           id:
-            `${prefix}playvideo ${rememberButton(mediaUrl)}`
+            `play_mp4|${videoToken}`
         })
     }
   ];
 
-  const caption =
-    `🎵 *${title}*\n\n` +
-    `👤 *Artista/Canal:* ${author}\n` +
-    `⏱️ *Duração:* ${duration}\n` +
-    `👀 *Visualizações:* ${views}\n` +
-    `🌐 *Fonte:* ${platform}\n\n` +
-    `🌸 *Kyara*\n` +
-    `Selecione o formato desejado:`;
+  /*
+   * ========================================================
+   * THUMBNAIL
+   * ========================================================
+   *
+   * A thumbnail tem timeout.
+   * Se falhar, o CARD CONTINUA SEM IMAGEM.
+   */
 
-  let imageMessage =
-    null;
+  /*
+   * TED STYLE:
+   * O card não fica esperando thumbnail.
+   * Isso deixa o /play aparecer imediatamente.
+   */
+  const imageMessage = null;
 
-  if (thumbnail) {
-    try {
-      const response =
-        await fetch(
-          thumbnail
-        );
-
-      if (response.ok) {
-        const buffer =
-          Buffer.from(
-            await response.arrayBuffer()
-          );
-
-        if (buffer.length) {
-          const prepared =
-            await prepareWAMessageMedia(
-              {
-                image: buffer
-              },
-              {
-                upload:
-                  nazu.waUploadToServer
-              }
-            );
-
-          imageMessage =
-            prepared?.imageMessage ||
-            null;
-        }
-      }
-
-    } catch (error) {
-      console.warn(
-        `[PLAY KYARA] Thumbnail indisponível: ${error?.message || error}`
-      );
-    }
-  }
+    /*
+   * ========================================================
+   * INTERACTIVE MESSAGE
+   * ========================================================
+   *
+   * ESTA É A PARTE CRÍTICA DO TED.
+   */
 
   const interactiveMessage = {
+
     body: {
-      text: caption
+      text:
+        caption
     },
 
     footer: {
       text:
-        '🌸 Kyara • © Baki'
+        '🌸 Kyara • © 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠'
     },
 
     nativeFlowMessage: {
+
       buttons,
 
       messageParamsJson:
         '{}',
 
-      messageVersion: 1
+      messageVersion:
+        1
+
     }
+
   };
 
-  if (imageMessage) {
+  if (
+    imageMessage
+  ) {
+
     interactiveMessage.header = {
-      hasMediaAttachment: true,
+
+      hasMediaAttachment:
+        true,
+
       imageMessage
+
     };
+
   }
+
+  /*
+   * ========================================================
+   * WAMESSAGE
+   * ========================================================
+   *
+   * NÃO enviar interactiveMessage cru.
+   */
 
   const msg =
     generateWAMessageFromContent(
+
       from,
+
       {
+
         viewOnceMessage: {
+
           message: {
+
             messageContextInfo: {
-              deviceListMetadata: {},
-              deviceListMetadataVersion: 2
+
+              deviceListMetadata:
+                {},
+
+              deviceListMetadataVersion:
+                2
+
             },
 
             interactiveMessage
+
           }
+
         }
+
       },
+
       {
-        quoted: info,
+
+        quoted:
+          info,
+
         userJid:
-          nazu?.user?.id
+          kya?.user?.id
+
       }
+
     );
 
+  /*
+   * ========================================================
+   * NÓ TED / BIZ / NATIVE FLOW
+   * ========================================================
+   */
+
   const bizNode = {
-    tag: 'biz',
+
+    tag:
+      'biz',
 
     attrs: {
-      actual_actors: '2',
 
-      host_storage: '2',
+      actual_actors:
+        '2',
+
+      host_storage:
+        '2',
 
       privacy_mode_ts:
         String(
           Math.floor(
             Date.now() / 1000
-          ) -
-          77980457
+          ) - 77980457
         )
+
     },
 
     content: [
+
       {
-        tag: 'interactive',
+
+        tag:
+          'interactive',
 
         attrs: {
-          type: 'native_flow',
-          v: '1'
+
+          type:
+            'native_flow',
+
+          v:
+            '1'
+
         },
 
         content: [
+
           {
-            tag: 'native_flow',
+
+            tag:
+              'native_flow',
 
             attrs: {
-              v: '9',
-              name: 'mixed'
+
+              v:
+                '9',
+
+              name:
+                'mixed'
+
             }
+
           }
+
         ]
+
       },
 
       {
-        tag: 'quality_control',
+
+        tag:
+          'quality_control',
 
         attrs: {
+
           source_type:
             'third_party'
+
         }
+
       }
+
     ]
+
   };
 
+  const isGroup =
+    String(
+      from || ''
+    ).endsWith(
+      '@g.us'
+    );
+
   const additionalNodes =
-    from.endsWith('@g.us')
-      ? [bizNode]
+    isGroup
+
+      ? [
+          bizNode
+        ]
+
       : [
+
           {
-            tag: 'bot',
+
+            tag:
+              'bot',
 
             attrs: {
-              biz_bot: '1'
+
+              biz_bot:
+                '1'
+
             }
+
           },
 
           bizNode
+
         ];
 
-  await nazu.relayMessage(
-    from,
-    msg.message,
-    {
-      messageId:
-        msg.key.id,
-
-      additionalNodes
-    }
+  console.log(
+    `[PLAY] 🚀 Enviando Native Flow TED ${
+      isGroup
+        ? 'GRUPO'
+        : 'PRIVADO'
+    }...`
   );
 
-  // IMPORTANTE:
-  // sendCard tratou o comando com sucesso.
-  // O index.js precisa receber true para NÃO
-  // continuar até o "Comando não encontrado".
+  console.log(
+    '[PLAY] Botões:',
+    buttons.map(
+      button =>
+        JSON.parse(
+          button.buttonParamsJson
+        ).display_text
+    )
+  );
+
+  /*
+   * ========================================================
+   * ENVIO REAL
+   * ========================================================
+   */
+
+  console.log('[PLAY] Enviando Native Flow:', title);
+  try {
+    await kya.relayMessage(from, msg.message, { messageId: msg.key.id, additionalNodes });
+    console.log('[PLAY] Native Flow relay aceito:', title);
+  } catch (sendError) {
+    console.error('[PLAY] Native Flow falhou:', sendError?.stack || sendError);
+    await kya.sendMessage(from, { text: caption + '\n\n🔗 ' + mediaUrl }, { quoted: info });
+    console.log('[PLAY] Fallback textual enviado');
+    return true;
+  }
+
+  console.log(
+    `[PLAY] ✅ Card TED enviado: ${title}`
+  );
+
   return true;
 }
+
 
 async function handle(options = {}) {
   const {
@@ -1809,7 +2343,7 @@ async function handle(options = {}) {
     q,
     prefix = '/',
     from,
-    nazu,
+    kya,
     info,
     reply
   } = options;
@@ -1822,14 +2356,80 @@ async function handle(options = {}) {
   const query =
     String(q || '').trim();
 
-  const commandName =
+  const rawCommand =
     String(cmd || '')
       .trim()
       .toLowerCase();
 
+  const mediaAliases = {
+
+    play1:
+      'play',
+
+    play3:
+      'play',
+
+    play4:
+      'play',
+
+    play5:
+      'play',
+
+    playmix:
+      'play',
+
+    playvid2:
+      'playvideo',
+
+    ytsearch:
+      'play',
+
+    ytsearch2:
+      'play',
+
+    pesquisaytb:
+      'play',
+
+    tiktok2:
+      'tiktok',
+
+    tiktok3:
+      'tiktok',
+
+    tiktok4:
+      'tiktok',
+
+    tiktok5:
+      'tiktok',
+
+    instagram2:
+      'instagram',
+
+    instagramaudio:
+      'instagram',
+
+    facebook2:
+      'facebook',
+
+    twitteraudio:
+      'twitter',
+
+    twittervideo:
+      'twitter'
+
+  };
+
+  const commandName =
+    mediaAliases[
+      rawCommand
+    ] ||
+    rawCommand;
+
   const commands =
     new Set([
       'play2',
+      'play2audio',
+      'play2video',
       'play',
       'playaudio',
       'playvideo',
@@ -1847,8 +2447,14 @@ async function handle(options = {}) {
       'cosmos'
     ]);
 
+  const isPinterestCountCommand =
+    /^pinterest(?:[1-9]|1\d|20)$/.test(
+      String(commandName || '').toLowerCase()
+    );
+
   if (
-    !commands.has(commandName)
+    !commands.has(commandName) &&
+    !isPinterestCountCommand
   ) {
     return false;
   }
@@ -1870,7 +2476,7 @@ async function handle(options = {}) {
 
   if (commandName === 'cosmos') {
     return handleCosmos({
-      nazu,
+      kya,
       from,
       info,
       reply,
@@ -1891,13 +2497,39 @@ async function handle(options = {}) {
     });
   }
 
-  if (
-    commandName === 'pinterest' ||
-    commandName === 'pin'
-  ) {
-    return handlePinterest({
+  if (commandName === 'play2audio') {
+    return handlePlay2Audio({
       ...options,
       q: query
+    });
+  }
+
+  if (commandName === 'play2video') {
+    return handlePlay2Video({
+      ...options,
+      q: query
+    });
+  }
+
+  if (
+    commandName === 'pinterest' ||
+    isPinterestCountCommand ||
+    commandName === 'pin'
+  ) {
+    const requestedCount = isPinterestCountCommand
+      ? Math.max(
+          1,
+          Math.min(
+            20,
+            Number(String(commandName).slice(9)) || 5
+          )
+        )
+      : 5;
+
+    return handlePinterest({
+      ...options,
+      q: query,
+      requestedCount
     });
   }
 
@@ -1911,6 +2543,16 @@ async function handle(options = {}) {
     });
   }
 
+  // PLAY comum usa o mesmo cartão nativo aprimorado do PLAY2.
+  // A rota do Pinterest continua acima deste bloco.
+  if (commandName === 'play') {
+    return handlePlay2({
+      ...options,
+      q: query,
+
+    });
+  }
+
   /*
    * AUDIO.
    */
@@ -1921,162 +2563,130 @@ async function handle(options = {}) {
       resolveButton(query) ||
       query;
 
-    const url =
+    let url =
       isUrl(resolved)
         ? resolved
         : (
-            /^[A-Za-z0-9_-]{6,20}$/
-              .test(resolved)
+            /^[A-Za-z0-9_-]{11}$/.test(resolved)
               ? `https://www.youtube.com/watch?v=${resolved}`
               : ''
           );
 
     if (!url) {
-      await reply(
-        '❌ Envie uma URL ou ID do YouTube válido.'
+      const termo = String(resolved || '').trim();
+
+      console.log(
+        '[PLAY AUDIO] 🔎 Pesquisando no YouTube:',
+        termo
       );
 
-      return true;
+      await reply(
+        '🔎 Pesquisando no YouTube...'
+      );
+
+      try {
+        const resultado = await youtube.search(termo);
+
+        url =
+          resultado?.data?.url ||
+          resultado?.data?.sourceUrl ||
+          (
+            resultado?.data?.videoId
+              ? `https://www.youtube.com/watch?v=${resultado.data.videoId}`
+              : ''
+          );
+
+        if (url) {
+          console.log(
+            '[PLAY AUDIO] ✅ Encontrado:',
+            resultado?.data?.title || url
+          );
+        }
+      } catch (error) {
+        console.error(
+          '[PLAY AUDIO] ❌ Pesquisa falhou:',
+          error?.message || error
+        );
+      }
+
+      if (!url) {
+        await reply(
+          '❌ Não encontrei esse vídeo no YouTube. Tente outro nome.'
+        );
+        return true;
+      }
     }
 
-    /*
-     * ========================================================
-     * ⚡ PLAY ULTRA FAST
-     * ========================================================
-     *
-     * YouTube:
-     *   NÃO baixa MP3.
-     *   NÃO usa FFmpeg.
-     *   NÃO cria Buffer gigante.
-     *   NÃO grava arquivo temporário.
-     *
-     * O Baileys recebe diretamente a URL do melhor
-     * stream de áudio disponível.
-     */
+    try {
+      const started =
+        Date.now();
 
-          if (
-        platformOf(url) === 'YouTube'
-      ) {
-        try {
-          const started = Date.now();
+      console.log(
+        '[PLAY AUDIO] 🎵 youtube.mp3()'
+      );
 
-          console.log(
-            '[PLAY VOICE] 📩 Clique recebido'
-          );
+      const dlRes =
+        await youtube.mp3(
+          url,
+          null,
+          { bitrate: '0', returnFile: true }
+        );
 
-          try {
-            await nazu.sendMessage(
-              from,
-              {
-                text:
-                  '🎙️ Preparando áudio, aguarde...'
-              },
-              {
-                quoted: info
-              }
-            );
-          } catch {}
+      if (!dlRes?.ok) {
+        throw new Error(
+          dlRes?.msg ||
+          'Download de áudio falhou.'
+        );
+      }
 
-          if (
-            typeof youtube.prefetchVoiceFile !==
-            'function'
-          ) {
-            throw new Error(
-              'prefetchVoiceFile não está disponível no youtube.js.'
-            );
-          }
+      if (!dlRes.buffer && !dlRes.path) {
+        throw new Error(
+          'O downloader não retornou o áudio.'
+        );
+      }
 
-          const voiceFile =
-            await youtube.prefetchVoiceFile(url);
-
-          console.log(
-            `[PLAY VOICE] ⚡ Arquivo pronto em ${Date.now() - started}ms`
-          );
-
-          console.log(
-            '[PLAY VOICE] 📤 Enviando mensagem de voz...'
-          );
-
-          await nazu.sendMessage(
-            from,
-            {
-              audio: {
-                url: voiceFile
-              },
-              mimetype:
-                'audio/ogg; codecs=opus',
-              ptt: true
-            },
-            {
-              quoted: info
-            }
-          );
-
-          console.log(
-            `[PLAY VOICE] ✅ Voz enviada em ${Date.now() - started}ms`
-          );
-
-          return true;
-
-        } catch (error) {
-          console.warn(
-            '[PLAY VOICE] ❌ Falha:',
-            error?.message || error
-          );
-
-          throw error;
+      try {
+        await kya.sendMessage(
+          from,
+          {
+            audio: dlRes.path
+              ? { url: dlRes.path }
+              : dlRes.buffer,
+            mimetype: dlRes.mimetype || 'audio/mpeg',
+            fileName: dlRes.filename || 'KYARA-PLAY.mp3',
+            ptt: false
+          },
+          { quoted: info }
+        );
+      } finally {
+        if (typeof dlRes.cleanup === 'function') {
+          dlRes.cleanup();
         }
       }
 
-    /*
-     * FALLBACK UNIVERSAL
-     *
-     * Usado para plataformas que não sejam YouTube
-     * ou caso o stream direto falhe.
-     */
-
-    await reply(
-      '🎵 *Baixando áudio na melhor qualidade disponível...*'
-    );
-
-    const result =
-      await downloadAudio(
-        url
+      console.log(
+        `[PLAY AUDIO] ✅ enviado em ${Date.now() - started}ms`
       );
 
-    if (
-      !result?.ok
-    ) {
+      return true;
+
+    } catch (error) {
+
+      console.error(
+        '[PLAY AUDIO] ❌',
+        error?.message ||
+        error
+      );
+
       await reply(
-        `❌ ${
-          result?.msg ||
-          'Falha no áudio.'
+        `❌ Não consegui baixar o áudio.\n\n${
+          error?.message ||
+          'Erro desconhecido.'
         }`
       );
 
       return true;
     }
-
-    await nazu.sendMessage(
-      from,
-      {
-        audio:
-          result.buffer,
-
-        mimetype:
-          result.mimetype ||
-          'audio/mpeg',
-
-        fileName:
-          result.filename ||
-          'audio.mp3'
-      },
-      {
-        quoted: info
-      }
-    );
-
-    return true;
   }
 
   /*
@@ -2093,187 +2703,193 @@ async function handle(options = {}) {
       resolveButton(query) ||
       query;
 
-    const url =
+    let url =
       isUrl(resolved)
         ? resolved
         : (
-            /^[A-Za-z0-9_-]{6,20}$/
-              .test(resolved)
+            /^[A-Za-z0-9_-]{11}$/.test(resolved)
               ? `https://www.youtube.com/watch?v=${resolved}`
               : ''
           );
 
     if (!url) {
-      await reply(
-        '❌ Envie uma URL ou ID do YouTube válido.'
+      const termo = String(resolved || '').trim();
+
+      console.log(
+        '[PLAY VIDEO] 🔎 Pesquisando no YouTube:',
+        termo
       );
 
-      return true;
-    }
+      await reply(
+        '🔎 Pesquisando no YouTube...'
+      );
 
-    /*
-     * ========================================================
-     * ⚡ PLAY VIDEO ULTRA FAST
-     * ========================================================
-     *
-     * Não usamos downloadVideo().
-     *
-     * O vídeo já pode estar sendo preparado pelo prefetch
-     * iniciado quando o card foi criado.
-     *
-     * Fluxo:
-     *
-     * YouTube
-     *   ↓
-     * URL MP4 muxada
-     *   ↓
-     * Baileys
-     *   ↓
-     * WhatsApp
-     *
-     * Sem:
-     *   - download completo
-     *   - Buffer gigante
-     *   - arquivo temporário
-     *   - FFmpeg
-     */
-
-    if (
-      platformOf(url) === 'YouTube' &&
-      typeof youtube.streamVideo === 'function'
-    ) {
       try {
-        console.log(
-          '[PLAY VIDEO ULTRA] ⚡ Obtendo stream direto...'
-        );
+        const resultado = await youtube.search(termo);
 
-        const stream =
-          await youtube.streamVideo(url);
+        url =
+          resultado?.data?.url ||
+          resultado?.data?.sourceUrl ||
+          (
+            resultado?.data?.videoId
+              ? `https://www.youtube.com/watch?v=${resultado.data.videoId}`
+              : ''
+          );
 
-        if (
-          !stream?.url ||
-          !/^https?:\/\//i.test(stream.url)
-        ) {
-          throw new Error(
-            stream?.msg ||
-            'Stream de vídeo não encontrado.'
+        if (url) {
+          console.log(
+            '[PLAY VIDEO] ✅ Encontrado:',
+            resultado?.data?.title || url
           );
         }
-
-        console.log(
-          '[PLAY VIDEO ULTRA] ⚡ Stream pronto'
-        );
-
-        await nazu.sendMessage(
-          from,
-          {
-            video: {
-              url:
-                stream.url
-            },
-
-            mimetype:
-              stream.mimetype ||
-              'video/mp4',
-
-            fileName:
-              'video.mp4'
-          },
-          {
-            quoted: info
-          }
-        );
-
-        console.log(
-          '[PLAY VIDEO ULTRA] ✅ Vídeo enviado diretamente'
-        );
-
-        return true;
-
       } catch (error) {
-        console.warn(
-          '[PLAY VIDEO ULTRA] Stream direto falhou:',
-          error?.message ||
-          error
+        console.error(
+          '[PLAY VIDEO] ❌ Pesquisa falhou:',
+          error?.message || error
         );
+      }
 
-        /*
-         * Só cai no método antigo se a URL direta realmente
-         * falhar. O caminho normal não passa por downloadVideo.
-         */
+      if (!url) {
+        await reply(
+          '❌ Não encontrei esse vídeo no YouTube. Tente outro nome.'
+        );
+        return true;
       }
     }
 
-    await reply(
-      '🎬 *Preparando vídeo...*'
-    );
+    try {
+      const started =
+        Date.now();
 
-    const result =
-      await downloadVideo(
-        url
+      console.log(
+        '[PLAY VIDEO] 🎬 youtube.mp4()'
       );
 
-    if (
-      !result?.ok
-    ) {
+      let streamResult = null;
+
+      if (typeof youtube.streamVideo === 'function') {
+        try {
+          streamResult = await youtube.streamVideo(url);
+        } catch (streamError) {
+          console.error(
+            '[PLAY VIDEO] ❌ Stream direto:',
+            streamError?.message || streamError
+          );
+        }
+      }
+
+      if (!streamResult?.ok || !streamResult.url) {
+        const streamReason =
+          streamResult?.msg ||
+          'O stream direto não está disponível.';
+
+        console.warn(
+          '[PLAY VIDEO] Stream falhou; tentando MP4 360p:',
+          streamReason
+        );
+
+        if (typeof youtube.mp4 !== 'function') {
+          throw new Error(streamReason);
+        }
+
+        const fallbackDownload = await youtube.mp4(url, 360);
+
+        if (
+          !fallbackDownload?.ok ||
+          !fallbackDownload?.buffer
+        ) {
+          throw new Error(
+            fallbackDownload?.msg ||
+            streamReason ||
+            'Não foi possível obter o vídeo em MP4.'
+          );
+        }
+
+        try {
+          await kya.sendMessage(
+            from,
+            {
+              video: fallbackDownload.buffer,
+              mimetype: 'video/mp4',
+              fileName:
+                fallbackDownload.filename ||
+                'KYARA-PLAY.mp4'
+            },
+            { quoted: info }
+          );
+        } finally {
+          if (typeof fallbackDownload.cleanup === 'function') {
+            fallbackDownload.cleanup();
+          }
+        }
+
+        console.log(
+          '[PLAY VIDEO] MP4 alternativo enviado em ' +
+          (Date.now() - started) + 'ms'
+        );
+
+        return true;
+      }
+
+      console.log(
+        streamResult.local
+          ? '[PLAY VIDEO] 📁 Enviando arquivo local.'
+          : '[PLAY VIDEO] ⚡ Enviando URL direta.'
+      );
+
+      await kya.sendMessage(
+        from,
+        {
+          video: {
+            url: streamResult.url
+          },
+
+          mimetype:
+            streamResult.mimetype ||
+            'video/mp4',
+
+          fileName: (() => {
+            const ext = String(streamResult.url)
+              .split(/[?#]/)[0]
+              .split('.')
+              .pop()
+              .toLowerCase();
+
+            return streamResult.local &&
+              ['mp4', 'm4v', 'webm', 'mkv'].includes(ext)
+                ? `KYARA-PLAY.${ext}`
+                : 'KYARA-PLAY.mp4';
+          })()
+        },
+        {
+          quoted:
+            info
+        }
+      );
+
+      console.log(
+        `[PLAY VIDEO] ✅ enviado em ${Date.now() - started}ms`
+      );
+
+      return true;
+
+    } catch (error) {
+
+      console.error(
+        '[PLAY VIDEO] ❌',
+        error?.message ||
+        error
+      );
+
       await reply(
-        `❌ ${
-          result?.msg ||
-          'Falha no vídeo.'
+        `❌ Não consegui preparar o vídeo.\n\n${
+          error?.message ||
+          'Erro desconhecido.'
         }`
       );
 
       return true;
     }
-
-    if (
-      result.buffer
-    ) {
-      await nazu.sendMessage(
-        from,
-        {
-          video:
-            result.buffer,
-
-          mimetype:
-            result.mimetype ||
-            'video/mp4',
-
-          fileName:
-            result.filename ||
-            'video.mp4'
-        },
-        {
-          quoted: info
-        }
-      );
-
-    } else if (
-      result.remoteUrl
-    ) {
-      await nazu.sendMessage(
-        from,
-        {
-          video: {
-            url:
-              result.remoteUrl
-          },
-
-          mimetype:
-            result.mimetype ||
-            'video/mp4',
-
-          fileName:
-            result.filename ||
-            'video.mp4'
-        },
-        {
-          quoted: info
-        }
-      );
-    }
-
-    return true;
   }
 
   const platform =
@@ -2336,6 +2952,22 @@ async function handle(options = {}) {
       return true;
     }
 
+    const selectedPlatform =
+      cmd === 'play'
+        ? (platformOf(query) || 'Mídia')
+        : platform;
+
+    if (selectedPlatform !== 'YouTube') {
+      return sendPlatformDirectDownload({
+        kya,
+        from,
+        info,
+        reply,
+        platform: selectedPlatform,
+        url: query
+      });
+    }
+
     const meta =
       await getInfo(query);
 
@@ -2351,7 +2983,7 @@ async function handle(options = {}) {
     }
 
     return sendCard({
-      nazu,
+      kya,
       from,
       info,
       prefix,
@@ -2376,8 +3008,40 @@ async function handle(options = {}) {
   /*
    * TEXTO:
    * pesquisa.
+   *
+   * O #play agora sempre mostra imediatamente
+   * que recebeu o comando.
    */
   if (cmd !== 'play') {
+    if (
+      platform !== 'YouTube' &&
+      platform !== 'Pinterest'
+    ) {
+      const urls = await searchMany(
+        platform,
+        query,
+        10
+      );
+
+      if (!urls.length) {
+        await reply(
+          `❌ Não encontrei resultados públicos de ${platform} para *${query}*.`
+        );
+
+        return true;
+      }
+
+      return sendPlatformSearchAlbum({
+        kya,
+        from,
+        info,
+        reply,
+        platform,
+        query,
+        urls
+      });
+    }
+
     await reply(
       `🔎 *Pesquisando no ${platform}...*`
     );
@@ -2401,7 +3065,7 @@ async function handle(options = {}) {
   }
 
   return sendCard({
-    nazu,
+    kya,
     from,
     info,
     prefix,

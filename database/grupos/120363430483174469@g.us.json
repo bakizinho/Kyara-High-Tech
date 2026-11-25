@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-08T01:18:39.347Z",
+  "groupName": "",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "87244476010549@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "꧁𓊈𒆜༒ K̷ʏ̷ᴀ̷ʀ̷ᴀ̷ ༒𒆜𓊉꧂",
+      "firstSeen": "2026-09-08T01:18:39.392Z",
+      "lastActivity": "2026-09-08T13:51:25.757Z"
+    },
+    {
+      "id": "273821428899949@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Ryan Machado Pereira",
+      "firstSeen": "2026-09-08T01:20:14.841Z",
+      "lastActivity": "2026-09-08T13:57:27.602Z"
+    }
+  ]
+}

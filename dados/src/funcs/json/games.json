@@ -137,7 +137,7 @@
     },
     "forte": {
       "image": {
-        "url": "https://animenew.com.br/wp-content/uploads/2021/12/Baki-Biscuit-Olivia.jpg"
+        "url": "https://animenew.com.br/wp-content/uploads/2021/12/𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠-Biscuit-Olivia.jpg"
       }
     },
     "fraco": {
@@ -244,7 +244,7 @@
     },
     "rankforte": {
       "image": {
-        "url": "https://animenew.com.br/wp-content/uploads/2021/12/Baki-Biscuit-Olivia.jpg"
+        "url": "https://animenew.com.br/wp-content/uploads/2021/12/𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠-Biscuit-Olivia.jpg"
       }
     },
     "rankfraco": {
@@ -286,7 +286,7 @@
   "games2": {
     "chute": {
       "video": {
-        "url": "https://files.catbox.moe/7w071w.mp4"
+        "url": "https://nekos.best/api/v2/kick"
       }
     },
     "chutar": {
@@ -341,42 +341,50 @@
     },
     "mata": {
       "video": {
-        "url": "https://nekos.best/api/v2/punch"
+        "url": "https://nekos.best/api/v2/yeet"
       }
     },
     "sexo": {
-      "video": {
-        "url": "https://raw.githubusercontent.com/nazuninha/uploads/main/videos/1747546236161_iyddq6.mp4"
-      }
+      "video": [
+        "https://media1.tenor.com/m/AsXMyjtnseUAAAAd/gray-juvia.gif",
+        "https://media1.tenor.com/m/pfulCitPP68AAAAd/mikavampire-mika.gif",
+        "https://media1.tenor.com/m/uWmxZd99YTkAAAAd/dimatheduchess-dima.gif",
+        "https://media1.tenor.com/m/aRU_0iKCl14AAAAd/vnc-vanitas.gif",
+        "https://media1.tenor.com/m/lgYouOcDUtIAAAAd/kawaii-anime.gif",
+        "https://media1.tenor.com/m/j8qmePpP4PEAAAAd/shylily-vtuber.gif",
+        "https://media1.tenor.com/m/O_cuRlq_5_YAAAAd/shylily-hot.gif",
+        "https://media1.tenor.com/m/8RNv7Ip6GlAAAAAd/squirm-thighs.gif",
+        "https://media1.tenor.com/m/KAugZZt_NTwAAAAd/rikka-chuunibyou.gif"
+      ]
     },
     "matar": {
       "video": {
-        "url": "https://nekos.best/api/v2/punch"
+        "url": "https://nekos.best/api/v2/yeet"
       }
     },
     "tapar": {
       "video": {
-        "url": "https://files.catbox.moe/iahlh5.mp4"
+        "url": "https://nekos.best/api/v2/slap"
       }
     },
     "goza": {
       "video": {
-        "url": "https://nekos.best/api/v2/happy"
+        "url": "https://nekos.best/api/v2/blush"
       }
     },
     "gozar": {
       "video": {
-        "url": "https://nekos.best/api/v2/happy"
+        "url": "https://nekos.best/api/v2/blush"
       }
     },
     "mamar": {
       "video": {
-        "url": "https://nekos.best/api/v2/cuddle"
+        "url": "https://nekos.best/api/v2/blush"
       }
     },
     "mamada": {
       "video": {
-        "url": "https://nekos.best/api/v2/cuddle"
+        "url": "https://nekos.best/api/v2/blush"
       }
     },
     "cafune": {
@@ -396,22 +404,32 @@
     },
     "lamber": {
       "video": {
-        "url": "https://nekos.best/api/v2/lick"
+        "url": "https://nekos.best/api/v2/kiss"
       }
     },
     "lambida": {
       "video": {
-        "url": "https://nekos.best/api/v2/lick"
+        "url": "https://nekos.best/api/v2/kiss"
       }
     },
     "explodir": {
       "video": {
-        "url": "https://nekos.best/api/v2/punch"
+        "url": "https://nekos.best/api/v2/happy"
       }
     },
     "tomate": {
       "video": {
-        "url": "https://nekos.best/api/v2/slap"
+        "url": "https://nekos.best/api/v2/happy"
+      }
+    },
+    "chupao": {
+      "video": {
+        "url": "https://nekos.best/api/v2/kiss"
+      }
+    },
+    "surubao": {
+      "video": {
+        "url": "https://nekos.best/api/v2/dance"
       }
     }
   }

@@ -80,7 +80,7 @@ async function gerarbratvid(query, bg, text_color, bpm, blur) {
         if (cached) return { ok: true, ...cached, cached: true };
 
         // =====================================================
-        // BRATVID LOCAL — NÃO DEPENDE DA VEX API
+        // BRATVID LOCAL — NÃO DEPENDE DA 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 API
         // =====================================================
 
         const params = new URLSearchParams({

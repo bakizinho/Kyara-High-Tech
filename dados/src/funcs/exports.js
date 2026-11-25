@@ -99,6 +99,7 @@ async function loadModules() {
             info: youtubeMod.info,
             mp3: youtubeMod.mp3,
             mp4: youtubeMod.mp4,
+            streamVideo: youtubeMod.streamVideo,
             ytmp3: youtubeMod.ytmp3 ?? youtubeMod.mp3
         };
 

@@ -106,6 +106,8 @@ if (!globalThis.__KYARA_GLOBAL_CONSOLE_FILTER_V3__) {
 }
 
 
+import * as kyaraTerminal from './kyara-terminal.js';
+
 import {
   getConfiguredBotName,
   getConfiguredPrefix,
@@ -134,6 +136,53 @@ import {
     waitForActiveSocket
 } from './utils/activeSocket.js';
 import { gerarAudioLer } from './funcs/tts/ler.js';
+import { gerarAudioKyara, listarVozesKyara, statusKyaraVoice } from './funcs/tts/kyaraVoice.js';
+
+import {
+  readFile as readFileKyaraVoiceConfig,
+  writeFile as writeFileKyaraVoiceConfig
+} from 'node:fs/promises';
+
+const KYARA_VOICE_CONFIG_URL = new URL('./config.json', import.meta.url);
+
+const KYARA_VOICE_IDS = new Set([
+  'frieren', 'kyara', 'feminina', 'isadora', 'beatriz',
+  'sukuna', 'gojo', 'vegeta', 'naruto', 'masculina'
+]);
+
+async function lerVozAssistenteKyara() {
+  try {
+    const config = JSON.parse(
+      await readFileKyaraVoiceConfig(KYARA_VOICE_CONFIG_URL, 'utf8')
+    );
+    const voz = String(
+      config.vozAssistente || config.vozKyara || 'frieren'
+    ).trim().toLowerCase();
+
+    return KYARA_VOICE_IDS.has(voz) ? voz : 'frieren';
+  } catch {
+    return 'frieren';
+  }
+}
+
+async function salvarVozAssistenteKyara(voz) {
+  if (!KYARA_VOICE_IDS.has(voz)) {
+    throw new Error('Perfil de voz inválido: ' + voz);
+  }
+
+  const config = JSON.parse(
+    await readFileKyaraVoiceConfig(KYARA_VOICE_CONFIG_URL, 'utf8')
+  );
+
+  config.vozAssistente = voz;
+
+  await writeFileKyaraVoiceConfig(
+    KYARA_VOICE_CONFIG_URL,
+    JSON.stringify(config, null, 2) + '\n',
+    'utf8'
+  );
+}
+
 import {
   addWeeklyXP,
   getWeeklyRanking,
@@ -144,12 +193,14 @@ import {
 } from './features/weeklyLevel.js';
 
 import {
-  searchThemeImages,
-  sendThemeStickers
+  sendThemeStickers,
+  sendAnimatedThemeStickers
 } from './features/themeStickers.js';
 import { handleKyaraSpecialCommand } from './features/kyaraSpecialCommands.js';
+import { loadAntiDeletePvSettings, saveAntiDeletePvSettings, normalizeAntiDeletePvNumber, resolveAntiDeletePvSubBot, handleAntiDeletePvRevocation } from './features/antiDeletePv.js';
 
 import {
+  handle as handleKyaraMediaCommand,
   resolveButton
 } from './features/kyaraMediaCommands.js';
 import { isLevelingDisabled } from './features/levelingControl.js';
@@ -168,7 +219,9 @@ import * as kyaraCustomCommandCreator from './features/kyaraCustomCommandCreator
 
 import path from 'path';
 import { kyaraCore } from './core/kyara.js';
-import { getMenuMode, isInteractiveMenu, isNormalMenu } from './menus/menu-mode.js';
+import { getMenuMode, setMenuMode, isInteractiveMenu, isNormalMenu } from './menus/menu-mode.js';
+import { areMenuButtonsEnabled, setMenuButtonsEnabled } from './menus/categorias/sistema/menu-button-state.js';
+import { MENU_FONT_ALIASES } from './menus/menu-system.js';
 import { getMenuMedia } from './core/menuAdaptativo/menu-media.js';
 function patchBaileysNewsletterFollow() {
   try {
@@ -225,7 +278,7 @@ function patchBaileysNewsletterFollow() {
             }`;
 
     if (!oldPattern.test(content)) {
-      console.log('[PATCH] Padrão antigo de newsletterFollow não encontrado.');
+      console.log('[PATCH] newsletterFollow: nenhuma alteração necessária.');
       return false;
     }
 
@@ -246,6 +299,18 @@ if (patchedContent === content) {
 }
 
 async function kyaraPrepararGif(videoUrl) {
+  const kyaraGifFetch = (url, options = {}) => {
+    const headers = new Headers(options.headers || {});
+    headers.set(
+      'User-Agent',
+      'KYARA-WhatsApp-Bot (https://github.com/bakikyara-jpg/Bot-kyara)'
+    );
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json, image/*, */*');
+    }
+    return fetch(url, { ...options, headers });
+  };
+
   const fsLocal = await import('fs');
   const pathLocal = await import('path');
   const osLocal = await import('os');
@@ -262,56 +327,296 @@ async function kyaraPrepararGif(videoUrl) {
     pathLocal.join(osLocal.tmpdir(), 'kyara-gif-')
   );
 
-  const inputFile = pathLocal.join(tempDir, 'entrada.mp4');
   const outputFile = pathLocal.join(tempDir, 'saida.mp4');
 
   try {
-    const response = await fetch(videoUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0'
-      }
-    });
+    const urls = [String(videoUrl)];
 
-    if (!response.ok) {
+    if (/^http:\/\//i.test(String(videoUrl))) {
+      urls.push(String(videoUrl).replace(/^http:\/\//i, 'https://'));
+    }
+
+    let mediaBuffer = null;
+    let contentType = '';
+    let usedUrl = '';
+    let lastError = null;
+
+    for (const currentUrl of urls) {
+      try {
+        console.log('[GIF] Baixando:', currentUrl);
+
+        const response = await kyaraGifFetch(currentUrl, {
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Android 14; Mobile) AppleWebKit/537.36 Chrome/131 Mobile Safari/537.36',
+            'Accept': 'video/*,image/gif,image/webp,application/octet-stream;q=0.9,*/*;q=0.5',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            'HTTP ' + response.status
+          );
+        }
+
+        const type = String(
+          response.headers.get('content-type') || ''
+        ).toLowerCase();
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        if (!buffer.length) {
+          throw new Error('Resposta vazia');
+        }
+
+        const preview = buffer
+          .subarray(0, Math.min(buffer.length, 4096))
+          .toString('utf8')
+          .replace(/\0/g, ' ')
+          .trimStart()
+          .toLowerCase();
+
+        const pareceJson =
+          type.includes('application/json') ||
+          preview.startsWith('{') ||
+          preview.startsWith('[');
+
+        if (pareceJson) {
+          let dadosApi;
+
+          try {
+            dadosApi = JSON.parse(buffer.toString('utf8'));
+          } catch {
+            throw new Error('A API retornou JSON inválido');
+          }
+
+          const mediaUrl =
+            (Array.isArray(dadosApi?.results)
+              ? dadosApi.results.find(
+                  item => typeof item?.url === 'string'
+                )?.url
+              : null) ||
+            (typeof dadosApi?.url === 'string'
+              ? dadosApi.url
+              : null);
+
+          if (!mediaUrl) {
+            throw new Error(
+              'JSON recebido, mas não contém URL de mídia'
+            );
+          }
+
+          let destino;
+          try {
+            destino = new URL(mediaUrl, currentUrl);
+          } catch {
+            throw new Error('URL de mídia inválida');
+          }
+
+          if (!['https:', 'http:'].includes(destino.protocol)) {
+            throw new Error('Protocolo de mídia não permitido');
+          }
+
+          const destinoUrl = destino.href;
+          const jaExiste = urls.some(url => {
+            try {
+              return new URL(url).href === destinoUrl;
+            } catch {
+              return false;
+            }
+          });
+
+          if (jaExiste) {
+            throw new Error('URL de mídia repetida');
+          }
+
+          urls.push(destinoUrl);
+          console.log(
+            '[GIF] URL da mídia extraída do JSON:',
+            destinoUrl
+          );
+
+          continue;
+        }
+
+        const pareceHtml =
+          type.includes('text/html') ||
+          type.includes('application/xhtml+xml') ||
+          type.includes('application/json') ||
+          preview.startsWith('<!doctype') ||
+          preview.startsWith('<html') ||
+          preview.startsWith('<?xml') ||
+          preview.startsWith('<error');
+
+        if (pareceHtml) {
+          throw new Error(
+            'Servidor retornou conteúdo que não é mídia (' +
+            (type || 'tipo desconhecido') +
+            ')'
+          );
+        }
+
+        const assinaturaMp4 =
+          buffer.length >= 12 &&
+          buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+
+        const assinaturaGif =
+          buffer.subarray(0, 6).toString('ascii') === 'GIF87a' ||
+          buffer.subarray(0, 6).toString('ascii') === 'GIF89a';
+
+        const assinaturaWebm =
+          buffer.length >= 4 &&
+          buffer[0] === 0x1a &&
+          buffer[1] === 0x45 &&
+          buffer[2] === 0xdf &&
+          buffer[3] === 0xa3;
+
+        const assinaturaWebp =
+          buffer.length >= 12 &&
+          buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+          buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+
+        const assinaturaAvi =
+          buffer.length >= 12 &&
+          buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+          buffer.subarray(8, 12).toString('ascii') === 'AVI ';
+
+        const tipoVideo =
+          type.startsWith('video/') ||
+          type === 'application/octet-stream' ||
+          type === 'binary/octet-stream';
+
+        if (
+          !assinaturaMp4 &&
+          !assinaturaGif &&
+          !assinaturaWebm &&
+          !assinaturaWebp &&
+          !assinaturaAvi &&
+          !tipoVideo
+        ) {
+          throw new Error(
+            'Resposta sem assinatura reconhecida de mídia; content-type=' +
+            (type || 'desconhecido') +
+            ', bytes=' +
+            buffer.length
+          );
+        }
+
+        mediaBuffer = buffer;
+        contentType = type;
+        usedUrl = currentUrl;
+
+        console.log(
+          '[GIF] Download OK:',
+          buffer.length,
+          'bytes |',
+          type || 'tipo desconhecido'
+        );
+
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn(
+          '[GIF] Tentativa falhou:',
+          currentUrl,
+          '→',
+          error.message
+        );
+      }
+    }
+
+    if (!mediaBuffer) {
       throw new Error(
-        'Falha ao baixar GIF: HTTP ' + response.status
+        'Não foi possível obter uma mídia válida. ' +
+        (lastError?.message || '')
       );
     }
 
-    const arrayBuffer = await response.arrayBuffer();
+    let inputExt = '.bin';
+
+    if (
+      contentType.includes('mp4') ||
+      (mediaBuffer.length >= 12 &&
+       mediaBuffer.subarray(4, 8).toString('ascii') === 'ftyp')
+    ) {
+      inputExt = '.mp4';
+    } else if (
+      contentType.includes('webm') ||
+      (
+        mediaBuffer.length >= 4 &&
+        mediaBuffer[0] === 0x1a &&
+        mediaBuffer[1] === 0x45 &&
+        mediaBuffer[2] === 0xdf &&
+        mediaBuffer[3] === 0xa3
+      )
+    ) {
+      inputExt = '.webm';
+    } else if (
+      contentType.includes('gif') ||
+      mediaBuffer.subarray(0, 6).toString('ascii') === 'GIF87a' ||
+      mediaBuffer.subarray(0, 6).toString('ascii') === 'GIF89a'
+    ) {
+      inputExt = '.gif';
+    } else if (
+      contentType.includes('webp') ||
+      (
+        mediaBuffer.length >= 12 &&
+        mediaBuffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        mediaBuffer.subarray(8, 12).toString('ascii') === 'WEBP'
+      )
+    ) {
+      inputExt = '.webp';
+    } else if (
+      mediaBuffer.length >= 12 &&
+      mediaBuffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      mediaBuffer.subarray(8, 12).toString('ascii') === 'AVI '
+    ) {
+      inputExt = '.avi';
+    }
+
+    const inputFile = pathLocal.join(
+      tempDir,
+      'entrada' + inputExt
+    );
 
     fsLocal.writeFileSync(
       inputFile,
-      Buffer.from(arrayBuffer)
+      mediaBuffer
+    );
+
+    console.log(
+      '[GIF] Preparando FFmpeg:',
+      inputExt,
+      '|',
+      usedUrl
     );
 
     await execFileLocal('ffmpeg', [
       '-hide_banner',
       '-loglevel', 'error',
       '-y',
+
       '-i', inputFile,
 
-      // Remove qualquer áudio.
       '-an',
 
-      // Codec amplamente compatível com WhatsApp.
       '-c:v', 'libx264',
       '-profile:v', 'baseline',
       '-level', '3.0',
 
-      // Formato de pixel compatível.
       '-pix_fmt', 'yuv420p',
 
-      // Mantém animação suave sem exagerar no tamanho.
       '-vf',
       'fps=15,scale=trunc(iw/2)*2:trunc(ih/2)*2',
 
-      // Otimiza o MP4 para reprodução.
       '-movflags', '+faststart',
 
       outputFile
     ], {
-      timeout: 120000
+      timeout: 120000,
+      maxBuffer: 1024 * 1024 * 4
     });
 
     if (!fsLocal.existsSync(outputFile)) {
@@ -328,6 +633,12 @@ async function kyaraPrepararGif(videoUrl) {
         'Arquivo GIF convertido está vazio'
       );
     }
+
+    console.log(
+      '[GIF] Conversão concluída:',
+      finalBuffer.length,
+      'bytes'
+    );
 
     return finalBuffer;
 
@@ -347,260 +658,202 @@ patchBaileysNewsletterFollow();
 // 🎵 PLAY KYARA — RESULTADO COM CAPA + BOTÕES
 // ================================================================
 
+
 async function enviarResultadoPlayKyara({
-  nazu,
+  kya,
   from,
   info,
   video,
-  prefix = '/'
+  prefix = '/',
+  searchTerm = ''
 }) {
   const data = video?.data;
 
-  if (!data?.url && !data?.sourceUrl) {
+  if (!data || (!data.url && !data.sourceUrl && !data.videoId)) {
     throw new Error('Resultado de mídia incompleto.');
   }
 
-  // Para pesquisa no YouTube usamos o videoId.
-  // Para uma URL externa usamos a URL original.
-  const mediaUrl =
-    data.sourceUrl ||
-    data.url ||
-    (data.videoId
-      ? `https://www.youtube.com/watch?v=${data.videoId}`
-      : '');
+  const mediaUrl = data.sourceUrl || data.url ||
+    ('https://www.youtube.com/watch?v=' + data.videoId);
 
-  if (!mediaUrl) {
-    throw new Error('URL da mídia não encontrada.');
+  const videoId = String(data.videoId || '').trim() ||
+    ((mediaUrl.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/) || [])[1] || '');
+
+  const title = String(data.title || 'Música').slice(0, 180);
+  const author = String(data.author?.name || data.author || 'YouTube').slice(0, 100);
+  const duration = String(data.timestamp || 'Desconhecida');
+  const views = Number(data.views || 0).toLocaleString('pt-BR');
+
+  const caption =
+    '╭⪩⪨━━━━━━━━━━━━━━━━━━━━⪩⪨╮\n' +
+    '        ⚡ 𝑲𝒀𝑨𝑹𝑨 𝑫𝑳 ⚡\n' +
+    '╰⪩⪨━━━━━━━━━━━━━━━━━━━━⪩⪨╯\n\n' +
+    '『 🎵 𝑻í𝒕𝒖𝒍𝒐 』\n╰➤ ' + title + '\n\n' +
+    '『 👤 𝑪𝒂𝒏𝒂𝒍 』\n╰➤ ' + author + '\n\n' +
+    '『 ⏳ 𝑫𝒖𝒓𝒂çã𝒐 』\n╰➤ ' + duration + '\n\n' +
+    '『 👁️ 𝑽𝒊𝒔𝒖𝒂𝒍𝒊𝒛𝒂çõ𝒆𝒔 』\n╰➤ ' + views + '\n\n' +
+    '⟢ Selecione uma opção abaixo ⟣';
+
+  // Preparar capa sem deixar a pesquisa travada.
+  let imageMessage = null;
+  const thumbnailUrl = data.thumbnail ||
+    (videoId ? 'https://i.ytimg.com/vi/' + videoId + '/hqdefault.jpg' : '');
+
+  if (thumbnailUrl && typeof kya?.waUploadToServer === 'function') {
+    let coverTimer;
+
+    try {
+      const prepared = await Promise.race([
+        prepareWAMessageMedia(
+          { image: { url: thumbnailUrl } },
+          { upload: kya.waUploadToServer }
+        ),
+        new Promise(resolve => {
+          coverTimer = setTimeout(() => resolve(null), 6500);
+        })
+      ]);
+
+      imageMessage = prepared?.imageMessage || null;
+    } catch (err) {
+      console.warn('[PLAY KYARA] Capa indisponível:', err?.message || err);
+    } finally {
+      clearTimeout(coverTimer);
+    }
   }
 
-  const title =
-    String(data.title || 'Música').slice(0, 180);
+  // Lista de vídeos semelhantes.
+  let similarRows = [];
+  let searchTimer;
 
-  const author =
-    String(data.author?.name || 'YouTube').slice(0, 100);
+  try {
+    const mod = await import('yt-search');
+    const ytSearch = mod.default || mod;
 
-  const duration =
-    String(data.timestamp || 'Desconhecida');
+    const result = await Promise.race([
+      ytSearch(searchTerm || title),
+      new Promise(resolve => {
+        searchTimer = setTimeout(() => resolve(null), 1800);
+      })
+    ]);
 
-  const views =
-    typeof data.views === 'number'
-      ? data.views.toLocaleString('pt-BR')
-      : String(data.views || '0');
-
-  const thumbnail =
-    data.thumbnail ||
-    `https://i.ytimg.com/vi/${data.videoId}/hqdefault.jpg`;
+    similarRows = (Array.isArray(result?.videos) ? result.videos : [])
+      .filter(item => item?.videoId && item.videoId !== videoId)
+      .slice(0, 5)
+      .map(item => ({
+        title: String(item.title || 'Vídeo').slice(0, 60),
+        description: (
+          '⏱ ' + String(item.timestamp || '?') + ' • ' +
+          String(typeof item.author === 'string'
+            ? item.author
+            : item.author?.name || 'YouTube')
+        ).slice(0, 72),
+        id: prefix + 'play ' +
+          (item.url || 'https://www.youtube.com/watch?v=' + item.videoId)
+      }));
+  } catch (err) {
+    console.warn('[PLAY KYARA] Sem semelhantes:', err?.message || err);
+  } finally {
+    clearTimeout(searchTimer);
+  }
 
   const buttons = [
     {
       name: 'quick_reply',
       buttonParamsJson: JSON.stringify({
         display_text: '🎵 Baixar Áudio',
-        id: `${prefix}playaudio ${mediaUrl}`
+        id: prefix + 'playaudio ' + mediaUrl
       })
     },
     {
       name: 'quick_reply',
       buttonParamsJson: JSON.stringify({
         display_text: '🎬 Baixar Vídeo',
-        id: `${prefix}playvideo ${mediaUrl}`
+        id: prefix + 'playvideo ' + mediaUrl
       })
     }
   ];
 
-  const caption =
-    `🎵 *${title}*\n\n` +
-    `👤 *Artista/Canal:* ${author}\n` +
-    `⏱️ *Duração:* ${duration}\n` +
-    `👀 *Visualizações:* ${views}\n\n` +
-    `🌸 *Kyara*\n` +
-    `Selecione o formato desejado:`;
+  if (similarRows.length) {
+    buttons.push({
+      name: 'single_select',
+      buttonParamsJson: JSON.stringify({
+        title: '🔎 Vídeos Similares',
+        sections: [{ title: 'Resultados', rows: similarRows }]
+      })
+    });
+  }
 
-  /*
-   * Baixa a thumbnail diretamente para memória.
-   *
-   * Isso evita o problema anterior do arquivo temporário
-   * image...-original desaparecer antes do upload.
-   */
-  let thumbnailBuffer;
+  buttons.push(
+    {
+      name: 'cta_url',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📢 Canal Kyara',
+        url: 'https://whatsapp.com/channel/0029Vb7SjkeIN9iuwkZ3Np3f'
+      })
+    },
+    {
+      name: 'cta_copy',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📋 Copiar link',
+        copy_code: mediaUrl
+      })
+    }
+  );
 
   try {
-    const response = await fetch(thumbnail);
+    // Usa o sistema Native Flow central já existente no projeto.
+    const { sendFlow } = await import('./core/nativeFlow/native-flow.js');
 
-    if (!response.ok) {
-      throw new Error(
-        `Falha ao baixar thumbnail: HTTP ${response.status}`
-      );
-    }
+    console.log(
+      '[PLAY KYARA] Enviando Native Flow:',
+      title,
+      '| capa:',
+      Boolean(imageMessage),
+      '| botões:',
+      buttons.length
+    );
 
-    thumbnailBuffer = Buffer.from(
-      await response.arrayBuffer()
+    const sent = await sendFlow(kya, from, {
+      text: caption,
+      footer: '🌸 KYARA-SYSTΞM • © 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
+      title: '⚡ KYARA DL',
+      buttons,
+      media: imageMessage ? { imageMessage } : null
+    });
+
+    console.log(
+      '[PLAY KYARA] ✅ Native Flow enviado:',
+      sent?.key?.id || title
     );
   } catch (err) {
-    console.warn(
-      `[PLAY KYARA] ⚠️ Thumbnail indisponível: ${err.message}`
+    console.error(
+      '[PLAY KYARA] ❌ Native Flow falhou:',
+      err?.stack || err
     );
 
-    thumbnailBuffer = null;
-  }
-
-  let imageMessage = null;
-
-  if (thumbnailBuffer?.length) {
     try {
-      const prepared =
-        await prepareWAMessageMedia(
-          {
-            image: thumbnailBuffer
-          },
-          {
-            upload: nazu.waUploadToServer
-          }
-        );
+      await kya.sendMessage(from, {
+        text: caption + '\n\n' +
+          '🎵 Áudio: ' + prefix + 'playaudio ' + mediaUrl + '\n' +
+          '🎬 Vídeo: ' + prefix + 'playvideo ' + mediaUrl + '\n' +
+          '📋 Link: ' + mediaUrl
+      }, { quoted: info });
 
-      imageMessage =
-        prepared?.imageMessage || null;
-
-    } catch (err) {
-      console.warn(
-        `[PLAY KYARA] ⚠️ Thumbnail não pôde ser enviada: ${err.message}`
-      );
-
-      // Não derruba o /play por causa da thumbnail.
-      imageMessage = null;
+      console.log('[PLAY KYARA] Alternativa em texto enviada.');
+    } catch (fallbackError) {
+      console.error('[PLAY KYARA] ❌ Fallback falhou:', fallbackError?.message || fallbackError);
     }
   }
-
-  const interactiveMessage = {
-    body: {
-      text: caption
-    },
-
-    footer: {
-      text: '🌸 Kyara • © Baki'
-    },
-
-    nativeFlowMessage: {
-      buttons,
-
-      messageParamsJson: '{}',
-
-      messageVersion: 1
-    }
-  };
-
-  /*
-   * Só adiciona o header de imagem quando a thumbnail
-   * realmente foi preparada.
-   */
-  if (imageMessage) {
-    interactiveMessage.header = {
-      hasMediaAttachment: true,
-      imageMessage
-    };
-  }
-
-  const msg =
-    generateWAMessageFromContent(
-      from,
-      {
-        viewOnceMessage: {
-          message: {
-            messageContextInfo: {
-              deviceListMetadata: {},
-              deviceListMetadataVersion: 2
-            },
-
-            interactiveMessage
-          }
-        }
-      },
-      {
-        userJid: nazu?.user?.id
-      }
-    );
-
-  const bizNode = {
-    tag: 'biz',
-
-    attrs: {
-      actual_actors: '2',
-      host_storage: '2',
-
-      privacy_mode_ts:
-        String(
-          Math.floor(Date.now() / 1000) - 77980457
-        )
-    },
-
-    content: [
-      {
-        tag: 'interactive',
-
-        attrs: {
-          type: 'native_flow',
-          v: '1'
-        },
-
-        content: [
-          {
-            tag: 'native_flow',
-
-            attrs: {
-              v: '9',
-              name: 'mixed'
-            }
-          }
-        ]
-      },
-
-      {
-        tag: 'quality_control',
-
-        attrs: {
-          source_type: 'third_party'
-        }
-      }
-    ]
-  };
-
-  const additionalNodes =
-    from.endsWith('@g.us')
-      ? [bizNode]
-      : [
-          {
-            tag: 'bot',
-
-            attrs: {
-              biz_bot: '1'
-            }
-          },
-
-          bizNode
-        ];
-
-  await nazu.relayMessage(
-    from,
-    msg.message,
-    {
-      messageId: msg.key.id,
-      additionalNodes
-    }
-  );
-
-  console.log(
-    `[PLAY KYARA] ✅ Resultado enviado: ${title}`
-  );
 }
 
-// ================================================================
+
 // FIM — PLAY KYARA
 // ================================================================
 
 // ==================== CONTROLE ASSISTENTE KYARA ====================
 
 async function enviarControleAssistenteKyara(
-  nazu,
+  kya,
   jid,
   quoted,
   prefix = '/',
@@ -611,7 +864,7 @@ async function enviarControleAssistenteKyara(
     const status = ativo ? '🟢 LIGADA' : '🔴 DESLIGADA';
 
     const personalidadeNome = {
-      kyara: '🌙 Kyara',
+      kyara: '🌙 KYARA-SYSTΞM',
       humana: '👤 Humana',
       ia: '🤖 IA Normal',
       pro: '⚡ Pro'
@@ -645,7 +898,7 @@ async function enviarControleAssistenteKyara(
           {
             name: 'quick_reply',
             buttonParamsJson: JSON.stringify({
-              display_text: '🌙 Ligar Kyara',
+              display_text: '🌙 Ligar KYARA-SYSTΞM',
               id: `${prefix}assistente kyara`
             })
           }
@@ -666,20 +919,18 @@ async function enviarControleAssistenteKyara(
     const msg = generateWAMessageFromContent(
       jid,
       {
-        viewOnceMessage: {
-          message: {
-            messageContextInfo: {
-              deviceListMetadata: {},
-              deviceListMetadataVersion: 2
-            },
+        messageContextInfo: {
+          deviceListMetadata: {},
+          deviceListMetadataVersion: 2
+        },
 
-            interactiveMessage: {
+        interactiveMessage: {
               body: {
                 text: caption
               },
 
               footer: {
-                text: '🌸 Kyara • Assistente Inteligente'
+                text: '🌸 KYARA-SYSTΞM • Assistente Inteligente'
               },
 
               nativeFlowMessage: {
@@ -687,13 +938,11 @@ async function enviarControleAssistenteKyara(
                 messageParamsJson: '{}',
                 messageVersion: 1
               }
-            }
-          }
         }
       },
       {
         quoted,
-        userJid: nazu?.user?.id
+        userJid: kya?.user?.id
       }
     );
 
@@ -751,7 +1000,7 @@ async function enviarControleAssistenteKyara(
           bizNode
         ];
 
-    await nazu.relayMessage(
+    await kya.relayMessage(
       jid,
       msg.message,
       {
@@ -781,7 +1030,7 @@ async function enviarControleAssistenteKyara(
 // ============================================================
 
 // ==================== BOTÕES CLICÁVEIS KYARA ====================
-async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null, pushname = '') {
+async function enviarBotoesKyara(kya, jid, quoted, prefix = '/', sender = null, pushname = '') {
   try {
     console.log('[BOTOES] Montando Native Flow...');
 
@@ -789,14 +1038,14 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
       {
         name: 'quick_reply',
         buttonParamsJson: JSON.stringify({
-          display_text: '📥 DOWNLOADS',
+          display_text: '📥 ᴅᴏᴡɴʟᴏᴀᴅs',
           id: `${prefix}menudown`
         })
       },
       {
         name: 'quick_reply',
         buttonParamsJson: JSON.stringify({
-          display_text: '🎨 LOGOS',
+          display_text: '🎨 ʟᴏɢᴏs',
           id: `${prefix}menulogos`
         })
       },
@@ -817,7 +1066,7 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
       {
         name: 'quick_reply',
         buttonParamsJson: JSON.stringify({
-          display_text: '🎮 RPG',
+          display_text: '🎮 ʀᴘɢ',
           id: `${prefix}menurpg`
         })
       }
@@ -843,7 +1092,7 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
               },
 
               footer: {
-                text: '© Kyara'
+                text: '© KYARA-SYSTΞM'
               },
 
               nativeFlowMessage: {
@@ -857,7 +1106,7 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
       },
       {
         quoted,
-        userJid: nazu?.user?.id
+        userJid: kya?.user?.id
       }
     );
 
@@ -937,7 +1186,7 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
       `[BOTOES] Relay Native Flow (${isGroup ? 'GRUPO' : 'PRIVADO'})...`
     );
 
-    await nazu.relayMessage(
+    await kya.relayMessage(
       jid,
       msg.message,
       {
@@ -961,6 +1210,7 @@ async function enviarBotoesKyara(nazu, jid, quoted, prefix = '/', sender = null,
 // ================================================================
 
 import {
+  proto,
   downloadContentFromMessage,
   generateWAMessageFromContent,
   prepareWAMessageMedia,
@@ -1034,6 +1284,7 @@ import RentalExpirationManager from './utils/rentalExpirationManager.js';
 import { PerformanceOptimizer, getPerformanceOptimizer } from './utils/performanceOptimizer.js';
 import { recalcEquipmentBonuses } from './utils/equipment.js';
 import * as ia from './funcs/private/ia.js';
+import { gerarVoz, apagarVoz } from '../../src/kyara/ttsPiper.js';
 import { getKyaraCommandKnowledge } from './core/kyaraKnowledge.js';
 import * as vipCommandsManager from './utils/vipCommandsManager.js';
 import { getInfo as gdriveGetInfo } from './funcs/utils/gdrive.js';
@@ -1165,6 +1416,7 @@ import {
   loadMenuDesign,
   saveMenuDesign,
   getMenuDesignWithDefaults,
+  applyMenuFont,
   setSupportMode,
   findSupportTicketById,
   createSupportTicket,
@@ -1259,10 +1511,425 @@ import {
   addMaintenanceCommand,
   removeMaintenanceCommand,
   clearMaintenanceCommands,
-  getMaintenanceCommands
+  getMaintenanceCommands,
+  getMaintenanceFailures,
+  recordCommandFailure,
+  buildMaintenanceErrors,
+  getCaseCommands
 } from './features/commandMaintenance.js';
 
 const OWNER_ONLY_MESSAGE = '🚫 Este comando é apenas para o dono do bot!';
+
+
+/* ============================================================
+ * 🌸 KYARA SMART COMMANDS
+ * Sugestões rápidas e configurações independentes.
+ * ============================================================ */
+
+const KYARA_COMMAND_HINTS_FILE = pathz.join(
+  DONO_DIR,
+  'commandHints.json'
+);
+
+let KYARA_COMMAND_HINTS_SETTINGS_CACHE = null;
+let KYARA_COMMAND_HINTS_CANDIDATES_CACHE = null;
+
+function loadKyaraCommandHintsSettings() {
+  if (KYARA_COMMAND_HINTS_SETTINGS_CACHE) {
+    return KYARA_COMMAND_HINTS_SETTINGS_CACHE;
+  }
+
+  const defaults = {
+    similarEnabled: true,
+    errorEnabled: true
+  };
+
+  try {
+    if (fs.existsSync(KYARA_COMMAND_HINTS_FILE)) {
+      const saved = JSON.parse(
+        fs.readFileSync(KYARA_COMMAND_HINTS_FILE, 'utf8')
+      );
+
+      defaults.similarEnabled =
+        saved.similarEnabled !== false;
+
+      defaults.errorEnabled =
+        saved.errorEnabled !== false;
+    }
+  } catch (error) {
+    console.warn(
+      '[SMART COMMANDS] Configuração inválida:',
+      error?.message || error
+    );
+  }
+
+  KYARA_COMMAND_HINTS_SETTINGS_CACHE = defaults;
+  return defaults;
+}
+
+function saveKyaraCommandHintsSettings(settings) {
+  try {
+    const safe = {
+      similarEnabled: settings.similarEnabled !== false,
+      errorEnabled: settings.errorEnabled !== false,
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.mkdirSync(
+      pathz.dirname(KYARA_COMMAND_HINTS_FILE),
+      { recursive: true }
+    );
+
+    const temporary =
+      `${KYARA_COMMAND_HINTS_FILE}.tmp-${process.pid}`;
+
+    fs.writeFileSync(
+      temporary,
+      JSON.stringify(safe, null, 2) + '\n',
+      'utf8'
+    );
+
+    fs.renameSync(
+      temporary,
+      KYARA_COMMAND_HINTS_FILE
+    );
+
+    KYARA_COMMAND_HINTS_SETTINGS_CACHE = safe;
+    return true;
+
+  } catch (error) {
+    console.error(
+      '[SMART COMMANDS] Erro ao salvar:',
+      error?.message || error
+    );
+
+    return false;
+  }
+}
+
+function normalizeKyaraHintCommand(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, '')
+    .trim();
+}
+
+function getKyaraCommandHintCandidates() {
+  if (KYARA_COMMAND_HINTS_CANDIDATES_CACHE) {
+    return KYARA_COMMAND_HINTS_CANDIDATES_CACHE;
+  }
+
+  const candidates = new Set([
+    'menu',
+    'menudown',
+    'menuadm',
+    'menudono'
+  ]);
+
+  try {
+    for (const commandName of getCaseCommands()) {
+      const normalized =
+        normalizeKyaraHintCommand(commandName);
+
+      if (
+        normalized.length >= 2 &&
+        normalized.length <= 36
+      ) {
+        candidates.add(normalized);
+      }
+    }
+  } catch (error) {
+    console.warn(
+      '[SMART COMMANDS] Falha ao carregar comandos:',
+      error?.message || error
+    );
+  }
+
+  try {
+    const aliases = loadCommandAliases();
+
+    for (const item of Array.isArray(aliases) ? aliases : []) {
+      const normalized =
+        normalizeKyaraHintCommand(item?.alias);
+
+      if (
+        normalized.length >= 2 &&
+        normalized.length <= 36
+      ) {
+        candidates.add(normalized);
+      }
+    }
+  } catch {}
+
+  KYARA_COMMAND_HINTS_CANDIDATES_CACHE =
+    [...candidates];
+
+  return KYARA_COMMAND_HINTS_CANDIDATES_CACHE;
+}
+
+// Distância de edição com transposição de letras.
+function kyaraCommandEditDistance(a, b) {
+  const n = a.length;
+  const m = b.length;
+
+  if (Math.abs(n - m) > 3) return 99;
+  if (!n) return m;
+  if (!m) return n;
+
+  const matrix = Array.from(
+    { length: n + 1 },
+    () => new Uint8Array(m + 1)
+  );
+
+  for (let i = 0; i <= n; i++) {
+    matrix[i][0] = i;
+  }
+
+  for (let j = 0; j <= m; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      const cost =
+        a[i - 1] === b[j - 1] ? 0 : 1;
+
+      let value = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+
+      if (
+        i > 1 &&
+        j > 1 &&
+        a[i - 1] === b[j - 2] &&
+        a[i - 2] === b[j - 1]
+      ) {
+        value = Math.min(
+          value,
+          matrix[i - 2][j - 2] + 1
+        );
+      }
+
+      matrix[i][j] = value;
+    }
+  }
+
+  return matrix[n][m];
+}
+
+function findSimilarKyaraCommand(input) {
+  const wanted = normalizeKyaraHintCommand(input);
+
+  if (
+    wanted.length < 3 ||
+    wanted.length > 36
+  ) {
+    return null;
+  }
+
+  const maxDistance =
+    wanted.length <= 5
+      ? 1
+      : wanted.length <= 12
+        ? 2
+        : 3;
+
+  let best = null;
+
+  for (const candidate of getKyaraCommandHintCandidates()) {
+    if (candidate === wanted) continue;
+
+    if (
+      Math.abs(candidate.length - wanted.length) >
+      maxDistance
+    ) {
+      continue;
+    }
+
+    const distance =
+      kyaraCommandEditDistance(wanted, candidate);
+
+    if (distance > maxDistance) continue;
+
+    const score = [
+      distance,
+      candidate[0] === wanted[0] ? 0 : 1,
+      Math.abs(candidate.length - wanted.length),
+      candidate
+    ];
+
+    if (
+      !best ||
+      score[0] < best.score[0] ||
+      (
+        score[0] === best.score[0] &&
+        score[1] < best.score[1]
+      ) ||
+      (
+        score[0] === best.score[0] &&
+        score[1] === best.score[1] &&
+        score[2] < best.score[2]
+      )
+    ) {
+      best = {
+        command: candidate,
+        score
+      };
+    }
+  }
+
+  return best?.command || null;
+}
+
+
+/* ============================================================
+ * 🌸 KYARA OS — DETECTOR DE ERRO DE COMANDO
+ *
+ * Não marca:
+ * - comando inexistente
+ * - falta de permissão
+ * - uso incorreto
+ * - argumentos inválidos
+ *
+ * Marca somente mensagens que indicam falha técnica.
+ * ============================================================ */
+
+function isKyaraTechnicalCommandError(text) {
+  const value =
+    String(text || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  if (!value) {
+    return false;
+  }
+
+  const ignored = [
+    'comando nao encontrado',
+    'apenas para o dono',
+    'apenas para dono',
+    'apenas para administrador',
+    'precisa ser administrador',
+    'opcao invalida',
+    'uso:',
+    'use:',
+    'argumento invalido',
+    'parametro invalido',
+    'nao informado',
+    'nao fornecido',
+    'sem permissao',
+    'acesso negado',
+    'foi bloqueado'
+  ];
+
+  if (
+    ignored.some(
+      item => value.includes(item)
+    )
+  ) {
+    return false;
+  }
+
+  const technical = [
+    'erro interno',
+    'ocorreu um erro',
+    'ocorreu erro',
+    'erro ao ',
+    'erro no ',
+    'erro da ',
+    'falha ao ',
+    'falha no ',
+    'falha da ',
+    'nao consegui',
+    'nao foi possivel',
+    'indisponivel',
+    'exception',
+    'referenceerror',
+    'typeerror',
+    'syntaxerror',
+    'rangeerror',
+    'aggregateerror',
+    'http 400',
+    'http 401',
+    'http 403',
+    'http 404',
+    'http 408',
+    'http 429',
+    'http 500',
+    'http 502',
+    'http 503',
+    'http 504',
+    'timeout',
+    'timed out',
+    'falhou',
+    'travou',
+    'bugou',
+    'pifou'
+  ];
+
+  return technical.some(
+    item => value.includes(item)
+  );
+}
+
+/**
+ * Registra uma falha sem permitir que o sistema de ajustes
+ * interfira no funcionamento normal do bot.
+ */
+function kyaraRegisterCommandFailure(
+  commandName,
+  error,
+  stage = 'command'
+) {
+  try {
+    const normalizedCommand =
+      String(commandName || '')
+        .replace(/^[/!#.]+/, '')
+        .trim()
+        .split(/\s+/)[0]
+        .toLowerCase();
+
+    if (!normalizedCommand) {
+      return false;
+    }
+
+    const reason =
+      String(
+        error?.message ||
+        error ||
+        'Erro não informado'
+      )
+        .replace(/\r?\n/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 600);
+
+    return recordCommandFailure(
+      normalizedCommand,
+      {
+        error: reason,
+        stage
+      }
+    );
+  } catch (maintenanceError) {
+    console.error(
+      '[KYARA AJUSTES] Não foi possível registrar a falha:',
+      maintenanceError?.message ||
+      maintenanceError
+    );
+
+    return false;
+  }
+}
+
+
+
 
 // Função para formatar respostas de IA para WhatsApp (converte ** para *)
 const formatAIResponse = (text) => {
@@ -1486,7 +2153,7 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
     ? (globalJson.textbv || "╭━━━⊱ 🌟 *BEM-VINDO(A/S)!* 🌟 ⊱━━━╮\n│\n│ 👤 #numerodele#\n│\n│ 🏠 Grupo: *#nomedogp#*\n│ 👥 Membros: *#membros#*\n│\n╰━━━━━━━━━━━━━━━━━━━━━━━━╯\n\n✨ *Seja bem-vindo(a/s) ao grupo!* ✨")
     : (globalJson.exit?.text || "╭━━━⊱ 👋 *ATÉ LOGO!* 👋 ⊱━━━╮\n│\n│ 👤 #numerodele#\n│\n│ 🚪 Saiu do grupo\n│ *#nomedogp#*\n│\n╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n💫 *Até a próxima!* 💫");
 
-  const text = formatMessageText(settings.text || defaultText, replacements);
+  const text = formatMessageText(settings.textbv || settings.text || defaultText, replacements);
 
   const message = {
     text,
@@ -1495,12 +2162,12 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
 
   if (settings.photo === false) {
     // Foto de boas-vindas desativada explicitamente: não envia imagem em nenhuma hipótese.
-  } else if (settings.photoType === 'api' && isWelcome) {
-    let profilePicUrl = 'https://raw.githubusercontent.com/nazuninha/uploads/main/outros/1747053564257_bzswae.bin';
+  } else if (settings.photoType === 'api' && isWelcome && globalJson.welcomecard?.usarCanvas === true) {
+    let profilePicUrl = null;
 
     if (participants.length === 1) {
       profilePicUrl = await KyaraSock.profilePictureUrl(participants[0], 'image')
-        .catch(() => profilePicUrl);
+        .catch(() => null);
     }
 
     const nome = participants.length === 1
@@ -1523,9 +2190,33 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
       delete message.text;
     }
   } else if (settings.photoType === 'custom' && settings.image) {
-    message.image = { url: settings.image };
-    message.caption = text;
-    delete message.text;
+    const storedImage = String(settings.image);
+
+    if (storedImage.startsWith('local:')) {
+      const localImage = await kyaraReadLocalMedia(storedImage.slice(6));
+      if (localImage) message.image = localImage;
+    } else {
+      message.image = { url: storedImage };
+    }
+
+    if (message.image) {
+      message.caption = text;
+      delete message.text;
+    }
+  } else if (isWelcome) {
+    try {
+      message.image = fs.readFileSync(DATABASE_DIR + '/welcome-default.png');
+      message.caption = text;
+      delete message.text;
+    } catch (error) {
+      if (globalJson.welcomecard?.fundo) {
+        message.image = { url: globalJson.welcomecard.fundo };
+        message.caption = text;
+        delete message.text;
+      } else {
+        console.error('[KYARA WELCOME] Foto padrão global indisponível:', error.message);
+      }
+    }
   } else if (globalJson.welcomecard?.fundo) {
     message.image = { url: globalJson.welcomecard.fundo };
     message.caption = text;
@@ -1555,7 +2246,7 @@ function formatMessageText(template, replacements) {
   return text;
 }
 
-const handleCaptchaResponse = async (nazu, info, from, sender, text) => {
+const handleCaptchaResponse = async (kya, info, from, sender, text) => {
 
   await CaptchaIndex.init();
 
@@ -1581,12 +2272,12 @@ const handleCaptchaResponse = async (nazu, info, from, sender, text) => {
         console.log('[CAPTCHA] EXPIRADO');
 
         try {
-          await nazu.sendMessage(isCapUser.groupId, {
+          await kya.sendMessage(isCapUser.groupId, {
             text: `⏰ @${senderNormalized} demorou demais e foi removido.`,
             mentions: [isCapUser.idOrigin]
           });
 
-          await nazu.groupParticipantsUpdate(
+          await kya.groupParticipantsUpdate(
             isCapUser.groupId,
             [isCapUser.idOrigin],
             'remove'
@@ -1609,26 +2300,26 @@ const handleCaptchaResponse = async (nazu, info, from, sender, text) => {
         CaptchaIndex.remove(senderNormalized);
 
         try {
-          const groupMetadata = await nazu.groupMetadata(isCapUser.groupId);
+          const groupMetadata = await kya.groupMetadata(isCapUser.groupId);
           const groupSettings = await loadGroupSettings(isCapUser.groupId);
 
           if (groupSettings.bemvindo) {
             const message = await createGroupMessage(
-              nazu,
+              kya,
               groupMetadata,
               [isCapUser.idOrigin],
               groupSettings.welcome || { text: groupSettings.textbv }
             );
-            await nazu.sendMessage(isCapUser.groupId, message);
+            await kya.sendMessage(isCapUser.groupId, message);
           } else {
-            await nazu.sendMessage(isCapUser.groupId, {
+            await kya.sendMessage(isCapUser.groupId, {
               text: `✅ @${senderNormalized} liberado com sucesso!`,
               mentions: [isCapUser.idOrigin]
             });
           }
         } catch (e) {
           console.log('[ERRO WELCOME PÓS-CAPTCHA]:', e.message);
-          await nazu.sendMessage(isCapUser.groupId, {
+          await kya.sendMessage(isCapUser.groupId, {
             text: `✅ @${senderNormalized} liberado com sucesso!`,
             mentions: [isCapUser.idOrigin]
           });
@@ -1973,7 +2664,64 @@ async function publishKyaraNewsletterGlobal({
   );
 }
 
-async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirationManager = null) {
+
+/* ============================================================
+ * 🌸 KYARA OS v11 — MÍDIA LOCAL
+ * Android / Termux
+ *
+ * Não depende de GitHub.
+ * ============================================================ */
+
+function kyaraWelcomeMediaDir() {
+  const dir = path.join(
+    process.cwd(),
+    'dados',
+    'database',
+    'media',
+    'welcome'
+  );
+
+  fs.mkdirSync(dir, { recursive: true });
+
+  return dir;
+}
+
+async function kyaraSaveLocalMedia(buffer, prefix = 'welcome') {
+  if (!Buffer.isBuffer(buffer)) {
+    throw new Error('A mídia recebida não é um Buffer válido.');
+  }
+
+  const safePrefix =
+    String(prefix || 'media')
+      .replace(/[^a-z0-9_-]/gi, '_');
+
+  const file = path.join(
+    kyaraWelcomeMediaDir(),
+    `${safePrefix}-${Date.now()}.jpg`
+  );
+
+  await fs.promises.writeFile(file, buffer);
+
+  return file;
+}
+
+async function kyaraReadLocalMedia(file) {
+  try {
+    if (!file) return null;
+
+    const target = String(file);
+
+    if (!fs.existsSync(target)) {
+      return null;
+    }
+
+    return await fs.promises.readFile(target);
+  } catch {
+    return null;
+  }
+}
+
+async function KyaraBotExec(kya, info, store, messagesCache, rentalExpirationManager = null) {
   // Log de início de processamento para debug paralelo
   const msgId = info?.key?.id?.slice(-6) || 'unknown';
   const from = info?.key?.remoteJid || 'unknown';
@@ -1989,7 +2737,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
     // Notifica o dono sobre a mudança automática
     const ownerJid = `${config.numerodono}@s.whatsapp.net`;
     try {
-      await nazu.sendMessage(ownerJid, {
+      await kya.sendMessage(ownerJid, {
         text: `⚠️ *PREFIXO AUTOMÁTICO CORRIGIDO*\n\n❌ O símbolo "$" é reservado e não pode ser usado como prefixo.\n\n✅ O prefixo foi alterado automaticamente para "/" ao iniciar o bot.\n\n💡 Use ${config.prefixo}prefix para alterar para outro símbolo válido.`
       });
     } catch (notifyError) {
@@ -2041,11 +2789,11 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
   };
 
   const deleteChatByLastMessage = async (jid) => {
-    if (!nazu?.chatModify) return false;
+    if (!kya?.chatModify) return false;
 
     const lastMsgInChat = getLastMessageInChat(jid);
     if (lastMsgInChat?.key && lastMsgInChat?.messageTimestamp) {
-      await nazu.chatModify({
+      await kya.chatModify({
         delete: true,
         lastMessages: [
           {
@@ -2057,14 +2805,14 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
       return true;
     }
 
-    await nazu.chatModify({ delete: true }, jid);
+    await kya.chatModify({ delete: true }, jid);
     return true;
   };
 
   const clearChatHistorySafe = async (jid) => {
-    if (!nazu?.chatModify) return false;
+    if (!kya?.chatModify) return false;
     try {
-      await nazu.chatModify({ clear: 'all' }, jid);
+      await kya.chatModify({ clear: 'all' }, jid);
       return true;
     } catch (e) {
       if (typeof e?.message === 'string' && e.message.toLowerCase().includes('not supported')) {
@@ -2084,14 +2832,14 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
           return cached;
         }
 
-        const freshData = await nazu.groupMetadata(groupId).catch(() => ({}));
+        const freshData = await kya.groupMetadata(groupId).catch(() => ({}));
         await optimizer.modules.cacheManager.setIndexGroupMeta(groupId, freshData);
         return freshData;
       }
 
-      return await nazu.groupMetadata(groupId).catch(() => ({}));
+      return await kya.groupMetadata(groupId).catch(() => ({}));
     } catch (error) {
-      return await nazu.groupMetadata(groupId).catch(() => ({}));
+      return await kya.groupMetadata(groupId).catch(() => ({}));
     }
   }
 
@@ -2260,7 +3008,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
   // ═══════════════════════════════════════════════════════════════════
 
   async function handleAutoDownload(
-    nazu,
+    kya,
     from,
     url,
     info,
@@ -2323,9 +3071,64 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
        * não estiver rodando.
        */
 
-      if (
-        mode === 'audio'
-      ) {
+      const isYoutube =
+        /(?:youtube\.com|youtu\.be)/i.test(
+          lower
+        );
+
+      if (mode === 'audio') {
+
+        /*
+         * ⚡ YOUTUBE AUDIO DIRETO
+         *
+         * Não:
+         * - baixa Buffer
+         * - salva arquivo
+         * - converte
+         *
+         * Entrega a URL diretamente ao WhatsApp.
+         */
+
+        if (
+          isYoutube &&
+          typeof youtube.prefetchAudioFile === 'function'
+        ) {
+
+          const audioUrl =
+            await youtube.prefetchAudioFile(
+              endereco
+            );
+
+          if (audioUrl) {
+
+            await kya.sendMessage(
+              from,
+              {
+                audio: {
+                  url: audioUrl
+                },
+
+                mimetype:
+                  'audio/mp4',
+
+                ptt:
+                  false,
+
+                fileName:
+                  'KYARA-AUDIO.m4a'
+              },
+              {
+                quoted: info
+              }
+            );
+
+            return true;
+          }
+        }
+
+        /*
+         * Fallback para outras plataformas.
+         */
 
         const result =
           await youtube.mp3(
@@ -2338,7 +3141,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
           result.buffer
         ) {
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               audio:
@@ -2363,6 +3166,57 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
 
       } else {
 
+        /*
+         * ⚡ YOUTUBE VIDEO DIRETO
+         *
+         * Stream progressivo.
+         * Sem Buffer completo no Termux.
+         */
+
+        if (
+          isYoutube &&
+          typeof youtube.streamVideo === 'function'
+        ) {
+
+          const direct =
+            await youtube.streamVideo(
+              endereco
+            );
+
+          if (
+            direct?.ok &&
+            direct.url
+          ) {
+
+            await kya.sendMessage(
+              from,
+              {
+                video: {
+                  url:
+                    direct.url
+                },
+
+                mimetype:
+                  direct.mimetype ||
+                  'video/mp4',
+
+                fileName:
+                  'KYARA-VIDEO.mp4'
+              },
+              {
+                quoted:
+                  info
+              }
+            );
+
+            return true;
+          }
+        }
+
+        /*
+         * Fallback para Instagram/TikTok/etc.
+         */
+
         const result =
           await youtube.mp4(
             endereco,
@@ -2374,7 +3228,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
           result.buffer
         ) {
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               video:
@@ -2429,7 +3283,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
             mode === 'video'
           ) {
 
-            await nazu.sendMessage(
+            await kya.sendMessage(
               from,
               {
                 video: {
@@ -2576,6 +3430,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
     const isGroup = from?.endsWith('@g.us') || false;
     if (!info.key.participant && !info.key.remoteJid) return;
     let sender;
+    let senderOriginal = null;
     if (isGroup) {
       // Prioriza participant, depois busca por LID, com fallback para JID
       sender = info.key.participant || info.message?.participant;
@@ -2592,16 +3447,22 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
         sender = info.message.extendedTextMessage.contextInfo.participant;
       }
 
+      // Preserva o identificador original antes da conversão.
+      senderOriginal = sender;
+
       // Se for JID, converte para LID usando cache
       if (sender && isValidJid(sender)) {
-        sender = await getLidFromJidCached(nazu, sender);
+        sender = await getLidFromJidCached(kya, sender);
       }
     } else {
       sender = info.key.remoteJid;
 
+      // Preserva o identificador original antes da conversão.
+      senderOriginal = sender;
+
       // Se for JID no PV, converte para LID usando cache
       if (sender && isValidJid(sender)) {
-        sender = await getLidFromJidCached(nazu, sender);
+        sender = await getLidFromJidCached(kya, sender);
       }
     }
 
@@ -2642,10 +3503,10 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
       isSubdono(sender);
 
     const botId =
-      getBotId(nazu);
+      getBotId(kya);
 
     const botBase =
-      String(nazu.user?.id || '')
+      String(kya.user?.id || '')
         .split(':')[0];
 
     const isBotSender =
@@ -2725,7 +3586,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
         const resolvedOwnerLid =
           config.lidowner ||
           await getLidFromJidCached(
-            nazu,
+            kya,
             ownerJid
           );
 
@@ -2777,7 +3638,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
     const activeIntervals = new Map();
 
     // ==================== START ====================
-    function startAutoAcceptSystem(nazu, from) {
+    function startAutoAcceptSystem(kya, from) {
       if (activeIntervals.has(from)) return;
 
       const interval = setInterval(async () => {
@@ -2791,10 +3652,10 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
           let requests = [];
 
           try {
-            if (nazu.groupRequestParticipantsList) {
-              requests = await nazu.groupRequestParticipantsList(from);
-            } else if (nazu.groupGetRequestParticipants) {
-              requests = await nazu.groupGetRequestParticipants(from);
+            if (kya.groupRequestParticipantsList) {
+              requests = await kya.groupRequestParticipantsList(from);
+            } else if (kya.groupGetRequestParticipants) {
+              requests = await kya.groupGetRequestParticipants(from);
             }
           } catch (err) {
             console.error('[SYSTEM] ERRO AO BUSCAR REQUESTS:', err);
@@ -2809,7 +3670,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
 
             // Aprovação Direta (Sem Captcha)
             try {
-              await nazu.groupRequestParticipantsUpdate(from, [jid], 'approve');
+              await kya.groupRequestParticipantsUpdate(from, [jid], 'approve');
             } catch (err) {
               console.error('[SYSTEM] ERRO AO APROVAR USUÁRIO:', jid, err);
             }
@@ -2832,7 +3693,7 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
     const ROLE_NOT_GOING_BASE = '🤷';
     const isGoingEmoji = (emoji) => typeof emoji === 'string' && emoji.includes(ROLE_GOING_BASE);
     const isNotGoingEmoji = (emoji) => typeof emoji === 'string' && emoji.includes(ROLE_NOT_GOING_BASE);
-    const isButtonMessage = info.message.interactiveMessage || info.message.templateButtonReplyMessage || info.message.buttonsMessage || info.message.interactiveResponseMessage || info.message.listResponseMessage || info.message.buttonsResponseMessage ? true : false;
+    const isButtonMessage = Boolean(info.message.interactiveMessage || info.message.templateButtonReplyMessage || info.message.buttonsMessage || info.message.interactiveResponseMessage || info.message.interactiveResponseMessageV2 || info.message.listResponseMessage || info.message.buttonsResponseMessage);
     const isStatusMention = JSON.stringify(info.message).includes('groupStatusMentionMessage');
     const getMessageText = message => {
       if (!message) return '';
@@ -2847,21 +3708,34 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
       }
 
       // ==================== NATIVE FLOW ====================
-      const interactive = message.interactiveResponseMessage;
+      const interactive = message.interactiveResponseMessage || message.interactiveResponseMessageV2;
 
       if (interactive) {
-        const native = interactive.nativeFlowResponseMessage;
+        const native =
+          interactive.nativeFlowResponseMessage ||
+          interactive.nativeFlowResponseMessageV2;
 
         if (native?.paramsJson) {
           try {
-            const params = JSON.parse(native.paramsJson);
+            const params =
+              typeof native.paramsJson === 'string'
+                ? JSON.parse(native.paramsJson)
+                : native.paramsJson;
 
 
-            if (params.id) {
+            if (params?.id) {
               return String(params.id).trim();
             }
 
-            if (params.command) {
+            if (params?.selectedId) {
+              return String(params.selectedId).trim();
+            }
+
+            if (params?.rowId) {
+              return String(params.rowId).trim();
+            }
+
+            if (params?.command) {
               return String(params.command).trim();
             }
 
@@ -3030,7 +3904,8 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
     // ============================================================
 
     const kyaraInteractiveResponse =
-      info.message?.interactiveResponseMessage;
+      info.message?.interactiveResponseMessage ||
+      info.message?.interactiveResponseMessageV2;
 
     if (kyaraInteractiveResponse) {
 
@@ -3098,7 +3973,66 @@ async function NazuninhaBotExec(nazu, info, store, messagesCache, rentalExpirati
       }
     }
 
-const body = getMessageText(info.message) || info?.text || '';
+const __kyaraNativeFlowBody = (() => {
+  const stack = [info?.message];
+  const seen = new Set();
+  let scanned = 0;
+
+  const findSelectedId = (value, depth = 0) => {
+    if (!value || typeof value !== 'object' || depth > 6) return '';
+
+    for (const key of ['id', 'selectedId', 'rowId', 'button_id', 'selected_id']) {
+      const found = value[key];
+      if (typeof found === 'string' && found.trim()) return found.trim();
+    }
+
+    for (const child of Object.values(value)) {
+      const found = findSelectedId(child, depth + 1);
+      if (found) return found;
+    }
+    return '';
+  };
+
+  while (stack.length && scanned++ < 300) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object' || seen.has(node)) continue;
+    seen.add(node);
+
+    const candidates = [
+      node.nativeFlowResponseMessage,
+      node.nativeFlowResponseMessageV2,
+      node.interactiveResponseMessage?.nativeFlowResponseMessage,
+      node.interactiveResponseMessage?.nativeFlowResponseMessageV2
+    ];
+
+    for (const response of candidates) {
+      if (!response || typeof response !== 'object') continue;
+      let params = response.paramsJson;
+
+      try {
+        if (typeof params === 'string') params = JSON.parse(params);
+      } catch (error) {
+        console.warn('[KYARA MENU] paramsJson inválido:', error?.message || error);
+        continue;
+      }
+
+      const selected = findSelectedId(params);
+      if (selected) return selected;
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (['bytes', 'mediaKey', 'fileSha256', 'fileEncSha256'].includes(key)) continue;
+      if (child && typeof child === 'object' &&
+          !Buffer.isBuffer(child) && !ArrayBuffer.isView(child)) {
+        stack.push(child);
+      }
+    }
+  }
+
+  return '';
+})();
+
+const body = __kyaraNativeFlowBody || getMessageText(info.message) || info?.text || '';
 
     // ============================================================
     // 💕 QUIZCASAL — IDENTIDADE POR JID
@@ -3129,7 +4063,7 @@ const body = getMessageText(info.message) || info?.text || '';
     
 
     // ==================== INICIAR ====================
-    startAutoAcceptSystem(nazu, from);
+    startAutoAcceptSystem(kya, from);
 
     // ==================== NO HANDLER ====================
     // chamar isso em TODA mensagem
@@ -3257,7 +4191,7 @@ const body = getMessageText(info.message) || info?.text || '';
       try {
         if (!roleData || !roleData.announcementKey || !roleData.announcementKey.id) return;
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: roleData.announcementKey.fromMe !== undefined ? roleData.announcementKey.fromMe : true,
@@ -3275,7 +4209,7 @@ const body = getMessageText(info.message) || info?.text || '';
           ...goingList.slice(0, MAX_MENTIONS_IN_ANNOUNCE),
           ...notGoingList.slice(0, MAX_MENTIONS_IN_ANNOUNCE)
         ];
-        const sentMessage = await nazu.sendMessage(from, { text: announcementText, mentions });
+        const sentMessage = await kya.sendMessage(from, { text: announcementText, mentions });
         if (sentMessage?.key?.id) {
           if (!groupData.roleMessages || typeof groupData.roleMessages !== 'object') {
             groupData.roleMessages = {};
@@ -3297,8 +4231,72 @@ const body = getMessageText(info.message) || info?.text || '';
         console.error('Erro ao atualizar anúncio do rolê:', e);
       }
     }
-    const groupMetadata = !isGroup ? {} : await getCachedGroupMetadata(from).catch(() => ({}));
+    let groupMetadata = !isGroup ? {} : await getCachedGroupMetadata(from).catch(() => ({}));
+    if (isGroup && !groupMetadata?.subject) {
+      groupMetadata = await kya.groupMetadata(from).catch(() => groupMetadata || {});
+    }
     const groupName = groupMetadata?.subject || '';
+
+    // Figurinha não aceita legenda nativa no WhatsApp.
+    // O nome do grupo será enviado em texto separado.
+    const sendGroupStickerCaption = async (
+      socket = kya,
+      jid = from,
+      quoted = info,
+      label = 'Figurinha criada'
+    ) => {
+      if (!isGroup || typeof socket?.sendMessage !== 'function') {
+        return false;
+      }
+
+      const safeGroupName = String(groupName || 'Grupo')
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\*/g, '')
+        .trim()
+        .slice(0, 80) || 'Grupo';
+
+      try {
+        await socket.sendMessage(
+          jid,
+          {
+            text: `🌸 *${label}*\n📍 Grupo: *${safeGroupName}*`
+          },
+          quoted ? { quoted } : {}
+        );
+
+        return true;
+      } catch (captionError) {
+        console.warn(
+          '[STICKER CAPTION] Falha ao identificar o grupo:',
+          captionError?.message || captionError
+        );
+        return false;
+      }
+    };
+
+    const sendStickerWithGroupCaption = async (
+      socket,
+      jid,
+      stickerOptions,
+      sendOptions = {}
+    ) => {
+      const result = await sendSticker(
+        socket,
+        jid,
+        stickerOptions,
+        sendOptions
+      );
+
+      await sendGroupStickerCaption(
+        socket,
+        jid,
+        sendOptions?.quoted || info
+      );
+
+      return result;
+    };
+
+    // Mensagens recebidas são exibidas uma única vez pelo terminal KYARA-SYSTΞM.
     if (isGroup) {
       // Otimização: Verificar existência com cache
       const fileExists = await optimizer.fileExists(groupFile);
@@ -3468,47 +4466,156 @@ const body = getMessageText(info.message) || info?.text || '';
       getCurrentPrefix(
         from
       );
+    // KYARA_MENU_NATIVE_PATCH_V1: menu, prefixo dinâmico e assinatura visual.
     const kyaraInteractiveIds = new Set([
-  'menudown',
-  'menulogos',
-  'menuedits',
-  'menuadm',
-  'menubn',
-  'menudono',
-  'menumemb',
-  'ferramentas',
-  'menufig',
-  'alteradores',
-  'menurpg',
-  'menuvip',
-  'menuartista',
-  'artista'
-]);
+      'menudown',
+      'menulogos',
+      'menuedits',
+      'menuadm',
+      'menubn',
+      'menudono',
+      'menumemb',
+      'ferramentas',
+      'menufig',
+      'alteradores',
+      'menurpg',
+      'menulevel',
+      'menuvip',
+      'menuartista',
+      'atualizacoes',
+      'novidades',
+      'artista',
+      'kyara_select_menus',
+      'kyara_channel_comeco',
+      'kyara_channel_bot',
+      'kyara_copiar_comando'
+    ]);
 
-const rawBody = body.trim();
+    const normalizeKyaraInteractiveId = value => {
+      let candidate = normalizar(
+        String(value || '')
+      ).replace(/\s+/g, '');
 
-const hasPrefix =
-  rawBody.startsWith(groupPrefix);
+      const configuredInteractivePrefix = normalizar(
+        String(groupPrefix || prefixo || '#')
+      );
+      if (configuredInteractivePrefix && candidate.startsWith(configuredInteractivePrefix)) {
+        candidate = candidate.slice(configuredInteractivePrefix.length);
+      }
+      candidate = candidate.replace(/^[#!./$]+/, '');
 
-const interactiveId =
-  normalizar(rawBody)
-    .replace(/\\s+/g, '');
+      if (candidate.startsWith('menu:')) {
+        candidate = candidate.slice(5);
+      } else if (candidate.startsWith('menu_')) {
+        candidate = candidate.slice(5);
+      }
 
-const isKyaraInteractive =
-  kyaraInteractiveIds.has(interactiveId);
+      const compatibilityAliases = {
+        menudonw: 'menudown',
+        menudwon: 'menudown',
+        menudow: 'menudown',
+        downloadmenu: 'menudown',
+        menudownload: 'menudown',
+        menudownloads: 'menudown',
+        downmenu: 'menudown',
+
+        menuadmin: 'menuadm',
+        menadmin: 'menuadm',
+        adminmenu: 'menuadm',
+        menusadmin: 'menuadm',
+
+        menubrincadeira: 'menubn',
+        menubrincadeiras: 'menubn',
+        gamemenu: 'menubn',
+        game_menu: 'menubn',
+
+        menu_membros: 'menumemb',
+        menumembros: 'menumemb',
+        membrosmenu: 'menumemb',
+
+        menu_ferramentas: 'ferramentas',
+        menuferramentas: 'ferramentas',
+        ferramentasmenu: 'ferramentas',
+
+        menu_figurinhas: 'menufig',
+        menufigurinhas: 'menufig',
+
+        menu_alteradores: 'alteradores',
+        menualteradores: 'alteradores',
+
+        menu_rpg: 'menurpg',
+        rpgmenu: 'menurpg',
+
+        menu_vip: 'menuvip',
+        vipmenu: 'menuvip',
+
+        menu_dono: 'menudono',
+        donomenu: 'menudono',
+        ownermenu: 'menudono'
+      };
+
+      // ========================================================
+      // TED PLAY
+      // ========================================================
+      // IDs nativos:
+      //   play_mp3|TOKEN
+      //   play_mp4|TOKEN
+      //
+      // O token nunca contém a URL inteira.
+      // ========================================================
+
+      if (
+        /^play_(?:mp3|mp4)\|[A-Za-z0-9_-]+$/i.test(
+          candidate
+        )
+      ) {
+        return candidate;
+      }
+
+      if (kyaraInteractiveIds.has(candidate)) {
+        return candidate;
+      }
+
+      const withoutLeadingDigits =
+        candidate.replace(/^\d+/, '');
+
+      if (kyaraInteractiveIds.has(withoutLeadingDigits)) {
+        return withoutLeadingDigits;
+      }
+
+      return compatibilityAliases[candidate] ||
+        compatibilityAliases[withoutLeadingDigits] ||
+        null;
+    };
+
+    const rawBody = body.trim();
+
+    const hasPrefix =
+      rawBody.startsWith(groupPrefix);
+
+    // PREFIXO OBRIGATÓRIO: interações também precisam dele.
+    const interactiveId = hasPrefix
+      ? normalizeKyaraInteractiveId(rawBody)
+      : null;
+
+    const isKyaraInteractive =
+      Boolean(hasPrefix && interactiveId);
 
 const isKyaraHashMedia =
-  /^#(?:play2|pinterest|pin|gifmenu|gifmenuadm|statusgp|statuscanal|canalbot|testemenu(?:_selecionar|_play|_play2|_baixar|_cancelar)?)(?:\s|$)/i.test(rawBody);
+  /^#(?:play2|pinterest|pin|gifmenu|gifmenuadm|statusgp|statuscanal|canalbot|voxmd|respostavoxmd|teste|respostateste|testemenu(?:_selecionar|_play|_play2|_baixar|_cancelar)?)(?:\s|$)/i.test(rawBody);
 
-var isCmd =
-  hasPrefix ||
-  isKyaraInteractive ||
-  isKyaraHashMedia;
+const isKyaraConfigPanel =
+  /^#configuraçãodobot(?:\s|$)/iu.test(rawBody) ||
+  /^#configuracaodobot(?:\s|$)/i.test(rawBody) ||
+  /^#configurarbot(?:\s|$)/i.test(rawBody);
+
+// Nenhum comando textual é executado sem o prefixo configurado.
+var isCmd = hasPrefix;
 
 const bodyWithoutPrefix =
   hasPrefix
     ? rawBody.slice(groupPrefix.length).trimStart()
-    : isKyaraHashMedia
+    : (isKyaraHashMedia || isKyaraConfigPanel)
       ? rawBody.slice(1).trimStart()
       : rawBody;
 
@@ -3526,8 +4633,74 @@ const bodyWithoutPrefix =
 
     var command = isCmd ? matchedAlias ? matchedAlias.command : normalizar(bodyWithoutPrefix.split(/ +/).shift().trim()).replace(/\s+/g, '') : null;
 
-    // Recalcular args usando bodyWithoutPrefix para suportar "! comando" (com espaço)
-    if (isCmd && !matchedAlias) {
+    // Registra comandos recebidos pelo WhatsApp no terminal.
+    // Não altera o processamento normal do comando.
+    if (
+      isCmd &&
+      command &&
+      !String(info?.key?.id || '').startsWith('TERMINAL-')
+    ) {
+      kyaraTerminal.event('command', {
+        command: rawBody,
+        user: info?.pushName || 'WhatsApp',
+        group: from,
+        source: 'whatsapp'
+      });
+    }
+
+    let __kyaraTedPlayClick = false;
+
+    if (
+      isKyaraInteractive &&
+      interactiveId
+    ) {
+
+      const __tedPlay =
+        String(interactiveId).match(
+          /^play_(mp3|mp4)\|(.+)$/i
+        );
+
+      if (__tedPlay) {
+
+        command =
+          __tedPlay[1].toLowerCase() === 'mp3'
+            ? 'playaudio'
+            : 'playvideo';
+
+        q =
+          __tedPlay[2].trim();
+
+        args.length = 0;
+        args.push(q);
+
+        __kyaraTedPlayClick = true;
+
+        console.log(
+          '[KYARA TED PLAY] ▶',
+          command
+        );
+
+      } else {
+
+        command =
+          interactiveId;
+
+        args.length = 0;
+        q = '';
+
+        console.log(
+          '[KYARA FLOW] ✅ ID canônico:',
+          command
+        );
+      }
+    }
+
+    // Não sobrescrever o token TED.
+    if (
+      isCmd &&
+      !matchedAlias &&
+      !__kyaraTedPlayClick
+    ) {
       const newArgs = bodyWithoutPrefix.split(/ +/).slice(1);
       args.length = 0;
       args.push(...newArgs);
@@ -3562,7 +4735,10 @@ const bodyWithoutPrefix =
       'testemenu_play',
       'testemenu_play2',
       'testemenu_baixar',
-      'testemenu_cancelar'
+      'testemenu_cancelar',
+      'menuinput',
+      'menucancelar',
+      'menuteste'
     ]);
 
     if (
@@ -3633,7 +4809,7 @@ const bodyWithoutPrefix =
     try {
       const kyaraPinterestClickHandled =
         await handlePinterestClick({
-          Kyara: nazu,
+          Kyara: kya,
           info,
           jid: from,
           clickerId:
@@ -3656,7 +4832,7 @@ const bodyWithoutPrefix =
 
       const kyaraVideoClickHandled =
         await handleKyaraVideoFlowClick({
-          Kyara: nazu,
+          Kyara: kya,
           info,
           jid: from,
           clickerId:
@@ -3680,7 +4856,7 @@ const bodyWithoutPrefix =
     try {
       const kyaraVideoNumberHandled =
         await handleKyaraVideoFlowNumber({
-          Kyara: nazu,
+          Kyara: kya,
           jid: from,
           requesterId:
             info?.key?.participant ||
@@ -3705,7 +4881,7 @@ const bodyWithoutPrefix =
     try {
       const kyaraVideoCommandHandled =
         await handleKyaraVideoFlowCommand({
-          Kyara: nazu,
+          Kyara: kya,
           jid: from,
           requesterId:
             info?.key?.participant ||
@@ -3761,7 +4937,7 @@ const bodyWithoutPrefix =
 
       if (isDownloadUniversal) {
         try {
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               text:
@@ -3804,7 +4980,7 @@ const bodyWithoutPrefix =
               .test(nomeArquivo);
 
           if (isVideo) {
-            await nazu.sendMessage(
+            await kya.sendMessage(
               from,
               {
                 video: {
@@ -3823,7 +4999,7 @@ const bodyWithoutPrefix =
               }
             );
           } else {
-            await nazu.sendMessage(
+            await kya.sendMessage(
               from,
               {
                 document: {
@@ -3843,7 +5019,7 @@ const bodyWithoutPrefix =
             );
           }
         } else {
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               text:
@@ -3863,11 +5039,11 @@ const bodyWithoutPrefix =
           universalError
         );
 
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
             text:
-              '❌ Erro no Kyara Downloader:\n' +
+              '❌ Erro no KYARA-SYSTΞM Downloader:\n' +
               (
                 universalError?.message ||
                 String(universalError)
@@ -3897,7 +5073,7 @@ const bodyWithoutPrefix =
       try {
         const quizHandled =
           await handleQuizCasalMessage({
-            nazu,
+            kya,
             jid: from,
             sender: quizCasalSenderJid,
             body,
@@ -3942,7 +5118,7 @@ const bodyWithoutPrefix =
       try {
         const quizSetupHandled =
           await handleQuizCasalMessage({
-            nazu,
+            kya,
             jid: from,
             sender,
             body,
@@ -4061,12 +5237,12 @@ if (
     ? (
       '🌸 *KYARA TUBE*\n\n' +
       `🔎 Pesquisa: *${pesquisaTube}*\n\n` +
-      'Seu centro de vídeos da Kyara está pronto.\n\n' +
+      'Seu centro de vídeos da KYARA-SYSTΞM está pronto.\n\n' +
       '▶️ Abra o KYARA TUBE para ver os resultados.'
     )
     : (
       '🌸 *KYARA TUBE*\n\n' +
-      'Seu centro de vídeos da Kyara está pronto.\n\n' +
+      'Seu centro de vídeos da KYARA-SYSTΞM está pronto.\n\n' +
       '🔎 Pesquise vídeos\n' +
       '▶️ Assista online\n' +
       '📺 Explore o conteúdo'
@@ -4139,7 +5315,7 @@ if (
                 },
 
                 footer: {
-                  text: 'KYARA • KYARA TUBE'
+                  text: 'KYARA-SYSTΞM • TUBE'
                 },
 
                 nativeFlowMessage: {
@@ -4167,7 +5343,7 @@ if (
       );
 
     await Promise.race([
-      nazu.relayMessage(
+      kya.relayMessage(
         from,
         msg.message,
         {
@@ -4241,7 +5417,7 @@ if (
             if (debug) {
               console.log('[DEBUG CAPTCHA] ✅ Resposta correta! Aprovando no grupo:', captchaData.groupId);
             }
-            await nazu.groupRequestParticipantsUpdate(captchaData.groupId, [sender], 'approve');
+            await kya.groupRequestParticipantsUpdate(captchaData.groupId, [sender], 'approve');
             await reply('✅ *Correto!* Você foi aprovado no grupo. Bem-vindo! 🎉');
 
             // Limpar captcha pendente do índice
@@ -4256,7 +5432,7 @@ if (
 
               // Notificação X9
               if (groupDataCaptcha.x9) {
-                await nazu.sendMessage(captchaData.groupId, {
+                await kya.sendMessage(captchaData.groupId, {
                   text: `✅ *X9 Report:* @${sender.split('@')[0]} passou na verificação de captcha e foi aprovado automaticamente.`,
                   mentions: [sender],
                 }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -4273,7 +5449,7 @@ if (
             if (debug) {
               console.log('[DEBUG CAPTCHA] ❌ Resposta incorreta! Recusando no grupo:', captchaData.groupId);
             }
-            await nazu.groupRequestParticipantsUpdate(captchaData.groupId, [sender], 'reject');
+            await kya.groupRequestParticipantsUpdate(captchaData.groupId, [sender], 'reject');
             await reply('❌ *Resposta incorreta!* Sua solicitação foi recusada. Você pode tentar solicitar novamente.');
 
             // Limpar captcha pendente do índice
@@ -4311,7 +5487,7 @@ if (
         return;
       };
       if (antipvData.mode === 'antipv3' && isCmd && !isOwner && !isPremium && !isTm2Command) {
-        await nazu.updateBlockStatus(sender, 'block');
+        await kya.updateBlockStatus(sender, 'block');
         await reply('🚫 Você foi bloqueado por usar comandos no privado!');
         return;
       };
@@ -4361,8 +5537,8 @@ if (
       groupMetadata.participants?.filter(p => p.admin === 'admin' || p.admin === 'superadmin').map(extractParticipantId).filter(Boolean) || [];
 
     // Converte todos os membros e admins para LID (usando cache)
-    const AllgroupMembers = await convertIdsToLid(nazu, rawMembers);
-    const groupAdmins = await convertIdsToLid(nazu, rawAdmins);
+    const AllgroupMembers = await convertIdsToLid(kya, rawMembers);
+    const groupAdmins = await convertIdsToLid(kya, rawAdmins);
 
     // Debug log
     debugLog('Membros e Admins convertidos:', {
@@ -4372,28 +5548,28 @@ if (
     });
 
     // Robust bot ID extraction with multiple fallback mechanisms
-    const getBotNumber = (nazu) => {
+    const getBotNumber = (kya) => {
       try {
         // Tenta pegar LID primeiro
-        if (nazu.user?.lid) {
+        if (kya.user?.lid) {
           // Remove o sufixo `:XX` se existir (ex: 267955023654984:13@lid -> 267955023654984@lid)
-          const lid = nazu.user.lid;
+          const lid = kya.user.lid;
           const cleanLid = lid.includes(':') ? lid.split(':')[0] + '@lid' : lid;
           return cleanLid;
         }
 
         // Fallback para ID padrão
-        if (nazu.user?.id) {
-          const botId = nazu.user.id.split(':')[0];
+        if (kya.user?.id) {
+          const botId = kya.user.id.split(':')[0];
           return `${botId}@s.whatsapp.net`;
         }
 
         // Usa helper se disponível
         if (typeof getBotId === 'function') {
-          return getBotId(nazu);
+          return getBotId(kya);
         }
 
-        console.warn('Unable to determine bot number - user object:', nazu.user);
+        console.warn('Unable to determine bot number - user object:', kya.user);
         return null;
       } catch (error) {
         console.error('Error extracting bot number:', error);
@@ -4401,11 +5577,11 @@ if (
       }
     };
 
-    const botNumber = getBotNumber(nazu);
+    const botNumber = getBotNumber(kya);
 
     // Converte o botNumber para LID se for JID
     const botNumberLid = botNumber && isValidJid(botNumber)
-      ? await getLidFromJidCached(nazu, botNumber)
+      ? await getLidFromJidCached(kya, botNumber)
       : botNumber;
 
     const isBotAdmin = !isGroup || !botNumberLid ? false : idInArray(botNumberLid, groupAdmins);
@@ -4474,10 +5650,10 @@ if (
       }
       if (caption.length < groupData.minMessage.minDigits) {
         try {
-          await nazu.sendMessage(from, { delete: info.key });
+          await kya.sendMessage(from, { delete: info.key });
           if (groupData.minMessage.action === 'ban') {
             if (isBotAdmin) {
-              await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+              await kya.groupParticipantsUpdate(from, [sender], 'remove');
               await reply(`🚫 Usuário removido por enviar mídia sem legenda suficiente (mínimo: ${groupData.minMessage.minDigits} caracteres).`);
             } else {
               await reply(`⚠️ Mídia sem legenda suficiente detectada, mas não sou admin para remover o usuário.`);
@@ -4494,7 +5670,7 @@ if (
     if (isGroup && isStatusMention && isAntiStatus && !isGroupAdmin) {
       if (!isUserWhitelisted(sender, 'antistatus')) {
         if (isBotAdmin) {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -4502,7 +5678,7 @@ if (
               participant: sender
             }
           });
-          await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+          await kya.groupParticipantsUpdate(from, [sender], 'remove');
         } else {
           await reply(botNeedsAdminMessage());
         }
@@ -4511,7 +5687,7 @@ if (
     if (isGroup && isButtonMessage && isAntiBtn && !isGroupAdmin) {
       if (!isUserWhitelisted(sender, 'antibtn')) {
         if (isBotAdmin) {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -4519,7 +5695,7 @@ if (
               participant: sender
             }
           });
-          await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+          await kya.groupParticipantsUpdate(from, [sender], 'remove');
         } else {
           await reply(botNeedsAdminMessage());
         }
@@ -4528,6 +5704,15 @@ if (
     if (isGroup && isCmd && isOnlyAdmin && !isGroupAdmin && !soadmBypassCommands.includes(command)) {
       return;
     }
+    // ANTI-DELETE PV: tratamento compartilhado; o sub-bot selecionado fica em modo monitor.
+    if (info?.message?.protocolMessage?.type === 0) {
+      try {
+        await handleAntiDeletePvRevocation({ sock: kya, info, messagesCache, ownerJid });
+      } catch (__antiDeletePvError) {
+        console.error('[ANTI-DELETE PV] Erro ao processar revogação:', __antiDeletePvError?.stack || __antiDeletePvError);
+      }
+    }
+
     if (isGroup && info.message.protocolMessage && info.message.protocolMessage.type === 0 && isAntiDel) {
       const deletedMsgKey = info.message.protocolMessage.key;
       const cacheKey = `${deletedMsgKey.remoteJid || from}_${deletedMsgKey.id}`;
@@ -4570,7 +5755,7 @@ if (
         userName = pushNameFromMsg;
       } else {
         try {
-          const fetchedName = await nazu.getName(fromGroup, participant);
+          const fetchedName = await kya.getName(fromGroup, participant);
           const numeroLimpoFallback = participant.split('@')[0];
 
           if (fetchedName && fetchedName !== numeroLimpoFallback) {
@@ -4584,7 +5769,7 @@ if (
       }
 
       try {
-        profilePic = await nazu.profilePictureUrl(participant, 'image');
+        profilePic = await kya.profilePictureUrl(participant, 'image');
       } catch (e) {
       }
 
@@ -4602,7 +5787,7 @@ if (
       };
 
       try {
-        await nazu.sendMessage(fromGroup, clone);
+        await kya.sendMessage(fromGroup, clone);
       } catch (err) {
         console.error('ERRO CRÍTICO AO REENVIAR MENSAGEM:', err);
       }
@@ -4664,13 +5849,13 @@ if (
     }
     if (isGroup && isMuted && !isGroupAdmin && !isOwner) {
       try {
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: `🤫 *Usuário mutado detectado*\n\n@${getUserName(sender)}, você está tentando falar enquanto está mutado neste grupo. Você será removido conforme as regras.`,
           mentions: [sender]
         }, {
           quoted: info
         });
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           delete: {
             remoteJid: from,
             fromMe: false,
@@ -4679,7 +5864,7 @@ if (
           }
         });
         if (isBotAdmin) {
-          await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+          await kya.groupParticipantsUpdate(from, [sender], 'remove');
         } else {
           await reply(botNeedsAdminMessage());
         }
@@ -4696,7 +5881,7 @@ if (
     }
     if (isGroup && isMuted2 && !isGroupAdmin && !isOwner) {
       try {
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           delete: {
             remoteJid: from,
             fromMe: false,
@@ -4856,7 +6041,7 @@ if (
             weeklyMessage +=
               '\n╰━━━━━━━━━━━━━━━━━━━━╯';
 
-            await nazu.sendMessage(
+            await kya.sendMessage(
               from,
               {
                 text: weeklyMessage,
@@ -4884,7 +6069,7 @@ if (
           sender,
           userData,
           levelingData,
-          nazu,
+          kya,
           from
         );
 
@@ -4915,6 +6100,31 @@ if (
 
         let normalizedReplyText = formatKyaraText(String(text ?? ''));
 
+        /*
+         * 🌸 AUTO-AJUSTE
+         *
+         * A maioria dos comandos possui seu próprio try/catch.
+         * Por isso alguns erros não chegam ao catch externo.
+         *
+         * Quando o comando responde com uma mensagem claramente
+         * técnica, registramos automaticamente no sistema.
+         */
+        try {
+          if (
+            isCmd &&
+            command &&
+            isKyaraTechnicalCommandError(
+              normalizedReplyText
+            )
+          ) {
+            kyaraRegisterCommandFailure(
+              command,
+              normalizedReplyText,
+              'reply'
+            );
+          }
+        } catch {}
+
         normalizedReplyText =
           normalizedReplyText
             .replace(
@@ -4929,6 +6139,18 @@ if (
               /(?:O\s+)?BOT-KYARA(?=\s+(?:precisa|deve|não|nao))/gi,
               botReplyName
             );
+
+        // KYARA_VERIFIED_REPLY_PATCH_V3
+        let verifiedMessagesEnabled = false;
+        try {
+          const verifiedConfigFile = path.resolve(process.cwd(), 'dados', 'src', 'config.json');
+          const verifiedConfig = JSON.parse(fs.readFileSync(verifiedConfigFile, 'utf8'));
+          verifiedMessagesEnabled = verifiedConfig.verificadoMensagens === true;
+        } catch (verifiedError) {
+          console.error('[VERIFICADO] Falha ao ler config.json:', verifiedError.message);
+        }
+
+
         const {
           mentions = [],
           noForward = false,
@@ -4953,14 +6175,14 @@ if (
         if (!noQuote) {
           sendOptions.quoted = info;
         }
-        const result = await nazu.sendMessage(from, messageContent, sendOptions);
+        const result = await kya.sendMessage(from, messageContent, sendOptions);
         return result;
       } catch (error) {
         console.error("Erro ao enviar mensagem:", error);
         return null;
       }
     }
-    nazu.reply = reply;
+    kya.reply = reply;
     const reagir = async (emj, options = {}) => {
       try {
         const messageKey = options.key || info.key;
@@ -4974,7 +6196,7 @@ if (
             console.warn("Emoji inválido para reação:", emj);
             return false;
           }
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             react: {
               text: emj,
               key: messageKey
@@ -4987,7 +6209,7 @@ if (
               console.warn("Emoji inválido na sequência:", emoji);
               continue;
             }
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               react: {
                 text: emoji,
                 key: messageKey
@@ -5005,7 +6227,7 @@ if (
         return false;
       }
     };
-    nazu.react = reagir;
+    kya.react = reagir;
 
     async function processReactionMessage() {
       try {
@@ -5069,7 +6291,7 @@ if (
                 const confirmationText = isGoingEmoji(emoji)
                   ? `🙋 Presença confirmada no rolê *${roleData.title || roleCode}*.`
                   : `🤷 Você sinalizou que não vai mais no rolê *${roleData.title || roleCode}*.`;
-                await nazu.sendMessage(actorId, {
+                await kya.sendMessage(actorId, {
                   text: `${confirmationText}
 Código: *${roleCode}*`,
                   mentions: [actorId]
@@ -5351,7 +6573,7 @@ Código: *${roleCode}*`,
       } catch (e) {
       }
     };
-    startRemindersWorker(nazu);
+    startRemindersWorker(kya);
     // GP schedule using cron jobs (daily execution)
     let gpScheduleWorkerStarted = global.gpScheduleWorkerStarted || false;
     const gpCronJobs = {}; // key: `${groupId}:${type}` where type is 'open'|'close'
@@ -5363,6 +6585,103 @@ Código: *${roleCode}*`,
         try { j.stop(); } catch (e) { }
       }
       delete gpCronJobs[key];
+    };
+
+
+    const normalizeCronJid = value => {
+      let jid = String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/:[0-9]+(?=@)/, '');
+
+      if (/^\+?[0-9]{8,16}$/.test(jid)) {
+        jid = jid.replace(/\D/g, '') + '@s.whatsapp.net';
+      }
+
+      return jid;
+    };
+
+    const isBotGroupMemberForCron = async (socket, groupId) => {
+      const botIds = [
+        socket?.user?.id,
+        socket?.user?.lid,
+        socket?.user?.phoneNumber
+      ]
+        .map(normalizeCronJid)
+        .filter(value => value.includes('@'));
+
+      if (
+        !botIds.length ||
+        typeof socket?.groupMetadata !== 'function'
+      ) {
+        return null;
+      }
+
+      try {
+        const metadata = await socket.groupMetadata(groupId);
+
+        if (!Array.isArray(metadata?.participants)) {
+          return null;
+        }
+
+        const participantIds = metadata.participants.flatMap(participant =>
+          [
+            participant?.id,
+            participant?.jid,
+            participant?.lid,
+            participant?.phoneNumber
+          ]
+            .map(normalizeCronJid)
+            .filter(Boolean)
+        );
+
+        if (!participantIds.length) {
+          return null;
+        }
+
+        return botIds.some(id => participantIds.includes(id));
+      } catch {
+        // Erro de rede não significa que o bot saiu do grupo.
+        return null;
+      }
+    };
+
+    const clearGroupCronTime = (groupId, type) => {
+      try {
+        const filePath = buildGroupFilePath(groupId);
+
+        if (!fs.existsSync(filePath)) {
+          return false;
+        }
+
+        const data = JSON.parse(
+          fs.readFileSync(filePath, 'utf8')
+        ) || {};
+
+        if (!data.schedule || typeof data.schedule !== 'object') {
+          return false;
+        }
+
+        const field = type === 'open'
+          ? 'openTime'
+          : 'closeTime';
+
+        if (!data.schedule[field]) {
+          return false;
+        }
+
+        delete data.schedule[field];
+        writeJsonFile(filePath, data);
+
+        return true;
+      } catch (error) {
+        console.error(
+          '[Cron] Não foi possível limpar horário obsoleto:',
+          error?.message || error
+        );
+
+        return false;
+      }
     };
 
     const scheduleGroupJob = (groupId, type, timeStr, nazuInstance) => {
@@ -5379,6 +6698,32 @@ Código: *${roleCode}*`,
       try {
         const task = cron.schedule(cronExpr, async () => {
           try {
+            const membership = await isBotGroupMemberForCron(
+              nazuInstance,
+              groupId
+            );
+
+            if (membership === false) {
+              clearGroupCronTime(groupId, type);
+              unscheduleGroupJob(groupId, type);
+
+              console.warn(
+                `[Cron] ⏭️ Agendamento ${
+                  type === 'open' ? 'ABRIR' : 'FECHAR'
+                } removido: o bot não participa mais de ${groupId}.`
+              );
+
+              return;
+            }
+
+            if (membership !== true) {
+              console.warn(
+                `[Cron] ⚠️ Execução ignorada: não foi possível confirmar participação em ${groupId}.`
+              );
+
+              return;
+            }
+
             const filePath = buildGroupFilePath(groupId);
             if (!fs.existsSync(filePath)) return;
             let data = {};
@@ -5419,34 +6764,125 @@ Código: *${roleCode}*`,
       }
     };
 
-    const loadAllGroupSchedules = (nazuInstance) => {
+
+    const loadAllGroupSchedules = async (nazuInstance) => {
       try {
         if (!ensureDirectoryExists(GRUPOS_DIR)) return;
-        const files = fs.readdirSync(GRUPOS_DIR).filter(f => f.endsWith('.json'));
+
+        const files = fs.readdirSync(GRUPOS_DIR)
+          .filter(f => f.endsWith('.json'));
+
         let loadedCount = 0;
+
         for (const f of files) {
           const groupId = f.replace(/\.json$/, '');
-          if (!groupId.endsWith('@g.us')) continue;
+
+          if (!groupId.endsWith('@g.us')) {
+            continue;
+          }
+
           const filePath = pathz.join(GRUPOS_DIR, f);
+
           let data = {};
-          try { data = JSON.parse(fs.readFileSync(filePath, 'utf8')) || {}; } catch (e) { continue; }
-          const schedule = data.schedule && typeof data.schedule === 'object' ? data.schedule : {};
+
+          try {
+            data = JSON.parse(
+              fs.readFileSync(filePath, 'utf8')
+            ) || {};
+          } catch {
+            continue;
+          }
+
+          const schedule =
+            data.schedule && typeof data.schedule === 'object'
+              ? data.schedule
+              : {};
+
+          if (!schedule.openTime && !schedule.closeTime) {
+            continue;
+          }
+
+          const membership = await isBotGroupMemberForCron(
+            nazuInstance,
+            groupId
+          );
+
+          if (membership === false) {
+            let removed = 0;
+
+            if (schedule.openTime) {
+              delete schedule.openTime;
+              unscheduleGroupJob(groupId, 'open');
+              removed++;
+            }
+
+            if (schedule.closeTime) {
+              delete schedule.closeTime;
+              unscheduleGroupJob(groupId, 'close');
+              removed++;
+            }
+
+            if (removed) {
+              data.schedule = schedule;
+              writeJsonFile(filePath, data);
+
+              console.warn(
+                `[Cron] 🧹 ${removed} horário(s) desativado(s): o bot não participa mais de ${groupId}.`
+              );
+            }
+
+            continue;
+          }
+
+          if (membership !== true) {
+            console.warn(
+              `[Cron] ⚠️ Agendamentos preservados, mas não carregados: participação não confirmada em ${groupId}.`
+            );
+
+            continue;
+          }
+
           if (schedule.openTime) {
-            scheduleGroupJob(groupId, 'open', schedule.openTime, nazuInstance);
-            console.log(`[Cron] ✅ Agendamento ABRIR carregado: Grupo ${groupId.substring(0, 15)}... às ${schedule.openTime}`);
+            scheduleGroupJob(
+              groupId,
+              'open',
+              schedule.openTime,
+              nazuInstance
+            );
+
+            console.log(
+              `[Cron] ✅ Agendamento ABRIR carregado: Grupo ${groupId.substring(0, 15)}... às ${schedule.openTime}`
+            );
+
             loadedCount++;
           }
+
           if (schedule.closeTime) {
-            scheduleGroupJob(groupId, 'close', schedule.closeTime, nazuInstance);
-            console.log(`[Cron] ✅ Agendamento FECHAR carregado: Grupo ${groupId.substring(0, 15)}... às ${schedule.closeTime}`);
+            scheduleGroupJob(
+              groupId,
+              'close',
+              schedule.closeTime,
+              nazuInstance
+            );
+
+            console.log(
+              `[Cron] ✅ Agendamento FECHAR carregado: Grupo ${groupId.substring(0, 15)}... às ${schedule.closeTime}`
+            );
+
             loadedCount++;
           }
         }
+
         if (loadedCount > 0) {
-          console.log(`[Cron] 📅 Total de ${loadedCount} agendamento(s) carregado(s) com sucesso`);
+          console.log(
+            `[Cron] 📅 Total de ${loadedCount} agendamento(s) carregado(s) com sucesso`
+          );
         }
-      } catch (e) {
-        console.error('[Cron] Failed to load group schedules:', e);
+      } catch (error) {
+        console.error(
+          '[Cron] Failed to load group schedules:',
+          error
+        );
       }
     };
 
@@ -5456,12 +6892,12 @@ Código: *${roleCode}*`,
         gpScheduleWorkerStarted = true;
         global.gpScheduleWorkerStarted = true;
         // load existing schedules and create cron jobs
-        loadAllGroupSchedules(nazuInstance);
+        void loadAllGroupSchedules(nazuInstance);
       } catch (e) {
         console.error('[Cron] startGpScheduleWorker error:', e);
       }
     };
-    startGpScheduleWorker(nazu);
+    startGpScheduleWorker(kya);
 
     let autoHorariosWorkerStarted = global.autoHorariosWorkerStarted || false;
     const startAutoHorariosWorker = (nazuInstance) => {
@@ -5584,7 +7020,7 @@ Código: *${roleCode}*`,
         console.error('Erro ao iniciar auto horários worker:', e);
       }
     };
-    startAutoHorariosWorker(nazu);
+    startAutoHorariosWorker(kya);
 
     // Auto Mensagens Worker usando cron jobs (executa conforme horários programados)
     let autoMensagensWorkerStarted = global.autoMensagensWorkerStarted || false;
@@ -5746,7 +7182,7 @@ Código: *${roleCode}*`,
       }
     };
 
-    startAutoMensagensWorker(nazu);
+    startAutoMensagensWorker(kya);
 
     // ============== DIVULGAÇÃO DO DONO (NOVO SISTEMA) ==============
     let donoDivulgacaoWorkerStarted = global.donoDivulgacaoWorkerStarted || false;
@@ -5859,7 +7295,7 @@ Código: *${roleCode}*`,
       }
     };
 
-    startDonoDivulgacaoWorker(nazu);
+    startDonoDivulgacaoWorker(kya);
 
     const getFileBuffer = async (mediakey, mediaType, options = {}) => {
       try {
@@ -6046,7 +7482,7 @@ Código: *${roleCode}*`,
                 pornGroupData.warnings = pornGroupData.warnings || {};
 
                 try {
-                  await nazu.sendMessage(from, { delete: info.key });
+                  await kya.sendMessage(from, { delete: info.key });
                 } catch { }
 
                 if (pornGroupData.modoADV) {
@@ -6060,7 +7496,7 @@ Código: *${roleCode}*`,
                   fs.writeFileSync(pornGroupFilePath, JSON.stringify(pornGroupData, null, 2));
                   if (warningCount >= 3) {
                     if (isBotAdmin) {
-                      await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                      await kya.groupParticipantsUpdate(from, [sender], 'remove');
                       delete pornGroupData.warnings[sender];
                       fs.writeFileSync(pornGroupFilePath, JSON.stringify(pornGroupData, null, 2));
                       await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar conteúdo impróprio e foi removido.`, { mentions: [sender] });
@@ -6073,7 +7509,7 @@ Código: *${roleCode}*`,
                 } else {
                   if (isBotAdmin) {
                     try {
-                      await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                      await kya.groupParticipantsUpdate(from, [sender], 'remove');
                       await reply(`🔞 @${getUserName(sender)}, conteúdo impróprio detectado. Você foi removido do grupo.`, { mentions: [sender] });
                     } catch (adminError) {
                       console.error(`Erro ao remover usuário por anti-porn: ${adminError}`);
@@ -6100,7 +7536,7 @@ Código: *${roleCode}*`,
         locGroupData.warnings = locGroupData.warnings || {};
 
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -6121,7 +7557,7 @@ Código: *${roleCode}*`,
           fs.writeFileSync(locGroupFilePath, JSON.stringify(locGroupData, null, 2));
           if (warningCount >= 3) {
             if (isBotAdmin) {
-              await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+              await kya.groupParticipantsUpdate(from, [sender], 'remove');
               delete locGroupData.warnings[sender];
               fs.writeFileSync(locGroupFilePath, JSON.stringify(locGroupData, null, 2));
               await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar localização e foi removido.`, { mentions: [sender] });
@@ -6132,7 +7568,7 @@ Código: *${roleCode}*`,
             await reply(`⚠️ @${getUserName(sender)} recebeu uma advertência por enviar localização.\n\n📊 Advertências: *${warningCount}/3*\n🚫 Ao atingir *3/3* será removido automaticamente.`, { mentions: [sender] });
           }
         } else {
-          await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+          await kya.groupParticipantsUpdate(from, [sender], 'remove');
           await reply(`🗺️ @${getUserName(sender)}, localização não permitida. Você foi removido do grupo.`, { mentions: [sender] });
         }
       }
@@ -6158,7 +7594,7 @@ Código: *${roleCode}*`,
         docGroupData.warnings = docGroupData.warnings || {};
 
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -6179,7 +7615,7 @@ Código: *${roleCode}*`,
           fs.writeFileSync(docGroupFilePath, JSON.stringify(docGroupData, null, 2));
           if (warningCount >= 3) {
             if (isBotAdmin) {
-              await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+              await kya.groupParticipantsUpdate(from, [sender], 'remove');
               delete docGroupData.warnings[sender];
               fs.writeFileSync(docGroupFilePath, JSON.stringify(docGroupData, null, 2));
               await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar documentos e foi removido.`, { mentions: [sender] });
@@ -6190,7 +7626,7 @@ Código: *${roleCode}*`,
             await reply(`⚠️ @${getUserName(sender)} recebeu uma advertência por enviar documento.\n\n📊 Advertências: *${warningCount}/3*\n🚫 Ao atingir *3/3* será removido automaticamente.`, { mentions: [sender] });
           }
         } else {
-          await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+          await kya.groupParticipantsUpdate(from, [sender], 'remove');
           await reply(`📄 @${getUserName(sender)}, documentos não são permitidos. Você foi removido do grupo.`, { mentions: [sender] });
         }
       }
@@ -6216,7 +7652,7 @@ Código: *${roleCode}*`,
       ) {
         try {
           handleAutoDownload(
-            nazu,
+            kya,
             from,
             urlMatch[0],
             info,
@@ -6242,7 +7678,7 @@ Código: *${roleCode}*`,
           }
           const buffer = await getFileBuffer(isVideo ? mediaVideo : mediaImage, isVideo ? 'video' : 'image');
           const shouldForceSquare = global.autoStickerMode === 'square';
-          await sendSticker(nazu, from, {
+          await sendSticker(kya, from, {
             sticker: buffer,
             author: `『${pushname}』`,
             packname: `${nomebot}`, type: isVideo ? 'video' : 'image',
@@ -6298,7 +7734,7 @@ Código: *${roleCode}*`,
     // ==================== FIGBAN ====================
     try {
       const figbanHandled = await handleFigban({
-        nazu,
+        kya,
         info,
         from,
         isGroup,
@@ -6364,7 +7800,7 @@ Código: *${roleCode}*`,
               mime
             }) => {
               return await publishKyaraNewsletterGlobal({
-                sock: nazu,
+                sock: kya,
                 type,
                 text,
                 buffer,
@@ -6410,7 +7846,7 @@ Código: *${roleCode}*`,
       try {
         const statusGpHandled =
           await handleKyaraStatusGp({
-            nazu,
+            kya,
             info,
             from,
             command,
@@ -6429,7 +7865,7 @@ Código: *${roleCode}*`,
               mime
             }) => {
               return await publishKyaraNewsletterGlobal({
-                sock: nazu,
+                sock: kya,
                 type,
                 text,
                 buffer,
@@ -6601,7 +8037,7 @@ Código: *${roleCode}*`,
             foundGroupLink = true;
 
             link_dgp =
-              await nazu.groupInviteCode(
+              await kya.groupInviteCode(
                 from
               );
 
@@ -6637,7 +8073,7 @@ Código: *${roleCode}*`,
 
               link_dgp =
                 link_dgp ||
-                await nazu.groupInviteCode(
+                await kya.groupInviteCode(
                   from
                 );
 
@@ -6667,7 +8103,7 @@ Código: *${roleCode}*`,
             // apagar mensagem
             try {
 
-              await nazu.sendMessage(
+              await kya.sendMessage(
                 from,
                 {
                   delete: {
@@ -6723,7 +8159,7 @@ Código: *${roleCode}*`,
                   isBotAdmin
                 ) {
 
-                  await nazu.groupParticipantsUpdate(
+                  await kya.groupParticipantsUpdate(
                     from,
                     [sender],
                     'remove'
@@ -6787,7 +8223,7 @@ Código: *${roleCode}*`,
               isBotAdmin
             ) {
 
-              await nazu.groupParticipantsUpdate(
+              await kya.groupParticipantsUpdate(
                 from,
                 [sender],
                 'remove'
@@ -6852,7 +8288,7 @@ Código: *${roleCode}*`,
             canalGroupData.warnings = canalGroupData.warnings || {};
 
             try {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 delete: {
                   remoteJid: from,
                   fromMe: false,
@@ -6873,7 +8309,7 @@ Código: *${roleCode}*`,
               fs.writeFileSync(canalGroupFilePath, JSON.stringify(canalGroupData, null, 2));
               if (warningCount >= 3) {
                 if (isBotAdmin) {
-                  await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                  await kya.groupParticipantsUpdate(from, [sender], 'remove');
                   delete canalGroupData.warnings[sender];
                   fs.writeFileSync(canalGroupFilePath, JSON.stringify(canalGroupData, null, 2));
                   await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar links de canais e foi removido.`, { mentions: [sender] });
@@ -6887,7 +8323,7 @@ Código: *${roleCode}*`,
             }
 
             if (isBotAdmin) {
-              await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+              await kya.groupParticipantsUpdate(from, [sender], 'remove');
               await reply(`📢 @${getUserName(sender)}, links de canais não são permitidos. Você foi removido do grupo.`, { mentions: [sender] });
             } else {
               await reply(`📢 Atenção, @${getUserName(sender)}! Links de canais não são permitidos. Não consigo remover você, mas evite compartilhar esses links.`, { mentions: [sender] });
@@ -6902,7 +8338,7 @@ Código: *${roleCode}*`,
     if (isGroup && isAntiLinkSoft && !isGroupAdmin && !isParceiro && budy2.includes('http') && !isOwner) {
       if (!isUserWhitelisted(sender, 'antilinksoft')) {
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -6924,7 +8360,7 @@ Código: *${roleCode}*`,
             fs.writeFileSync(softGroupFilePath, JSON.stringify(groupData, null, 2));
             if (warningCount >= 3) {
               if (isBotAdmin) {
-                await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                await kya.groupParticipantsUpdate(from, [sender], 'remove');
                 delete groupData.warnings[sender];
                 fs.writeFileSync(softGroupFilePath, JSON.stringify(groupData, null, 2));
                 await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar links e foi removido.`, { mentions: [sender] });
@@ -6954,7 +8390,7 @@ Código: *${roleCode}*`,
           hardGroupData.warnings = hardGroupData.warnings || {};
 
           try {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               delete: {
                 remoteJid: from,
                 fromMe: false,
@@ -6975,7 +8411,7 @@ Código: *${roleCode}*`,
             fs.writeFileSync(hardGroupFilePath, JSON.stringify(hardGroupData, null, 2));
             if (warningCount >= 3) {
               if (isBotAdmin) {
-                await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                await kya.groupParticipantsUpdate(from, [sender], 'remove');
                 delete hardGroupData.warnings[sender];
                 fs.writeFileSync(hardGroupFilePath, JSON.stringify(hardGroupData, null, 2));
                 await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar links e foi removido.`, { mentions: [sender] });
@@ -6989,7 +8425,7 @@ Código: *${roleCode}*`,
           }
 
           if (isBotAdmin) {
-            await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+            await kya.groupParticipantsUpdate(from, [sender], 'remove');
             await reply(`🔗 @${getUserName(sender)}, links não são permitidos. Você foi removido do grupo.`, { mentions: [sender] });
           } else {
             await reply(`🔗 Atenção, @${getUserName(sender)}! Links não são permitidos. Não consigo remover você, mas evite enviar links.`, { mentions: [sender] });
@@ -7016,7 +8452,7 @@ Código: *${roleCode}*`,
 
           if (groupData.antistickerplus_apagar || groupData.antistickerplus_remover) {
             try {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 delete: {
                   remoteJid: from,
                   fromMe: false,
@@ -7043,7 +8479,7 @@ Código: *${roleCode}*`,
               fs.writeFileSync(spGroupFilePath, JSON.stringify(spGroupData, null, 2));
               if (warningCount >= 3) {
                 if (isBotAdmin) {
-                  await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                  await kya.groupParticipantsUpdate(from, [sender], 'remove');
                   delete spGroupData.warnings[sender];
                   fs.writeFileSync(spGroupFilePath, JSON.stringify(spGroupData, null, 2));
                   await reply(`🚫 @${getUserName(sender)} atingiu *3/3 advertências* por enviar figurinhas plus e foi removido.`, { mentions: [sender] });
@@ -7059,7 +8495,7 @@ Código: *${roleCode}*`,
                 { mentions: [sender] }
               );
               if (isBotAdmin) {
-                await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+                await kya.groupParticipantsUpdate(from, [sender], 'remove');
               }
             }
           }
@@ -7073,7 +8509,7 @@ Código: *${roleCode}*`,
 
     const botStateFile = pathz.join(DATABASE_DIR, 'botState.json');
     if (botState.status === 'off' && !isOwner) return;
-    if (botState.viewMessages) nazu.readMessages([info.key]);
+    if (botState.viewMessages) kya.readMessages([info.key]);
     try {
       if (budy2 && budy2.length > 1) {
         const timestamp = new Date().toLocaleTimeString('pt-BR', {
@@ -7110,7 +8546,7 @@ Código: *${roleCode}*`,
               const relResponse = relationshipManager.processResponse(from, sender, body);
               if (relResponse) {
                 if (relResponse.success && relResponse.message) {
-                  await nazu.sendMessage(from, {
+                  await kya.sendMessage(from, {
                     text: relResponse.message,
                     mentions: relResponse.mentions || []
                   });
@@ -7123,7 +8559,7 @@ Código: *${roleCode}*`,
                 const betrayalResponse = relationshipManager.processBetrayalResponse(from, sender, body, groupPrefix);
                 if (betrayalResponse) {
                   if (betrayalResponse.success && betrayalResponse.message) {
-                    await nazu.sendMessage(from, {
+                    await kya.sendMessage(from, {
                       text: betrayalResponse.message,
                       mentions: betrayalResponse.mentions || []
                     });
@@ -7140,7 +8576,7 @@ Código: *${roleCode}*`,
           const normalizedResponse = budy2.toLowerCase().trim();
           const result = tictactoe.processInvitationResponse(from, sender, normalizedResponse);
           if (result.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: result.message,
               mentions: result.mentions || []
             });
@@ -7160,7 +8596,7 @@ Código: *${roleCode}*`,
           if (!isNaN(position)) {
             const result = tictactoe.makeMove(from, sender, position);
             if (result.success) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: result.message,
                 mentions: result.mentions || [sender]
               });
@@ -7175,7 +8611,7 @@ Código: *${roleCode}*`,
           const normalizedResponse = budy2.toLowerCase().trim();
           const result = connect4.processInvitationResponse(from, sender, normalizedResponse);
           if (result.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: result.message,
               mentions: result.mentions || []
             });
@@ -7195,7 +8631,7 @@ Código: *${roleCode}*`,
           if (!isNaN(column) && column >= 1 && column <= 7) {
             const result = connect4.makeMove(from, sender, column);
             if (result.success) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: result.message,
                 mentions: result.mentions || [sender]
               });
@@ -7215,14 +8651,14 @@ Código: *${roleCode}*`,
             if (toxicResult.isToxic) {
               const action = antitoxic.getGroupAction ? antitoxic.getGroupAction(from) : 'avisar';
               if (action === 'apagar') {
-                nazu.sendMessage(from, { delete: info.key }).then(() => {
-                  nazu.sendMessage(from, {
+                kya.sendMessage(from, { delete: info.key }).then(() => {
+                  kya.sendMessage(from, {
                     text: `⚠️ @${sender.split('@')[0]}, sua mensagem foi removida por conteúdo tóxico.\n\n_Este sistema usa IA e pode cometer erros._`,
                     mentions: [sender]
                   });
                 });
               } else if (action === 'avisar') {
-                nazu.sendMessage(from, {
+                kya.sendMessage(from, {
                   text: `⚠️ @${sender.split('@')[0]}, evite mensagens tóxicas!\n\n_Este sistema usa IA e pode cometer erros._`,
                   mentions: [sender]
                 });
@@ -7243,7 +8679,7 @@ Código: *${roleCode}*`,
                 console.log(`[ANTIPALAVRA] Palavra detectada: "${detectionResult.palavra}" de @${sender.split('@')[0]}`);
 
                 if (!isBotAdmin) {
-                  await nazu.sendMessage(from, {
+                  await kya.sendMessage(from, {
                     text: `⚠️ *ANTIPALAVRA - DETECÇÃO*\n\n` +
                       `👤 @${sender.split('@')[0]} usou uma palavra proibida!\n` +
                       `⚠️ Palavra: "${detectionResult.palavra}"\n\n` +
@@ -7253,17 +8689,17 @@ Código: *${roleCode}*`,
                   return;
                 }
 
-                await nazu.sendMessage(from, { delete: info.key }).catch(err =>
+                await kya.sendMessage(from, { delete: info.key }).catch(err =>
                   console.error('[ANTIPALAVRA] Erro ao deletar mensagem:', err.message)
                 );
 
-                await nazu.groupParticipantsUpdate(from, [sender], 'remove').catch(err =>
+                await kya.groupParticipantsUpdate(from, [sender], 'remove').catch(err =>
                   console.error('[ANTIPALAVRA] Erro ao remover usuário:', err.message)
                 );
 
                 antipalavra.registerBan(from, sender, detectionResult.palavra);
 
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   text: `🚫 *ANTIPALAVRA - BANIMENTO AUTOMÁTICO*\n\n` +
                     `👤 Usuário: @${sender.split('@')[0]}\n` +
                     `⚠️ Palavra detectada: "${detectionResult.palavra}"\n` +
@@ -7320,18 +8756,18 @@ Código: *${roleCode}*`,
     // ========================================================
 
     const _botShort =
-      (nazu && nazu.user && (nazu.user.id || nazu.user.lid))
-        ? String((nazu.user.id || nazu.user.lid).split(':')[0])
+      (kya && kya.user && (kya.user.id || kya.user.lid))
+        ? String((kya.user.id || kya.user.lid).split(':')[0])
         : '';
 
     const botLid =
-      nazu?.user?.lid
-        ? String(nazu.user.lid).split(':')[0]
+      kya?.user?.lid
+        ? String(kya.user.lid).split(':')[0]
         : '';
 
     const botJid =
-      nazu?.user?.id
-        ? String(nazu.user.id).split(':')[0]
+      kya?.user?.id
+        ? String(kya.user.id).split(':')[0]
         : '';
 
     const botIdentifiers = [
@@ -7351,6 +8787,143 @@ Código: *${roleCode}*`,
       [];
 
     const textoMensagemKyara = String(budy2 || '').trim();
+
+    // [KYARA_GROUP_CONTEXT_V1]
+    const kyaraGroupMemoryFile = pathz.join(
+      __dirname,
+      '..',
+      'database',
+      'kyaraGroupMemory.json'
+    );
+
+    let kyaraGroupMemoryDB = {};
+    let kyaraGroupHistory = [];
+    let kyaraContextoGrupo = [];
+    let kyaraUltimaRespostaTimestamp = 0;
+    let kyaraUltimaRespostaTexto = '';
+
+    if (isGroup && from && String(from).endsWith('@g.us')) {
+      try {
+        const agoraKyara = Date.now();
+
+        if (fs.existsSync(kyaraGroupMemoryFile)) {
+          const conteudoMemoria = JSON.parse(
+            fs.readFileSync(kyaraGroupMemoryFile, 'utf8')
+          );
+
+          if (
+            conteudoMemoria &&
+            typeof conteudoMemoria === 'object' &&
+            !Array.isArray(conteudoMemoria)
+          ) {
+            kyaraGroupMemoryDB = conteudoMemoria;
+          }
+        }
+
+        kyaraGroupHistory = Array.isArray(
+          kyaraGroupMemoryDB[from]
+        )
+          ? kyaraGroupMemoryDB[from]
+              .filter((item) =>
+                item &&
+                typeof item.mensagem === 'string' &&
+                Number(item.timestamp) > agoraKyara - 45 * 60 * 1000
+              )
+              .slice(-40)
+          : [];
+
+        const ultimaFalaKyara = [...kyaraGroupHistory]
+          .reverse()
+          .find((item) =>
+            String(item.remetente || '').toLowerCase() === 'kyara'
+          );
+
+        kyaraUltimaRespostaTimestamp =
+          Number(ultimaFalaKyara?.timestamp) || 0;
+        kyaraUltimaRespostaTexto =
+          String(ultimaFalaKyara?.mensagem || '');
+
+        // Contexto anterior à mensagem atual.
+        kyaraContextoGrupo = kyaraGroupHistory
+          .slice(-10)
+          .map((item) => ({
+            remetente: String(
+              item.remetente || 'Participante'
+            ).replace(/[\r\n\t]+/g, ' ').trim().slice(0, 60),
+
+            mensagem: String(item.mensagem || '')
+              .replace(/[\r\n\t]+/g, ' ')
+              .trim()
+              .slice(0, 500)
+          }))
+          .filter((item) => item.mensagem);
+
+        // Não armazenar mensagens do próprio bot nem comandos.
+        if (
+          !info.key.fromMe &&
+          !isCmd &&
+          textoMensagemKyara
+        ) {
+          const idAtualKyara = String(info.key.id || '');
+
+          const jaExisteKyara = idAtualKyara &&
+            kyaraGroupHistory.some(
+              (item) => String(item.idMensagem || '') === idAtualKyara
+            );
+
+          if (!jaExisteKyara) {
+            kyaraGroupHistory.push({
+              remetente: String(
+                pushname || sender || 'Participante'
+              ).replace(/[\r\n\t]+/g, ' ').trim().slice(0, 60),
+
+              mensagem: textoMensagemKyara
+                .replace(/[\r\n\t]+/g, ' ')
+                .trim()
+                .slice(0, 500),
+
+              timestamp: agoraKyara,
+              idMensagem: idAtualKyara
+            });
+          }
+        }
+
+        kyaraGroupMemoryDB[from] =
+          kyaraGroupHistory.slice(-40);
+
+        fs.mkdirSync(
+          pathz.dirname(kyaraGroupMemoryFile),
+          { recursive: true }
+        );
+
+        fs.writeFileSync(
+          kyaraGroupMemoryFile,
+          JSON.stringify(kyaraGroupMemoryDB, null, 2),
+          'utf8'
+        );
+      } catch (erroMemoriaKyara) {
+        console.warn(
+          '[KYARA GROUP MEMORY] Falha ao atualizar histórico:',
+          erroMemoriaKyara?.message || erroMemoriaKyara
+        );
+      }
+    }
+
+    const kyaraTextoNaturalNormalizado = textoMensagemKyara
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const kyaraSaudacaoEspontanea =
+      /^(?:oi|oie|ola|opa|e ai|eai|bom dia|boa tarde|boa noite|hey|hello)\b/
+        .test(kyaraTextoNaturalNormalizado);
+
+    const kyaraContinuidadeEspontanea =
+      /^(?:tudo bem|tudo certo|to bem|tou bem|estou bem|bem|sim|nao|claro|e voce|e vc|e tu|como ta|como esta|kkkk+|haha+)\b/
+        .test(kyaraTextoNaturalNormalizado);
+
 
     // Exemplo:
     // "oi kyara"
@@ -7401,6 +8974,20 @@ Código: *${roleCode}*`,
       mencionouKyara ||
       textoMencionouBot;
 
+    // Saudações iniciam conversa; perguntas e respostas naturais
+    // podem continuar uma conversa recente com a Kyara.
+    const kyaraGatilhoEspontaneo =
+      isGroup &&
+      (
+        kyaraSaudacaoEspontanea ||
+        (
+          kyaraUltimaRespostaTimestamp > 0 &&
+          Date.now() - kyaraUltimaRespostaTimestamp <= 5 * 60 * 1000 &&
+          /\?\s*[\p{Extended_Pictographic}\uFE0F\u200D\p{Emoji_Modifier}]*\s*$/u.test(kyaraUltimaRespostaTexto.trim()) &&
+          kyaraContinuidadeEspontanea
+        )
+      );
+
     // ========================================================
     // ACIONAMENTO PRINCIPAL
     // ========================================================
@@ -7410,7 +8997,7 @@ Código: *${roleCode}*`,
       isAssistente &&
       !isCmd &&
       !info._fromPro &&
-      kyaraFoiChamada
+      (kyaraFoiChamada || kyaraGatilhoEspontaneo)
     ) {
 
       console.log('');
@@ -7427,7 +9014,147 @@ Código: *${roleCode}*`,
         .replaceAll('@' + _botShort, '')
         .trim();
 
-      if (textoAssistente.length > 2) {
+      // [KYARA_GROUP_CONTEXT_V1]
+      const registrarRespostaKyaraGrupo = (textoResposta) => {
+        if (!isGroup || !from || !String(textoResposta || '').trim()) {
+          return;
+        }
+
+        try {
+          let banco = {};
+
+          if (fs.existsSync(kyaraGroupMemoryFile)) {
+            const lido = JSON.parse(
+              fs.readFileSync(kyaraGroupMemoryFile, 'utf8')
+            );
+
+            if (lido && typeof lido === 'object' && !Array.isArray(lido)) {
+              banco = lido;
+            }
+          }
+
+          const agora = Date.now();
+
+          const historico = Array.isArray(banco[from])
+            ? banco[from].filter(
+                (item) =>
+                  item &&
+                  Number(item.timestamp) > agora - 45 * 60 * 1000
+              )
+            : [];
+
+          historico.push({
+            remetente: 'Kyara',
+            mensagem: String(textoResposta)
+              .replace(/[\r\n\t]+/g, ' ')
+              .trim()
+              .slice(0, 500),
+            timestamp: agora,
+            idMensagem: 'kyara-' + agora
+          });
+
+          banco[from] = historico.slice(-40);
+
+          fs.mkdirSync(
+            pathz.dirname(kyaraGroupMemoryFile),
+            { recursive: true }
+          );
+
+          fs.writeFileSync(
+            kyaraGroupMemoryFile,
+            JSON.stringify(banco, null, 2),
+            'utf8'
+          );
+        } catch (erroSalvarResposta) {
+          console.warn(
+            '[KYARA GROUP MEMORY] Falha ao salvar resposta:',
+            erroSalvarResposta?.message || erroSalvarResposta
+          );
+        }
+      };
+
+      const enviarRespostaAssistente = async (respostaTexto) => {
+        const textoResposta = String(respostaTexto || '').trim();
+
+        if (!textoResposta) return;
+
+        if (isGroup && groupData.assistenteAudio === true) {
+          try {
+            const vozSelecionada = await lerVozAssistenteKyara();
+
+            if (vozSelecionada === 'frieren') {
+              let arquivoVozFrieren = null;
+
+              try {
+                console.log('[KYARA AUDIO ASSISTENTE] Gerando voz Frieren/Kitsune...');
+
+                arquivoVozFrieren = await gerarVoz(textoResposta);
+
+                await kya.sendMessage(
+                  from,
+                  {
+                    audio: { url: arquivoVozFrieren },
+                    mimetype: 'audio/ogg; codecs=opus',
+                    ptt: true
+                  },
+                  { quoted: info }
+                );
+
+                console.log('[KYARA AUDIO ASSISTENTE] Frieren enviada.');
+                registrarRespostaKyaraGrupo(textoResposta);
+                return;
+              } finally {
+                if (arquivoVozFrieren) {
+                  await apagarVoz(arquivoVozFrieren);
+                }
+              }
+            }
+
+            const vozAssistente = await gerarAudioKyara(
+              textoResposta,
+              vozSelecionada
+            );
+
+            if (
+              !Buffer.isBuffer(vozAssistente?.buffer) ||
+              vozAssistente.buffer.length === 0
+            ) {
+              throw new Error('A geração não retornou áudio válido.');
+            }
+
+            await kya.sendMessage(
+              from,
+              {
+                audio: vozAssistente.buffer,
+                mimetype:
+                  vozAssistente.mimetype || 'audio/ogg; codecs=opus',
+                ptt: true,
+                waveform: Buffer.from(vozAssistente.waveform || [])
+              },
+              { quoted: info }
+            );
+
+            console.log(
+              '[KYARA AUDIO ASSISTENTE] Enviado via ' +
+              String(vozAssistente.provider || 'TTS') +
+              '; caracteres=' + textoResposta.length
+            );
+
+            registrarRespostaKyaraGrupo(textoResposta);
+            return;
+          } catch (erroAudioAssistente) {
+            console.warn(
+              '[KYARA AUDIO ASSISTENTE] Falha no áudio; enviando texto:',
+              erroAudioAssistente?.message || erroAudioAssistente
+            );
+          }
+        }
+
+        await reply(textoResposta);
+        registrarRespostaKyaraGrupo(textoResposta);
+      };
+
+      if (textoAssistente.length > 2 || kyaraGatilhoEspontaneo) {
         // Detectar tipo de mídia da mensagem atual
         const tipoMidiaAtual = info.message?.imageMessage ? 'imagem' :
           info.message?.videoMessage ? 'video' :
@@ -7472,6 +9199,7 @@ Código: *${roleCode}*`,
           mencoes: mencoesFiltradas,
           primeira_mencao: primeiraMencao,
           tem_mencao: mencoesFiltradas.length > 0,
+          contextoGrupo: kyaraContextoGrupo,
           id_mensagem: info.key.id,
           data_atual: new Date().toLocaleString('pt-BR', {
             timeZone: 'America/Sao_Paulo'
@@ -7493,54 +9221,12 @@ Código: *${roleCode}*`,
           jSoNzIn.marcou_mensagem = true;
           jSoNzIn.mensagem_marcada = jsonO.texto;
           jSoNzIn.id_enviou_marcada = jsonO.participant;
-          jSoNzIn.marcou_sua_mensagem = jsonO.participant == getBotId(nazu);
+          jSoNzIn.marcou_sua_mensagem = jsonO.participant == getBotId(kya);
         }
         // Se marcou mensagem com mídia mas sem texto, ainda assim é marcou_mensagem
         if (jsonO && jsonO.participant && tipoMidiaMarcada && !jSoNzIn.marcou_mensagem) {
           jSoNzIn.marcou_mensagem = true;
           jSoNzIn.id_enviou_marcada = jsonO.participant;
-        }
-
-        // Add null check for ia object
-        if (
-          typeof ia === 'undefined' ||
-          !ia ||
-          typeof ia.makeKyaraDevRequest !== 'function'
-        ) {
-          return reply('🤖 Motor de IA de desenvolvimento indisponível.');
-        }
-
-        await reply('🛠️ Analisando a tarefa de desenvolvimento...');
-
-        try {
-          const respostaDev =
-            await ia.makeKyaraDevRequest(
-                  'Baki é o dono e desenvolvedor. Kyara é o bot/projeto. ' +
-                  'Analise a solicitação abaixo como uma tarefa enviada pelo Baki.\n\n' +
-                  tarefaDev
-                );
-
-          if (!String(respostaDev || '').trim()) {
-            return reply(
-              '⚠️ A IA não retornou uma resposta. Tente dividir a tarefa em partes menores.'
-            );
-          }
-
-          return reply(
-            '🛠️ *PROPOSTA DE DESENVOLVIMENTO*\\n\\n' +
-            String(respostaDev).trim()
-          );
-
-        } catch (erroDev) {
-
-          console.error(
-            '[ASSISTENTE-DEV]',
-            erroDev?.message || erroDev
-          );
-
-          return reply(
-            '❌ Falha ao consultar a IA. O erro detalhado foi registrado no terminal.'
-          );
         }
 
         // Obter a personalidade atual do grupo
@@ -7563,7 +9249,7 @@ Código: *${roleCode}*`,
         kyaraCore({
           mensagem: jSoNzIn,
           ia,
-          nazu,
+          kya,
           ownerNumber: nmrdn,
           personality,
           customPrompt
@@ -7592,8 +9278,8 @@ Código: *${roleCode}*`,
               const originalMentions = info.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
               // Usar os mesmos identificadores do bot para filtrar
-              const botLidPro = nazu.user?.lid ? nazu.user.lid.split(':')[0] : null;
-              const botJidPro = nazu.user?.id ? nazu.user.id.split(':')[0] : null;
+              const botLidPro = kya.user?.lid ? kya.user.lid.split(':')[0] : null;
+              const botJidPro = kya.user?.id ? kya.user.id.split(':')[0] : null;
               const botIdentifiersPro = [_botShort, botLidPro, botJidPro, botNumber].filter(Boolean);
 
               const mentionsWithoutBot = originalMentions.filter(m => {
@@ -7776,11 +9462,11 @@ Código: *${roleCode}*`,
                 hasQuotedImage ? '🖼️ (marcado)' : hasQuotedVideo ? '🎬 (marcado)' :
                   hasQuotedAudio ? '🎵 (marcado)' : hasQuotedSticker ? '🎭 (marcado)' : '';
 
-              nazu.sendMessage(from, {
+              kya.sendMessage(from, {
                 text: `🤖 *Executando:* ${prefix}${simulatedCommand}${simulatedArgs ? ' ' + simulatedArgs : ''}${mediaInfo ? '\n📎 Mídia: ' + mediaInfo : ''}`
               }, { quoted: info }).then(() => {
                 // Emitir novamente o evento de mensagem com o objeto completo
-                nazu.ev.emit('messages.upsert', {
+                kya.ev.emit('messages.upsert', {
                   messages: [fakeMessage],
                   type: 'notify'
                 });
@@ -7797,24 +9483,24 @@ Código: *${roleCode}*`,
               const processNext = () => processResponses(index + 1);
 
               if (msgza && msgza.react) {
-                nazu.react(msgza.react.replaceAll(' ', '').replaceAll('\n', ''), {
+                kya.react(msgza.react.replaceAll(' ', '').replaceAll('\n', ''), {
                   key: info.key
                 }).then(() => {
                   if (msgza.resp && typeof msgza.resp === 'string' && msgza.resp.length > 0) {
-                    reply(msgza.resp).then(processNext);
+                    enviarRespostaAssistente(msgza.resp).then(processNext);
                   } else {
                     processNext();
                   }
                 }).catch(err => {
                   console.error('Erro ao reagir:', err);
                   if (msgza.resp && typeof msgza.resp === 'string' && msgza.resp.length > 0) {
-                    reply(msgza.resp).then(processNext);
+                    enviarRespostaAssistente(msgza.resp).then(processNext);
                   } else {
                     processNext();
                   }
                 });
               } else if (msgza && msgza.resp && typeof msgza.resp === 'string' && msgza.resp.length > 0) {
-                reply(msgza.resp).then(processNext);
+                enviarRespostaAssistente(msgza.resp).then(processNext);
               } else {
                 console.warn(`⚠️ [${personality}] Resposta inválida no índice ${index}:`, JSON.stringify(msgza));
                 processNext();
@@ -7849,7 +9535,7 @@ Código: *${roleCode}*`,
         groupData.messageLimit.users[sender] = userData;
         if (userData.count > groupData.messageLimit.limit) {
           if (groupData.messageLimit.action === 'ban' && isBotAdmin) {
-            await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+            await kya.groupParticipantsUpdate(from, [sender], 'remove');
             await reply(`🚨 @${getUserName(sender)} foi banido por exceder o limite de ${groupData.messageLimit.limit} mensagens em ${groupData.messageLimit.interval}s!`, {
               mentions: [sender]
             });
@@ -7858,7 +9544,7 @@ Código: *${roleCode}*`,
             groupData.messageLimit.warnings[sender] = (groupData.messageLimit.warnings[sender] || 0) + 1;
             const warnings = groupData.messageLimit.warnings[sender];
             if (warnings >= 3 && isBotAdmin) {
-              await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+              await kya.groupParticipantsUpdate(from, [sender], 'remove');
               await reply(`🚨 @${getUserName(sender)} foi banido por exceder o limite de mensagens (${groupData.messageLimit.limit} em ${groupData.messageLimit.interval}s) 3 vezes!`, {
                 mentions: [sender]
               });
@@ -7888,7 +9574,7 @@ Código: *${roleCode}*`,
           partnerData.count++;
           saveParceriasData(from, parceriasData);
         } else {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: info.key
           });
           await reply(`@${getUserName(sender)}, você atingiu o limite de ${partnerData.limit} links de grupos.`, {
@@ -7896,7 +9582,7 @@ Código: *${roleCode}*`,
           });
         }
       } else {
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           delete: info.key
         });
         await reply(`@${getUserName(sender)}, você não é um parceiro e não pode enviar links de grupos.`, {
@@ -7908,7 +9594,7 @@ Código: *${roleCode}*`,
     if (isGroup && groupData.antifig && groupData.antifig.enabled && type === "stickerMessage" && !isGroupAdmin && !info.key.fromMe) {
       if (!isUserWhitelisted(sender, 'antifig')) {
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: {
               remoteJid: from,
               fromMe: false,
@@ -7928,10 +9614,10 @@ Código: *${roleCode}*`,
           let warnMessage = `🚫 @${getUserName(sender)}, figurinhas não são permitidas neste grupo! Advertência ${warnCount}/${warnLimit}.`;
           if (warnCount >= warnLimit && isBotAdmin) {
             warnMessage += `\n⚠️ Você atingiu o limite de advertências e será removido.`;
-            await nazu.groupParticipantsUpdate(from, [sender], 'remove');
+            await kya.groupParticipantsUpdate(from, [sender], 'remove');
             delete groupData.warnings[sender];
           }
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: warnMessage,
             mentions: [sender]
           });
@@ -8461,7 +10147,7 @@ Código: *${roleCode}*`,
               if (!mentionsToIncludeExec.length && typeof menc_os2 !== 'undefined' && menc_os2) {
                 mentionsToIncludeExec = [menc_os2];
               }
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 image: imageBuffer,
                 caption: processedResponse.caption || '',
                 mentions: mentionsToIncludeExec
@@ -8475,7 +10161,7 @@ Código: *${roleCode}*`,
               if (!mentionsToIncludeExec.length && typeof menc_os2 !== 'undefined' && menc_os2) {
                 mentionsToIncludeExec = [menc_os2];
               }
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 video: videoBuffer,
                 mimetype: processedResponse.mimetype || 'video/mp4',
                 gifPlayback: Boolean(processedResponse.gifPlayback),
@@ -8486,7 +10172,7 @@ Código: *${roleCode}*`,
           } else if (processedResponse.type === 'audio') {
             const audioBuffer = processedResponse.buffer ? Buffer.from(processedResponse.buffer, 'base64') : null;
             if (audioBuffer) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 audio: audioBuffer,
                 mimetype: 'audio/mp4',
                 ptt: processedResponse.ptt || false
@@ -8495,7 +10181,7 @@ Código: *${roleCode}*`,
           } else if (processedResponse.type === 'sticker') {
             const stickerBuffer = processedResponse.buffer ? Buffer.from(processedResponse.buffer, 'base64') : null;
             if (stickerBuffer) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 sticker: stickerBuffer
               }, { quoted: info });
             }
@@ -8518,7 +10204,7 @@ Código: *${roleCode}*`,
 
     // Verificação de comandos VIP
     if (isCmd && vipCommandsManager.isVipCommand(command)) {
-      if (!isPremium) {
+      if (!isPremium && !isGroupAdmin && !isOwner) {
         await reply(`🔒 *Comando VIP Exclusivo*
 
 Este comando está disponível apenas para usuários VIP/Premium!
@@ -8617,17 +10303,49 @@ Entre em contato com o dono do bot:
                     }
                   ]
                 },
-                nazu,
+                kya,
                 null,
                 'humana',
                 null
               );
 
-            return (
+            const respostaLocal =
               resultado?.resp?.[0]?.resp ||
               resultado?.resp?.[0]?.text ||
-              ''
-            );
+              '';
+
+            const textoVoz = String(respostaLocal || '').trim();
+
+            if (textoVoz) {
+              let arquivoVoz = null;
+
+              try {
+                console.log('[KYARA TTS] Gerando voz Frieren...');
+
+                arquivoVoz = await gerarVoz(textoVoz);
+
+                await kya.sendMessage(chatId, {
+                  audio: {
+                    url: arquivoVoz
+                  },
+                  mimetype: 'audio/ogg; codecs=opus',
+                  ptt: true
+                });
+
+                console.log('[KYARA TTS] Voz Frieren enviada.');
+              } catch (erroTTS) {
+                console.warn(
+                  '[KYARA TTS] Falha ao gerar/enviar voz:',
+                  erroTTS?.message || erroTTS
+                );
+              } finally {
+                if (arquivoVoz) {
+                  await apagarVoz(arquivoVoz);
+                }
+              }
+            }
+
+            return textoVoz;
           }
 
           // 1. Fallback para iaExpanded, caso exista
@@ -8799,7 +10517,7 @@ Entre em contato com o dono do bot:
 
                   fromMe:
                     contextInfo?.participant ===
-                    nazu?.user?.id,
+                    kya?.user?.id,
 
                   id:
                     contextInfo?.stanzaId,
@@ -8853,7 +10571,7 @@ Entre em contato com o dono do bot:
           command,
           m: localMessage,
           text: q,
-          systemZR: nazu,
+          systemZR: kya,
           obterIA: obterIALocal
         });
 
@@ -8877,6 +10595,209 @@ Entre em contato com o dono do bot:
       }
     }
 
+
+    // ============================================================
+    // 🎵 KYARA PLAY2 — ROTEAMENTO DIRETO
+    // ============================================================
+    // Alguns caminhos antigos do index.js podem cair no default
+    // antes do handler central. PLAY2 fica protegido aqui.
+    // O PLAY antigo permanece intacto.
+    // ============================================================
+
+    if (
+      isCmd &&
+      /^(play2|play2audio|play2video)$/i.test(
+        String(command || '').trim()
+      )
+    ) {
+      try {
+        console.log(
+          '[KYARA PLAY2 ROUTER] 🚀 Rota direta:',
+          {
+            command: String(command || '').trim(),
+            query: String(q || '').trim()
+          }
+        );
+
+        const play2Handled =
+          await handleKyaraMediaCommand({
+            command:
+              String(command || '')
+                .trim()
+                .toLowerCase(),
+
+            q:
+              String(q || '')
+                .trim(),
+
+            sender,
+            pushname,
+
+            prefix:
+              groupPrefix || prefix,
+
+            isGroup,
+            from,
+            kya,
+            info,
+            reply,
+
+            groupMembers:
+              AllgroupMembers,
+
+            premiumList:
+              premiumListaZinha,
+
+            premiumFile:
+              pathz.join(
+                DONO_DIR,
+                'premium.json'
+              ),
+
+            isOwner
+          });
+
+        console.log(
+          '[KYARA PLAY2 ROUTER] ✅ Handler executado.'
+        );
+
+        // O handler pode enviar o cartão e retornar undefined.
+        // Não deixar o segundo roteador executar o mesmo comando.
+        return;
+
+      } catch (play2RouterError) {
+        console.error(
+          '[KYARA PLAY2 ROUTER] ❌ ERRO:',
+          play2RouterError?.stack ||
+          play2RouterError?.message ||
+          play2RouterError
+        );
+
+        try {
+          await reply(
+            '❌ Ocorreu um erro ao executar o PLAY2.'
+          );
+        } catch {}
+
+        return;
+      }
+    }
+
+    // ============================================================
+    // 🎵 PLAY2 — ROTEADOR DIRETO REAL
+    // ============================================================
+    {
+      let __play2Command = '';
+      let __play2Query = '';
+
+      const __play2Raw = String(
+        rawBody || ''
+      ).trim();
+
+      let __match =
+        __play2Raw.match(
+          /^#play2(?:\s+([\s\S]*))?$/i
+        );
+
+      if (__match) {
+        __play2Command = 'play2';
+        __play2Query =
+          String(__match[1] || '').trim();
+      }
+
+      if (!__play2Command) {
+        __match =
+          __play2Raw.match(
+            /^#?(play2audio|play2video)(?:\s+([A-Za-z0-9_-]+))?$/i
+          );
+
+        if (__match) {
+          __play2Command =
+            String(__match[1]).toLowerCase();
+
+          __play2Query =
+            String(__match[2] || '').trim();
+        }
+      }
+
+      if (__play2Command) {
+        console.log(
+          '[KYARA PLAY2 DIRECT] 🚀',
+          __play2Command,
+          __play2Query
+        );
+
+        try {
+          const {
+            handle: __play2MediaHandler
+          } = await import(
+            './features/kyaraMediaCommands.js'
+          );
+
+          const __play2Handled =
+            await __play2MediaHandler({
+              command:
+                __play2Command,
+
+              q:
+                __play2Query,
+
+              sender,
+              pushname,
+
+              prefix:
+                groupPrefix || prefix,
+
+              isGroup,
+              from,
+              kya,
+              info,
+              reply,
+
+              groupMembers:
+                AllgroupMembers,
+
+              premiumList:
+                premiumListaZinha,
+
+              premiumFile:
+                pathz.join(
+                  DONO_DIR,
+                  'premium.json'
+                ),
+
+              isOwner
+            });
+
+          if (__play2Handled) {
+            console.log(
+              '[KYARA PLAY2 DIRECT] ✅ Executado'
+            );
+
+            return;
+          }
+
+          console.warn(
+            '[KYARA PLAY2 DIRECT] ⚠️ Handler retornou false'
+          );
+
+        } catch (__play2Error) {
+          console.error(
+            '[KYARA PLAY2 DIRECT] ❌',
+            __play2Error?.stack ||
+            __play2Error?.message ||
+            __play2Error
+          );
+
+          await reply(
+            '❌ Erro ao executar o PLAY2.'
+          );
+
+          return;
+        }
+      }
+    }
+
     // ⭐ KYARA_SPECIAL_HANDLER_V2
     // Comandos centralizados da Kyara.
     // Este bloco vem antes do switch antigo para evitar
@@ -8892,7 +10813,7 @@ Entre em contato com o dono do bot:
             prefix: groupPrefix || prefix,
             isGroup,
             from,
-            nazu,
+            kya,
             info,
             reply,
             groupMembers: AllgroupMembers,
@@ -9467,7 +11388,7 @@ input::placeholder{
   </div>
 
   <div class="footer">
-    Kyara • Baki
+    KYARA-SYSTΞM • 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠
   </div>
 
 </div>
@@ -9815,7 +11736,7 @@ input.addEventListener(
             }
           );
 
-        await nazu.relayMessage(
+        await kya.relayMessage(
           info.key.remoteJid,
           msg.message,
           {
@@ -9887,7 +11808,7 @@ if (
   if (isBack) {
     try {
       await flowModule.sendOwnerMain(
-        nazu,
+        kya,
         from,
         {
           botName:
@@ -9955,7 +11876,7 @@ if (
       }
 
       await flowModule.sendOwnerCategory(
-        nazu,
+        kya,
         from,
         categoryId
       )
@@ -10044,279 +11965,479 @@ if (
 
 
     // ============================================================
-    // 🎛️ KYARA MENUTESTE FLOW
+    // 🎛️ KYARA MENUTESTE — NORMAL + NATIVE FLOW
     // ============================================================
+    // Cada categoria abre seu submenu diretamente.
+    // O canal possui um botão de link independente.
 
-    if (
-      !(globalThis.__KYARA_MENUTESTE_PENDING__ instanceof Map)
-    ) {
-      globalThis.__KYARA_MENUTESTE_PENDING__ =
-        new Map();
+    const __kyaraMenuTesteLocal = async (stage = 'main') => {
+  const channelVox =
+    'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r';
+
+  const channelComeco =
+    'https://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w';
+
+  const mainCategories = [
+    ['📥 Downloads', 'menudown'],
+    ['🎨 Logos', 'menulogos'],
+    ['🛠️ Edits', 'menuedits'],
+    ['🛡️ Administração', 'menuadm'],
+    ['🎮 RPG', 'menurpg'],
+    ['🎲 Brincadeiras', 'menubn']
+  ];
+
+  const extraCategories = [
+    ['🧰 Ferramentas', 'ferramentas'],
+    ['👥 Membros', 'menumemb'],
+    ['🖼️ Figurinhas', 'menufig'],
+    ['🔄 Alteradores', 'alteradores'],
+    ['⭐ VIP', 'menuvip'],
+    ['📊 Levels', 'menulevel'],
+    ['🎤 Artistas', 'menuartista']
+  ];
+
+  const {
+    quickReply,
+    singleSelect,
+    row,
+    copyBtn,
+    sendFlow
+  } = await import('./core/nativeFlow/native-flow.js');
+
+  const urlButton = (label, url) => ({
+    name: 'cta_url',
+    buttonParamsJson: JSON.stringify({
+      display_text: label,
+      url,
+      merchant_url: url
+    })
+  });
+
+  // Ações dos canais escolhidos dentro de OPÇÕES.
+  if (stage === 'vox' || stage === 'comeco') {
+    const isVox = stage === 'vox';
+    const label = isVox ? '📢 VØX-SYSTEM' : '↗ O COMEÇO';
+    const url = isVox ? channelVox : channelComeco;
+
+    if (isNormalMenu()) {
+      await kya.sendMessage(from, {
+        text: `${label}\n${url}`
+      }, { quoted: info });
+      return;
     }
 
-    const __kyaraMenuTesteKey =
-      `${String(from || '')}:${String(
-        sender ||
-        info?.key?.participant ||
-        info?.key?.participantAlt ||
-        ''
-      )}`;
+    await sendFlow(kya, from, {
+      title: label,
+      text: '🌸 Toque no botão abaixo para abrir o canal.',
+      footer: '🌸 KYARA • VØX-SYSTEM',
+      buttons: [urlButton(label, url)]
+    });
 
-    // ============================================================
-    // RESPOSTA DO FLOW
-    // ============================================================
+    return;
+  }
 
-    const __kyaraNativeFlowResponse =
-      info?.message
-        ?.interactiveResponseMessage
-        ?.nativeFlowResponseMessage;
+  // Compatibilidade com o menu em modo normal.
+  if (isNormalMenu()) {
+    let lines = [];
 
-    if (
-      __kyaraNativeFlowResponse?.name ===
-        'galaxy_message'
-    ) {
-      let __params = null;
+    if (stage === 'menus' || stage === 'extra') {
+      const categories = stage === 'extra'
+        ? extraCategories
+        : mainCategories;
 
-      try {
-        __params =
-          typeof __kyaraNativeFlowResponse.paramsJson ===
-            'string'
-            ? JSON.parse(
-                __kyaraNativeFlowResponse.paramsJson
-              )
-            : __kyaraNativeFlowResponse.paramsJson;
-      } catch (e) {
-        console.error(
-          '[KYARA MENUTESTE] paramsJson inválido:',
-          e?.message || e
-        );
-      }
-
-      if (__params) {
-        const __pending =
-          globalThis.__KYARA_MENUTESTE_PENDING__.get(
-            __kyaraMenuTesteKey
-          );
-
-        const __values = {};
-
-        const __scan = (obj) => {
-          if (
-            !obj ||
-            typeof obj !== 'object'
-          ) {
-            return;
-          }
-
-          for (const [k, v] of Object.entries(obj)) {
-            if (
-              typeof v === 'string' ||
-              typeof v === 'number'
-            ) {
-              const key =
-                String(k)
-                  .toLowerCase()
-                  .replace(/[-_\s]/g, '');
-
-              if (
-                key === 'command' ||
-                key === 'comando'
-              ) {
-                __values.command =
-                  String(v).trim();
-              }
-
-              if (
-                key === 'query' ||
-                key === 'pesquisa' ||
-                key === 'search'
-              ) {
-                __values.query =
-                  String(v).trim();
-              }
-            }
-
-            if (
-              v &&
-              typeof v === 'object'
-            ) {
-              __scan(v);
-            }
-          }
-        };
-
-        __scan(__params);
-
-        if (!__pending) {
-          await reply(
-            '⚠️ Sessão do MenuTeste não encontrada.\n\nAbra #menuteste novamente.'
-          );
-
-          return;
-        }
-
-        if (
-          Date.now() >
-          Number(__pending.expiresAt || 0)
-        ) {
-          globalThis.__KYARA_MENUTESTE_PENDING__.delete(
-            __kyaraMenuTesteKey
-          );
-
-          await reply(
-            '⏱️ O MenuTeste expirou.\n\nAbra #menuteste novamente.'
-          );
-
-          return;
-        }
-
-        const selectedCommand =
-          normalizar(
-            String(
-              __values.command || ''
-            )
-          ).replace(/\s+/g, '');
-
-        const pesquisa =
-          String(
-            __values.query || ''
-          ).trim();
-
-        const allowed =
-          new Set([
-            'play',
-            'play2',
-            'baixar'
-          ]);
-
-        if (
-          !allowed.has(
-            selectedCommand
-          )
-        ) {
-          await reply(
-            '❌ Comando inválido no MenuTeste.'
-          );
-
-          return;
-        }
-
-        if (!pesquisa) {
-          await reply(
-            '❌ Digite uma pesquisa.'
-          );
-
-          return;
-        }
-
-        command =
-          selectedCommand;
-
-        q =
-          pesquisa;
-
-        args.length = 0;
-
-        args.push(
-          ...pesquisa.split(/\s+/)
-        );
-
-        isCmd = true;
-
-        globalThis.__KYARA_MENUTESTE_PENDING__.delete(
-          __kyaraMenuTesteKey
-        );
-
-        console.log(
-          '[KYARA MENUTESTE] EXECUTANDO:',
-          command,
-          q
-        );
-      }
-    }
-
-    // ============================================================
-    // ABRIR MENU
-    // ============================================================
-
-    if (
-      command === 'testemenu' ||
-      command === 'menuteste'
-    ) {
-      const flowId =
-        String(
-          process.env.KYARA_TESTEMENU_FLOW_ID ||
-          config?.menuteste_flow_id ||
-          ''
-        ).trim();
-
-      if (!flowId) {
-        await reply(
-          '⚠️ *MENUTESTE NÃO CONFIGURADO*\\n\\n' +
-          'Configure o Flow ID publicado em:\\n' +
-          '`KYARA_TESTEMENU_FLOW_ID`'
-        );
-
-        console.warn(
-          '[KYARA MENUTESTE] Flow ID ausente.'
-        );
-
-        return;
-      }
-
-      const flowToken =
-        `kyara_${Date.now()}_${Math.random()
-          .toString(36)
-          .slice(2, 12)}`;
-
-      globalThis.__KYARA_MENUTESTE_PENDING__.set(
-        __kyaraMenuTesteKey,
-        {
-          flowId,
-          flowToken,
-          createdAt:
-            Date.now(),
-          expiresAt:
-            Date.now() +
-            5 * 60 * 1000
-        }
+      lines = categories.map(([label, cmd]) =>
+        `${label}: ${prefix}${cmd}`
       );
 
-      const buttons = [
-        {
-          name:
-            'galaxy_message',
-
-          buttonParamsJson:
-            JSON.stringify({
-              mode:
-                'published',
-
-              flow_message_version:
-                '3',
-
-              flow_token:
-                flowToken,
-
-              flow_id:
-                flowId,
-
-              flow_cta:
-                'Abrir',
-
-              flow_action:
-                'navigate',
-
-              flow_action_payload: {
-                screen:
-                  'KYARA_EXECUTOR'
-              }
-            })
-        }
+      lines.push(
+        '',
+        stage === 'extra'
+          ? `↩️ Voltar: ${prefix}menutestemenus`
+          : `📂 Mais categorias: ${prefix}menutesteextra`
+      );
+    } else {
+      lines = [
+        `👤 Perfil: ${prefix}perfil`,
+        `📂 Menus: ${prefix}menutestemenus`,
+        `📢 VØX-SYSTEM: ${channelVox}`,
+        `↗ O COMEÇO: ${channelComeco}`
       ];
+    }
 
-      const msg =
-        generateWAMessageFromContent(
+    await kya.sendMessage(from, {
+      text: '🎛️ *KYARA MENUTESTE*\n\n' + lines.join('\n')
+    }, { quoted: info });
+
+    return;
+  }
+
+  // OPÇÕES no estilo do PLAY: ações diretas e seletor único.
+  if (stage === 'options') {
+    const menuRows = mainCategories.map(([label, cmd]) =>
+      row(label, 'Executar este menu', prefix + cmd)
+    );
+
+    const extraRows = extraCategories.map(([label, cmd]) =>
+      row(label, 'Executar este menu', prefix + cmd)
+    );
+
+    const optionButtons = [
+      quickReply('👤 PERFIL', prefix + 'perfil'),
+
+      singleSelect('🎛️ SELECIONAR MENU', [
+        {
+          title: '📂 MENUS PRINCIPAIS',
+          rows: menuRows
+        },
+        {
+          title: '✨ MAIS CATEGORIAS',
+          rows: extraRows
+        }
+      ]),
+
+      urlButton('📢 VØX-SYSTEM', channelVox),
+      urlButton('↗ O COMEÇO', channelComeco),
+      copyBtn('📋 COPIAR COMANDO', String(prefix) + 'menuteste')
+    ];
+
+    await sendFlow(kya, from, {
+      title: '⚙️ OPÇÕES KYARA',
+      text:
+        '🌸 Escolha uma opção.\\n\\n' +
+        '👤 PERFIL executa o comando diretamente.\\n' +
+        '🎛️ SELECIONAR MENU mostra todas as categorias.\\n' +
+        '📢 Os canais e COPIAR COMANDO ficam fora do seletor.',
+      footer: '🌸 KYARA • VØX-SYSTEM',
+      buttons: optionButtons
+    });
+
+    console.log(
+      '[MENUTESTE] Opções no estilo PLAY enviadas.',
+      '| botões:', optionButtons.length
+    );
+
+    return;
+  }
+
+  // Seletor de categorias: as linhas executam os comandos existentes.
+  if (stage === 'menus' || stage === 'extra') {
+    const isExtra = stage === 'extra';
+    const categories = isExtra
+      ? extraCategories
+      : mainCategories;
+
+    const rows = categories.map(([label, cmd]) =>
+      row(label, 'Abrir este menu', prefix + cmd)
+    );
+
+    if (isExtra) {
+      rows.push(
+        row(
+          '↩️ VOLTAR AOS MENUS PRINCIPAIS',
+          'Voltar à seleção de menus',
+          prefix + 'menutestemenus'
+        )
+      );
+    } else {
+      rows.push(
+        row(
+          '📂 MAIS CATEGORIAS',
+          'Ferramentas, membros, VIP e outras',
+          prefix + 'menutesteextra'
+        )
+      );
+    }
+
+    await sendFlow(kya, from, {
+      title: isExtra
+        ? '📂 MAIS CATEGORIAS'
+        : '🎛️ SELECIONAR MENU',
+
+      text: isExtra
+        ? '🌸 Escolha uma categoria ou volte aos menus principais.'
+        : '🌸 Selecione a categoria que deseja abrir.',
+
+      footer: '🌸 KYARA • VØX-SYSTEM',
+
+      buttons: [
+        singleSelect(
+          isExtra ? '📂 ESCOLHER CATEGORIA' : '🎛️ ESCOLHER MENU',
+          [{
+            title: isExtra ? 'Mais categorias' : 'Menus principais',
+            rows
+          }]
+        )
+      ]
+    });
+
+    console.log(
+      '[MENUTESTE] Seletor enviado.',
+      '| etapa:', stage,
+      '| opções:', rows.length
+    );
+
+    return;
+  }
+
+  // KYARA MENUTESTE — Native Flow na estrutura do PLAY.
+
+  const allRows = [
+    ...mainCategories.map(([label, cmd]) => ({
+      title: label,
+      description: 'Executar este menu',
+      id: prefix + cmd
+    })),
+    ...extraCategories.map(([label, cmd]) => ({
+      title: label,
+      description: 'Executar este menu',
+      id: prefix + cmd
+    }))
+  ];
+
+  // Mesmos tipos de botões Native Flow usados no PLAY.
+  const buttons = [
+    {
+      name: 'quick_reply',
+      buttonParamsJson: JSON.stringify({
+        display_text: '👤 PERFIL',
+        id: prefix + 'perfil'
+      })
+    },
+    {
+      name: 'single_select',
+      buttonParamsJson: JSON.stringify({
+        title: '🎛️ SELECIONAR MENU',
+        sections: [{
+          title: '📂 CATEGORIAS',
+          rows: allRows
+        }]
+      })
+    },
+    {
+      name: 'cta_url',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📢 VØX-SYSTEM',
+        url: channelVox
+      })
+    },
+    {
+      name: 'cta_url',
+      buttonParamsJson: JSON.stringify({
+        display_text: '↗ O COMEÇO',
+        url: channelComeco
+      })
+    },
+    {
+      name: 'cta_copy',
+      buttonParamsJson: JSON.stringify({
+        display_text: '📋 COPIAR COMANDO',
+        copy_code: String(prefix) + 'menuteste'
+      })
+    }
+  ];
+
+  await sendFlow(kya, from, {
+    title: '🎛️ KYARA MENUTESTE',
+    text:
+      '🌸 Escolha uma categoria no botão SELECIONAR MENU.\n\n' +
+      '👤 PERFIL executa o comando de perfil.\n' +
+      '📢 Os canais e COPIAR COMANDO são ações separadas.',
+    footer: '🌸 KYARA • VØX-SYSTEM',
+    buttons
+  });
+
+  console.log(
+    '[MENUTESTE] Native Flow enviado.',
+    '| botões:', buttons.length,
+    '| categorias:', allRows.length
+  );
+};
+
+// Abertura do MenuTeste e roteamento das escolhas do Native Flow.
+const __kyaraMenuTesteRoutes = {
+  menuteste: 'main',
+  testemenu: 'main',
+  menutesteextra: 'extra',
+  menutesteopcoes: 'options',
+  menutestemenus: 'menus',
+  menutestevox: 'vox',
+  menutestecomeco: 'comeco'
+};
+
+if (
+  Object.prototype.hasOwnProperty.call(
+    __kyaraMenuTesteRoutes,
+    command
+  )
+) {
+  try {
+    await __kyaraMenuTesteLocal(
+      __kyaraMenuTesteRoutes[command]
+    );
+  } catch (error) {
+    console.error(
+      '[MENUTESTE] Erro:',
+      error?.stack || error
+    );
+
+    await reply('❌ Não consegui abrir o MenuTeste.');
+  }
+
+  return;
+}
+
+switch (command) {
+
+      // KYARA: diagnóstico básico dos arquivos
+      case 'diagnostico': {
+        const { existsSync } = await import('node:fs');
+
+        const checks = [
+          ['Inicialização', 'dados/src/.scripts/start.js'],
+          ['Conector WhatsApp', 'dados/src/connect.js'],
+          ['Handler de mensagens', 'dados/src/index.js'],
+          ['Configuração', 'dados/src/config.json'],
+          ['Módulo de diagnóstico', 'dados/src/core/diagnostico/verificar.js']
+        ];
+
+        const lines = checks.map(([label, filePath]) =>
+          (existsSync(filePath) ? '✅ ' : '❌ ') + label
+        );
+
+        const total = lines.filter(line => line.startsWith('✅')).length;
+
+        await reply(
+          '*DIAGNÓSTICO DA KYARA*\n\n' +
+          lines.join('\n') +
+          '\n\nArquivos presentes: ' + total + '/' + checks.length
+        );
+
+        break;
+      }
+
+
+
+
+      // [KYARA_VOXMD_CORRIGIDO_NATIVE_FLOW]
+      
+case 'voxmd': {
+  try {
+    const lista = typeof opcoes!== 'undefined'? opcoes : (typeof resultados!== 'undefined'? resultados : []);
+    const item = lista[0] || {};
+    const titulo = item.titulo || item.title || 'Nosso Fim | Eren & Mikasa';
+    const duracao = item.duracao || item.duration || '04:23';
+    const views = item.views || item.visualizacoes || '1.781.492';
+    const thumbUrl = item.thumb || item.thumbnail || item.image || 'https://i.ytimg.com/vi/kEpYtZyUwrQ/hqdefault.jpg';
+
+    let media = {};
+    try {
+      media = await prepareWAMessageMedia(
+        { image: { url: thumbUrl } },
+        { upload: kya.waUploadToServer }
+      );
+    } catch (thumbError) {
+      console.error('[VOXMD] Miniatura indisponível; enviando sem imagem:', thumbError.message);
+    }
+
+    
+    const chatId = from;
+    if (!chatId) {
+      throw new Error('Não foi possível identificar o grupo do #voxmd.');
+    }
+
+    const buttons = [
+      {
+        name: 'quick_reply',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Baixar Áudio',
+          id: '#respostavoxmd 617564696f'
+        })
+      },
+      {
+        name: 'quick_reply',
+        buttonParamsJson: JSON.stringify({
+          display_text: 'Baixar Vídeo',
+          id: '#respostavoxmd 766964656f'
+        })
+      }
+    ];
+
+    const msg = generateWAMessageFromContent(
+      chatId,
+      {
+        viewOnceMessage: {
+          message: {
+            messageContextInfo: {
+              deviceListMetadata: {},
+              deviceListMetadataVersion: 2
+            },
+            interactiveMessage: {
+              header: {
+                title: String(titulo || 'Resultado'),
+                hasMediaAttachment: false
+              },
+              body: {
+                text:
+                  'Selecione o formato desejado.\\n\\n' +
+                  'Duração: ' + String(duracao || 'N/D') + '\\n' +
+                  'Visualizações: ' + String(views || 'N/D')
+              },
+              footer: {
+                text: 'KYARA-SYSTΞM • DOWNLOADS'
+              },
+              nativeFlowMessage: {
+                buttons
+              }
+            }
+          }
+        }
+      },
+      { userJid: kya.user.id }
+    );
+
+    if (!msg?.message || !msg?.key?.id) {
+      throw new Error('O WhatsApp não gerou a mensagem interativa corretamente.');
+    }
+
+    await kya.relayMessage(chatId, msg.message, {
+      messageId: msg.key.id
+    });
+
+    console.log('[VOXMD] Mensagem com botões enviada para:', chatId);
+
+
+  } catch(err){
+    console.error('ERRO VOXMD:', err);
+  }
+  break;
+}
+
+case 'respostavoxmd': {
+        const codigo = String(q || '').trim().split(/\s+/)[0];
+
+        if (!/^(?:[0-9a-f]{2})+$/i.test(codigo)) {
+          await reply('Não consegui identificar a opção escolhida.');
+          break;
+        }
+
+        const escolhida = Buffer.from(codigo, 'hex').toString('utf8');
+        await reply('Você escolheu: ' + escolhida);
+        break;
+      }
+
+      // [KYARA_TESTE_BOTOES_LADO_A_LADO]
+      case 'teste': {
+        const opcoes = String(q || '')
+          .split(',')
+          .map(x => x.trim())
+          .filter(Boolean);
+
+        if (opcoes.length !== 2) {
+          await reply('Use: #teste 1, 2');
+          break;
+        }
+
+        const msg = generateWAMessageFromContent(
           from,
           {
             viewOnceMessage: {
@@ -10325,59 +12446,57 @@ if (
                   deviceListMetadata: {},
                   deviceListMetadataVersion: 2
                 },
-
                 interactiveMessage: {
                   body: {
-                    text:
-                      '🎛️ *KYARA MENUTESTE*\n\n' +
-                      'Escolha o comando e escreva a pesquisa no próprio painel.'
+                    text: 'TESTE'
                   },
-
                   footer: {
-                    text:
-                      'KYARA • TESTE'
+                    text: 'KYARA-SYSTΞM • TESTE DE BOTÕES'
                   },
-
                   nativeFlowMessage: {
-                    buttons,
-
-                    messageParamsJson:
-                      '{}',
-
-                    messageVersion:
-                      1
+                    buttons: opcoes.map((label, i) => ({
+                      name: 'quick_reply',
+                      buttonParamsJson: JSON.stringify({
+                        display_text: label,
+                        id: groupPrefix + 'respostateste ' + (i + 1)
+                      })
+                    })),
+                    messageParamsJson: '{}'
                   }
                 }
               }
             }
           },
           {
-            quoted:
-              info,
-
-            userJid:
-              nazu?.user?.id
+            userJid: kya.user.id
           }
         );
 
-      await nazu.relayMessage(
-        from,
-        msg.message,
-        {
-          messageId:
-            msg.key.id
-        }
-      );
+        await kya.relayMessage(
+          from,
+          msg.message,
+          { messageId: msg.key.id }
+        );
 
-      console.log(
-        '[KYARA MENUTESTE] Flow enviado:',
-        flowId
-      );
+        console.log('[KYARA TESTE BOTOES] Enviado.');
+        break;
+      }
 
-      return;
-    }
+      case 'respostateste': {
+        const escolha = String(q || '').trim();
 
-switch (command) {
+        await reply(
+          escolha === '1'
+            ? 'Você clicou no botão 1!'
+            : escolha === '2'
+              ? 'Você clicou no botão 2!'
+              : 'Opção inválida.'
+        );
+
+        break;
+      }
+
+
 
       case 'fig':
       case 'figban':
@@ -10450,6 +12569,8 @@ switch (command) {
         break;
 
       case 'menuajustes':
+      case 'ajustes':
+      case 'ajuste':
         if (!isOwner) {
           await reply(OWNER_ONLY_MESSAGE);
           break;
@@ -10482,6 +12603,66 @@ switch (command) {
 
             await reply(
               buildMaintenanceList(prefix)
+            );
+
+            break;
+          }
+
+          if (
+            action === 'erros' ||
+            action === 'errors' ||
+            action === 'falhas'
+          ) {
+
+            await reply(
+              buildMaintenanceErrors(prefix)
+            );
+
+            break;
+          }
+
+          if (
+            action === 'menu'
+          ) {
+
+            const menuFilter =
+              String(
+                args[1] || ''
+              ).trim();
+
+            await reply(
+              buildMaintenanceList(
+                prefix,
+                menuFilter
+              )
+            );
+
+            break;
+          }
+
+          if (
+            action === 'status'
+          ) {
+
+            const failures =
+              getMaintenanceFailures();
+
+            const commands =
+              getMaintenanceCommands();
+
+            await reply(
+              [
+                '╭━━━〔 🛠️ KYARA-SYSTΞM • AJUSTES 〕━━━╮',
+                '┃',
+                `┃ 🔧 Comandos em ajuste: ${commands.length}`,
+                `┃ 🚨 Falhas técnicas   : ${failures.length}`,
+                '┃',
+                `┃ ${prefix}menuajustes`,
+                `┃ ${prefix}cmdajuste erros`,
+                `┃ ${prefix}cmdajuste lista`,
+                '┃',
+                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
+              ].join('\n')
             );
 
             break;
@@ -10585,6 +12766,9 @@ switch (command) {
               '╭━━━〔 🧪 CMD AJUSTE 〕━━━╮',
               '┃',
               `┃ ${prefix}cmdajuste lista`,
+              `┃ ${prefix}cmdajuste erros`,
+              `┃ ${prefix}cmdajuste menu <menu>`,
+              `┃ ${prefix}cmdajuste status`,
               `┃ ${prefix}cmdajuste marcar <cmd>`,
               `┃ ${prefix}cmdajuste desmarcar <cmd>`,
               `┃ ${prefix}cmdajuste buscar <termo>`,
@@ -10611,7 +12795,7 @@ switch (command) {
 
         const audio = await gerarAudioLer(textoLer);
 
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
             audio: audio.buffer,
@@ -10635,6 +12819,212 @@ switch (command) {
       break;
     }
 
+      case 'tts':
+      case 'voz':
+      case 'falar': {
+        try {
+          const partes = Array.isArray(args)
+            ? args.map(v => String(v || '').trim())
+            : [];
+
+          const primeiroNorm = String(partes[0] || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+
+          const pfx =
+            (typeof prefix !== 'undefined' && prefix)
+              ? prefix
+              : '#';
+
+          const aliases = {
+            frieren: 'frieren',
+            kitsune: 'frieren',
+            kyara: 'kyara',
+            kika: 'kyara',
+            alice: 'kyara',
+            feminina: 'feminina',
+            mulher: 'feminina',
+            fem: 'feminina',
+            ana: 'feminina',
+            isadora: 'isadora',
+            beatriz: 'beatriz',
+            bia: 'beatriz',
+            sukuna: 'sukuna',
+            gojo: 'gojo',
+            satoru: 'gojo',
+            vegeta: 'vegeta',
+            naruto: 'naruto',
+            masculina: 'masculina',
+            homem: 'masculina',
+            masc: 'masculina'
+          };
+
+          if (!partes.length) {
+            const atual = await lerVozAssistenteKyara();
+            return reply(
+              '🎙️ *KYARA VOICE*\\n\\n' +
+              'Voz automática atual: *' + atual + '*\\n\\n' +
+              'Use ' + pfx + 'voz lista para ver as opções.\\n' +
+              'Use ' + pfx + 'voz frieren para selecionar Frieren.\\n' +
+              'Use ' + pfx + 'tts kyara Olá para gerar um áudio de teste.'
+            );
+          }
+
+          if (['lista', 'listar', 'vozes', 'voices'].includes(primeiroNorm)) {
+            const atual = await lerVozAssistenteKyara();
+            const vozes = [
+              {
+                id: 'frieren',
+                nome: 'Frieren — Kitsune local (pode ser lenta)'
+              },
+              ...listarVozesKyara().map(v => ({
+                id: v.id,
+                nome: v.nome + (
+                  ['sukuna', 'gojo', 'vegeta', 'naruto', 'masculina']
+                    .includes(v.id)
+                    ? ' — perfil de tom/velocidade'
+                    : ' — Gradium'
+                )
+              }))
+            ];
+
+            const linhas = vozes
+              .map(v => '• ' + pfx + 'voz ' + v.id + ' — ' + v.nome)
+              .join('\n');
+
+            return reply(
+              '╭━━━〔 🎙️ KYARA VOICE 〕━━━╮\n' +
+              '┃ Voz automática atual: ' + atual + '\n' +
+              '┃\n' + linhas + '\n' +
+              '┃\n' +
+              '┃ Para mudar: ' + pfx + 'voz frieren\n' +
+              '┃ Para testar: ' + pfx + 'tts frieren Olá!\n' +
+              '╰━━━━━━━━━━━━━━━━━━━━━━━━╯'
+            );
+          }
+
+          if (['status', 'estado', 'online'].includes(primeiroNorm)) {
+            const st = await statusKyaraVoice();
+            const atual = await lerVozAssistenteKyara();
+
+            return reply(
+              '🎙️ *KYARA VOICE STATUS*\\n\\n' +
+              'Voz automática: ' + atual + '\\n' +
+              'Motor Gradium: ' +
+                (st.gradium.configurada ? '✅ pronto' : '❌ indisponível') + '\\n' +
+              'Modelo: ' + st.modelo + '\\n' +
+              'Perfis disponíveis: ' + (st.vozes.length + 1)
+            );
+          }
+
+          const acaoSelecionar = [
+            'usar', 'selecionar', 'definir', 'mudar', 'trocar', 'set'
+          ].includes(primeiroNorm);
+
+          const nomeCandidato = acaoSelecionar
+            ? String(partes[1] || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+            : primeiroNorm;
+
+          const vozPedido = aliases[nomeCandidato] || null;
+          const textoPedido = acaoSelecionar
+            ? ''
+            : vozPedido
+              ? partes.slice(1).join(' ').trim()
+              : partes.join(' ').trim();
+
+          if (acaoSelecionar || (vozPedido && !textoPedido)) {
+            if (typeof isOwner !== 'undefined' && !isOwner) {
+              return reply('⛔ Apenas o dono pode mudar a voz automática da Kyara.');
+            }
+
+            if (!vozPedido) {
+              return reply(
+                '❌ Voz desconhecida. Use ' + pfx + 'voz lista para consultar as opções.'
+              );
+            }
+
+            await salvarVozAssistenteKyara(vozPedido);
+
+            return reply(
+              '✅ *Voz automática alterada!*\n\n' +
+              'Voz selecionada: *' + vozPedido + '*\n' +
+              'A escolha foi salva e será usada nas respostas automáticas com áudio.'
+            );
+          }
+
+          if (!textoPedido) {
+            return reply(
+              '🎙️ Uso: ' + pfx + 'tts <voz> <texto>\n' +
+              'Para escolher a voz automática: ' + pfx + 'voz <voz>\n' +
+              'Consulte as opções com: ' + pfx + 'voz lista'
+            );
+          }
+
+          const vozGeracao = vozPedido || 'kyara';
+
+          if (vozGeracao === 'frieren') {
+            let arquivoVoz = null;
+
+            try {
+              arquivoVoz = await gerarVoz(textoPedido);
+
+              await kya.sendMessage(
+                from,
+                {
+                  audio: { url: arquivoVoz },
+                  mimetype: 'audio/ogg; codecs=opus',
+                  ptt: true
+                },
+                { quoted: info }
+              );
+
+              console.log(
+                '[KYARA-VOICE] provider=kitsune-local voz=frieren chars=' +
+                textoPedido.length
+              );
+            } finally {
+              if (arquivoVoz) {
+                await apagarVoz(arquivoVoz);
+              }
+            }
+
+            return;
+          }
+
+          const audio = await gerarAudioKyara(textoPedido, vozGeracao);
+
+          await kya.sendMessage(
+            from,
+            {
+              audio: audio.buffer,
+              mimetype: audio.mimetype || 'audio/ogg; codecs=opus',
+              ptt: true,
+              waveform: Buffer.from(audio.waveform || [])
+            },
+            { quoted: info }
+          );
+
+          console.log(
+            '[KYARA-VOICE] provider=' + audio.provider +
+            ' voz=' + audio.voice +
+            ' chars=' + textoPedido.length
+          );
+
+          return;
+        } catch (error) {
+          console.error('[KYARA-VOICE] Erro:', error);
+
+          return reply(
+            '❌ Não consegui gerar ou alterar a voz.\n\n' +
+            'Erro: ' + String(error?.message || error || 'Erro desconhecido')
+          );
+        }
+      }
+
       case 'roles':
       case 'role.lista':
       case 'listaroles': {
@@ -10657,7 +13047,7 @@ switch (command) {
           const listText = `🪩 *Rolês ativos*\n\n${listLines.join('\n\n')}\n\n🙋 Reaja com ${ROLE_GOING_BASE} ou use ${groupPrefix}role.vou CODIGO\n🤷 Reaja com ${ROLE_NOT_GOING_BASE} ou use ${groupPrefix}role.nvou CODIGO`;
 
           try {
-            await nazu.sendMessage(sendTarget, { text: listText });
+            await kya.sendMessage(sendTarget, { text: listText });
             if (sendInPv && sendTarget !== from) {
               await reply('📬 Enviei a lista de rolês no seu privado!', { mentions: [sender] });
             }
@@ -10760,9 +13150,9 @@ switch (command) {
                   payload.gifPlayback = true;
                 }
               }
-              sentMessage = await nazu.sendMessage(from, payload);
+              sentMessage = await kya.sendMessage(from, payload);
             } else {
-              sentMessage = await nazu.sendMessage(from, { text: announcementText });
+              sentMessage = await kya.sendMessage(from, { text: announcementText });
             }
           } catch (sendError) {
             console.error('Erro ao divulgar rolê:', sendError);
@@ -10844,7 +13234,7 @@ switch (command) {
           if (roleData.announcementKey?.id) {
             delete groupData.roleMessages[roleData.announcementKey.id];
             try {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 delete: {
                   remoteJid: from,
                   fromMe: roleData.announcementKey.fromMe !== undefined ? roleData.announcementKey.fromMe : true,
@@ -10887,9 +13277,9 @@ switch (command) {
                   payload.gifPlayback = true;
                 }
               }
-              sentMessage = await nazu.sendMessage(from, payload);
+              sentMessage = await kya.sendMessage(from, payload);
             } else {
-              sentMessage = await nazu.sendMessage(from, { text: announcementText });
+              sentMessage = await kya.sendMessage(from, { text: announcementText });
             }
           } catch (updateErr) {
             console.error('Erro ao reenviar divulgação do rolê:', updateErr);
@@ -10942,7 +13332,7 @@ switch (command) {
           if (roleData.announcementKey?.id) {
             delete groupData.roleMessages[roleData.announcementKey.id];
             try {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 delete: {
                   remoteJid: from,
                   fromMe: roleData.announcementKey.fromMe !== undefined ? roleData.announcementKey.fromMe : true,
@@ -11103,15 +13493,15 @@ switch (command) {
                 }
               }
 
-              await nazu.sendMessage(from, payload, { quoted: info });
+              await kya.sendMessage(from, payload, { quoted: info });
             } catch (mediaError) {
               console.log('Erro ao enviar mídia do rolê:', mediaError.message);
               // Se falhar, envia apenas texto
-              await nazu.sendMessage(from, { text: lines.join('\n'), mentions: [...going, ...notGoing] }, { quoted: info });
+              await kya.sendMessage(from, { text: lines.join('\n'), mentions: [...going, ...notGoing] }, { quoted: info });
             }
           } else {
             // Se não tiver mídia, envia apenas texto
-            await nazu.sendMessage(from, { text: lines.join('\n'), mentions: [...going, ...notGoing] }, { quoted: info });
+            await kya.sendMessage(from, { text: lines.join('\n'), mentions: [...going, ...notGoing] }, { quoted: info });
           }
         } catch (e) {
           console.error('Erro em role.info:', e);
@@ -11124,7 +13514,7 @@ switch (command) {
       case 'artista': {
         try {
           await handleArtistCommand({
-            sock: nazu,
+            sock: kya,
             jid: from,
             userId: sender,
             pushName: pushname || 'Artista',
@@ -18184,7 +20574,7 @@ switch (command) {
                 return reply(`❌ Erro ao aplicar o efeito *${command}* no áudio. Verifique se o arquivo está válido e tente novamente.`);
               }
               const hah = fs.readFileSync(ran);
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 audio: hah,
                 mimetype: 'audio/mpeg'
               }, {
@@ -18279,7 +20669,7 @@ switch (command) {
                 video: buffer453,
                 mimetype: 'video/mp4'
               };
-              await nazu.sendMessage(from, messageType, {
+              await kya.sendMessage(from, messageType, {
                 quoted: info
               });
               await fs.unlinkSync(ran);
@@ -20534,7 +22924,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
         if (!q) return reply(`📲 *Gerador de QR Code*\n\n💡 *Como usar:*\n• Envie o texto ou link após o comando\n• Ex: ${prefix}qrcode https://exemplo.com\n• Ex: ${prefix}qrcode Seu texto aqui\n\n✨ O QR Code será gerado instantaneamente!`);
         reply('Aguarde um momentinho... ☀️').then(() => {
           const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(q)}`;
-          return nazu.sendMessage(from, {
+          return kya.sendMessage(from, {
             image: { url: qrUrl },
             caption: `📱✨ *Seu QR Code super fofo está pronto!*\n\nConteúdo: ${q.substring(0, 100)}${q.length > 100 ? '...' : ''}`
           }, { quoted: info });
@@ -20587,7 +22977,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
             } else {
               // Se não for grupo, usar onWhatsApp para pegar LID
               try {
-                const [result] = await nazu.onWhatsApp(targetUserId.replace(/@s\.whatsapp\.net|@lid/g, ''));
+                const [result] = await kya.onWhatsApp(targetUserId.replace(/@s\.whatsapp\.net|@lid/g, ''));
                 if (result && result.lid) {
                   targetUserId = result.lid;
                 } else if (result && result.jid) {
@@ -20613,7 +23003,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
               } else {
                 // Se não for grupo, usar onWhatsApp para pegar LID
                 try {
-                  const [result] = await nazu.onWhatsApp(cleanNumber);
+                  const [result] = await kya.onWhatsApp(cleanNumber);
                   if (result && result.lid) {
                     targetUserId = result.lid;
                   } else if (result && result.jid) {
@@ -20630,7 +23020,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
             return reply(`📝 *Como usar:*\n\n1️⃣ Marque o usuário: ${prefix}addsubdono @usuario\n2️⃣ Ou digite o número: ${prefix}addsubdono 5511999998888`);
           }
 
-          const result = await addSubdono(targetUserId, numerodono, nazu);
+          const result = await addSubdono(targetUserId, numerodono, kya);
           await reply(result.message);
         } catch (e) {
           console.error("Erro ao adicionar subdono:", e);
@@ -20659,7 +23049,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
             } else {
               // Se não for grupo, usar onWhatsApp para pegar LID
               try {
-                const [result] = await nazu.onWhatsApp(targetUserId.replace(/@s\.whatsapp\.net|@lid/g, ''));
+                const [result] = await kya.onWhatsApp(targetUserId.replace(/@s\.whatsapp\.net|@lid/g, ''));
                 if (result && result.lid) {
                   targetUserId = result.lid;
                 } else if (result && result.jid) {
@@ -20685,7 +23075,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
               } else {
                 // Se não for grupo, usar onWhatsApp para pegar LID
                 try {
-                  const [result] = await nazu.onWhatsApp(cleanNumber);
+                  const [result] = await kya.onWhatsApp(cleanNumber);
                   if (result && result.lid) {
                     targetUserId = result.lid;
                   } else if (result && result.jid) {
@@ -20708,7 +23098,7 @@ Exemplo: ${prefix}tradutor espanhol | Olá mundo! ✨`);
             return reply(`📝 *Como usar:*\n\n1️⃣ Marque o usuário: ${prefix}remsubdono @usuario\n2️⃣ Digite o número: ${prefix}remsubdono 5511999998888\n3️⃣ Use o índice da lista: ${prefix}remsubdono 1`);
           }
 
-          const result = await removeSubdono(targetUserId, nazu);
+          const result = await removeSubdono(targetUserId, kya);
           await reply(result.message);
         } catch (e) {
           console.error("Erro ao remover subdono:", e);
@@ -20814,7 +23204,7 @@ ${prefix}addsubbot @152656307871952`
               ) {
 
                 const metadata =
-                  await nazu.groupMetadata(
+                  await kya.groupMetadata(
                     info.key.remoteJid
                   )
 
@@ -20992,7 +23382,7 @@ ${prefix}addsubbot @152656307871952`
             }
 
             const [result] =
-              await nazu.onWhatsApp(
+              await kya.onWhatsApp(
                 phoneNumber
               )
 
@@ -21020,7 +23410,7 @@ ${prefix}addsubbot @152656307871952`
 
                 const lid =
                   await getLidFromJidCached(
-                    nazu,
+                    kya,
                     result.jid
                   )
 
@@ -21091,7 +23481,7 @@ ${prefix}addsubbot @152656307871952`
 
           const ownerLid =
             await getLidFromJidCached(
-              nazu,
+              kya,
               ownerCandidate
             )
 
@@ -21316,7 +23706,7 @@ ${prefix}addsubbot @152656307871952`
       case 'limitarcmd':
         try {
           const { cmdLimitAdd } = await import('./funcs/utils/cmdlimit.js');
-          await cmdLimitAdd(nazu, from, q, reply, prefix, isOwnerOrSub);
+          await cmdLimitAdd(kya, from, q, reply, prefix, isOwnerOrSub);
         } catch (error) {
           console.error('Error in cmdlimitar:', error);
           await reply('❌ Erro interno!');
@@ -21328,7 +23718,7 @@ ${prefix}addsubbot @152656307871952`
       case 'rmcmdlimit':
         try {
           const { cmdLimitRemove } = await import('./funcs/utils/cmdlimit.js');
-          await cmdLimitRemove(nazu, from, q, reply, prefix, isOwnerOrSub);
+          await cmdLimitRemove(kya, from, q, reply, prefix, isOwnerOrSub);
         } catch (error) {
           console.error('Error in cmddeslimitar:', error);
           await reply('❌ Erro interno!');
@@ -21340,7 +23730,7 @@ ${prefix}addsubbot @152656307871952`
       case 'listcmdlimites':
         try {
           const { cmdLimitList } = await import('./funcs/utils/cmdlimit.js');
-          await cmdLimitList(nazu, from, q, reply, prefix, isOwnerOrSub);
+          await cmdLimitList(kya, from, q, reply, prefix, isOwnerOrSub);
         } catch (error) {
           console.error('Error in cmdlimites:', error);
           await reply('❌ Erro interno!');
@@ -21979,7 +24369,7 @@ ${prefix}addsubbot @152656307871952`
         const levelingDataAdd = loadLevelingSafe();
         const userDataAdd = getLevelingUser(levelingDataAdd, menc_os2);
         userDataAdd.xp = (userDataAdd.xp || 0) + xpToAdd;
-        checkLevelUp(menc_os2, userDataAdd, levelingDataAdd, nazu, from);
+        checkLevelUp(menc_os2, userDataAdd, levelingDataAdd, kya, from);
         saveLevelingSafe(levelingDataAdd);
         await reply(`✅ Adicionado ${xpToAdd} XP para @${getUserName(menc_os2)}`, {
           mentions: [menc_os2]
@@ -22022,7 +24412,7 @@ ${prefix}addsubbot @152656307871952`
               try {
                 const groupMeta = await getCachedGroupMetadata(groupId);
                 const msg = `🎉 Atenção, ${groupMeta.subject}! Adicionados ${extraDays} dias extras de aluguel.\nNova expiração: ${new Date(rentalData.groups[groupId].expiresAt).toLocaleDateString('pt-BR')}.\nMotivo: ${motivo}`;
-                await nazu.sendMessage(groupId, {
+                await kya.sendMessage(groupId, {
                   text: msg
                 });
               } catch (e) {
@@ -22246,7 +24636,7 @@ ${prefix}addsubbot @152656307871952`
 
           // Tenta notificar o grupo
           try {
-            await nazu.sendMessage(targetGroupId, {
+            await kya.sendMessage(targetGroupId, {
               text: `⚠️ *AVISO IMPORTANTE*\n\nO aluguel deste grupo foi removido pelo proprietário do bot.\n\n❌ O bot não funcionará mais neste grupo.\n\nPara mais informações, entre em contato com o dono.`
             });
           } catch (e) {
@@ -22324,7 +24714,7 @@ ${prefix}addsubbot @152656307871952`
 
           // Notifica o grupo
           try {
-            await nazu.sendMessage(targetGroupId, {
+            await kya.sendMessage(targetGroupId, {
               text: `🎉 *BOA NOTÍCIA!*\n\nSeu aluguel foi estendido!\n\n➕ Dias adicionados: *${daysToAdd}*\n📅 Nova data de expiração: *${newExpirationDate}*\n⏳ Dias restantes: *${daysLeft}*\n\n✨ Continue aproveitando o bot!`
             });
           } catch (e) {
@@ -22484,7 +24874,7 @@ ${prefix}addsubbot @152656307871952`
           let adminsNotified = 0;
           const symbols = ['✨', '🌟', '⚡', '🔥', '🌈', '🍀', '💫', '🎉'];
 
-          const currentGroups = await nazu.groupFetchAllParticipating();
+          const currentGroups = await kya.groupFetchAllParticipating();
           const currentGroupIds = Object.keys(currentGroups);
           const rentalGroupIds = Object.keys(rentalData.groups || {});
 
@@ -22512,7 +24902,7 @@ ${prefix}addsubbot @152656307871952`
             groupsLeft.push(groupId);
 
             try {
-              await nazu.sendMessage(groupId, {
+              await kya.sendMessage(groupId, {
                 text: `⏰ O aluguel deste grupo (${groupMetadata.subject}) expirou. Estou saindo, mas vocês podem renovar o aluguel entrando em contato com o dono! Até mais! 😊${symbols[Math.floor(Math.random() * symbols.length)]}`
               });
 
@@ -22521,7 +24911,7 @@ ${prefix}addsubbot @152656307871952`
                 const delay = Math.floor(Math.random() * (500 - 100 + 1)) + 100;
                 await new Promise(resolve => setTimeout(resolve, delay));
                 try {
-                  await nazu.sendMessage(admin, {
+                  await kya.sendMessage(admin, {
                     text: `⚠️ Olá, admin do grupo *${groupMetadata.subject}*! O aluguel do grupo expirou, e por isso saí. Para renovar, entre em contato com o dono. Obrigado! ${symbols[Math.floor(Math.random() * symbols.length)]}`
                   });
                   adminsNotified++;
@@ -22530,11 +24920,11 @@ ${prefix}addsubbot @152656307871952`
                 }
               }
 
-              await nazu.groupLeave(groupId);
+              await kya.groupLeave(groupId);
 
               // Deleta o chat do grupo
               try {
-                if (nazu.chatModify) {
+                if (kya.chatModify) {
                   await deleteChatByLastMessage(groupId);
                   chatsDeleted++;
                 }
@@ -22544,7 +24934,7 @@ ${prefix}addsubbot @152656307871952`
 
               // Limpa conversa do grupo
               try {
-                if (nazu.chatModify) {
+                if (kya.chatModify) {
                   await clearChatHistorySafe(groupId);
                   groupConversationsCleared++;
                 }
@@ -22569,15 +24959,15 @@ ${prefix}addsubbot @152656307871952`
                 const groupMetadata = await getCachedGroupMetadata(groupId).catch(() => null);
                 const groupName = groupMetadata?.subject || 'Grupo desconhecido';
 
-                await nazu.sendMessage(groupId, {
+                await kya.sendMessage(groupId, {
                   text: `👋 Este grupo não possui aluguel registrado. Estou saindo. Até mais! ${symbols[Math.floor(Math.random() * symbols.length)]}`
                 });
 
-                await nazu.groupLeave(groupId);
+                await kya.groupLeave(groupId);
 
                 // Deleta o chat do grupo
                 try {
-                  if (nazu.chatModify) {
+                  if (kya.chatModify) {
                     await deleteChatByLastMessage(groupId);
                     chatsDeleted++;
                   }
@@ -22587,7 +24977,7 @@ ${prefix}addsubbot @152656307871952`
 
                 // Limpa conversa do grupo
                 try {
-                  if (nazu.chatModify) {
+                  if (kya.chatModify) {
                     await clearChatHistorySafe(groupId);
                     groupConversationsCleared++;
                   }
@@ -22605,9 +24995,9 @@ ${prefix}addsubbot @152656307871952`
 
           // Limpa todas as conversas de grupo restantes (mantém apenas privadas)
           try {
-            if (nazu.chatModify) {
+            if (kya.chatModify) {
               // Busca todos os grupos restantes e limpa conversas
-              const remainingGroups = await nazu.groupFetchAllParticipating();
+              const remainingGroups = await kya.groupFetchAllParticipating();
               for (const groupId of Object.keys(remainingGroups)) {
                 try {
                   await clearChatHistorySafe(groupId);
@@ -23849,7 +26239,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               if (groupDescMediaTest) caption = caption.replace(/\{(?:groupdesc|descricao|desc)\}/gi, groupDescMediaTest);
               if (latencyMediaTest !== null) caption = caption.replace(/\{(?:velocidade|speed|latency)\}/gi, `${latencyMediaTest}s`);
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 image: imageBuffer,
                 caption: caption
               }, { quoted: info, mentions: mentionsToIncludeTest });
@@ -23890,7 +26280,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               const quotedTextTest = (quotedMessageContent && (quotedMessageContent.conversation || quotedMessageContent.extendedTextMessage?.text)) || '';
               caption = caption.replace(/\{quoted\}/gi, quotedTextTest);
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 video: videoBuffer,
                 caption: caption
               }, { quoted: info, mentions: mentionsToIncludeTest });
@@ -23898,7 +26288,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
           } else if (processedResponse.type === 'audio') {
             const audioBuffer = processedResponse.buffer ? Buffer.from(processedResponse.buffer, 'base64') : null;
             if (audioBuffer) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 audio: audioBuffer,
                 mimetype: 'audio/mp4',
                 ptt: processedResponse.ptt || false
@@ -23907,7 +26297,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
           } else if (processedResponse.type === 'sticker') {
             const stickerBuffer = processedResponse.buffer ? Buffer.from(processedResponse.buffer, 'base64') : null;
             if (stickerBuffer) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 sticker: stickerBuffer
               }, { quoted: info });
             }
@@ -23941,7 +26331,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               if (!targetUser) {
                 // Tenta usar cache/onWhatsApp, mas permite JID como fallback
                 try {
-                  const lid = await getLidFromJidCached(nazu, candidateJid);
+                  const lid = await getLidFromJidCached(kya, candidateJid);
                   if (lid && lid.includes('@lid')) {
                     targetUser = lid;
                   } else {
@@ -23956,7 +26346,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               return reply('❌ Número inválido! Use um número completo (ex: 5511999998888)');
             }
           }
-          const result = await addGlobalBlacklist(targetUser, reason, pushname, nazu);
+          const result = await addGlobalBlacklist(targetUser, reason, pushname, kya);
           await reply(result.message, {
             mentions: [targetUser]
           });
@@ -23982,7 +26372,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               }
               if (!targetUser) {
                 try {
-                  const lid = await getLidFromJidCached(nazu, candidateJid);
+                  const lid = await getLidFromJidCached(kya, candidateJid);
                   if (lid && lid.includes('@lid')) {
                     targetUser = lid;
                   } else {
@@ -23997,7 +26387,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               return reply('❌ Número inválido! Use um número completo (ex: 5511999998888)');
             }
           }
-          const result = await removeGlobalBlacklist(targetUser, nazu);
+          const result = await removeGlobalBlacklist(targetUser, kya);
           await reply(result.message, {
             mentions: [targetUser]
           });
@@ -24058,7 +26448,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
       case 'ssweb':
         try {
           if (!q) return reply(`Cade o link?`);
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: {
               url: `https://image.thum.io/get/fullpage/${q}`
             }
@@ -24347,6 +26737,405 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
       // 🎵 PLAY KYARA
       // ============================================================
 
+
+      case 'animebuscar':
+      case 'animesearch':
+      case 'hn':
+      case 'hentai': {
+        const eurekaQuery = typeof q !== 'undefined' ? String(q).trim() : '';
+        const eurekaPrefix = typeof prefix !== 'undefined' ? String(prefix) : '#';
+        const eurekaSocket = typeof kya !== 'undefined' ? kya : null;
+        const eurekaChat = typeof from !== 'undefined' ? from : null;
+        const eurekaQuoted = typeof info !== 'undefined' ? info : null;
+
+        const eurekaReply = async (text) => {
+          if (typeof reply === 'function') return reply(text);
+          if (eurekaSocket && eurekaChat) {
+            return eurekaSocket.sendMessage(
+              eurekaChat,
+              { text },
+              eurekaQuoted ? { quoted: eurekaQuoted } : {}
+            );
+          }
+        };
+
+        try {
+          if (!eurekaQuery) {
+            return eurekaReply(
+              `⚠️ Uso: ${eurekaPrefix}animebuscar Naruto`
+            );
+          }
+
+          if (!eurekaSocket || !eurekaChat) {
+            return eurekaReply('❌ Não consegui identificar a conversa.');
+          }
+
+          const response = await axios.get(
+            'https://eurekanimes.com.br/index.php/api/anime/search',
+            {
+              params: { q: eurekaQuery, per_page: 10 },
+              timeout: 20000
+            }
+          );
+
+          const results = Array.isArray(response.data?.data)
+            ? response.data.data.filter(item => item && item.title)
+            : [];
+
+          if (!results.length) {
+            return eurekaReply('🔎 Nenhum anime encontrado para essa pesquisa.');
+          }
+
+          const rows = results.slice(0, 10).map((item, index) => {
+            const title = String(item.title || 'Sem título')
+              .replace(/[\r\n]/g, ' ')
+              .slice(0, 100);
+
+            const score = item.score ? `Nota ${item.score}` : 'Sem nota';
+            const description =
+              `${item.type || 'Anime'} • ${item.episodes ?? '?'} eps • ${score}`;
+
+            return {
+              title: `${index + 1}. ${title}`.slice(0, 70),
+              description: description.slice(0, 100),
+              id: `${eurekaPrefix}animeinfo ${title}`
+            };
+          });
+
+          const textFallback = results.slice(0, 10).map((item, index) =>
+            `${index + 1}. ${item.title}\n` +
+            `${eurekaPrefix}animeinfo ${item.title}`
+          ).join('\n\n');
+
+          if (typeof eurekaSocket.relayMessage === 'function') {
+            await eurekaSocket.relayMessage(
+              eurekaChat,
+              {
+                interactiveMessage: {
+                  header: {
+                    title: '🎌 KYARA-SYSTΞM • BUSCA DE ANIMES',
+                    hasMediaAttachment: false
+                  },
+                  body: {
+                    text: `🔎 Resultados para: ${eurekaQuery}\nEscolha um anime na lista.`
+                  },
+                  footer: { text: 'KYARA' },
+                  nativeFlowMessage: {
+                    buttons: [{
+                      name: 'single_select',
+                      buttonParamsJson: JSON.stringify({
+                        title: 'Ver resultados',
+                        sections: [{
+                          title: 'Animes encontrados',
+                          rows
+                        }]
+                      })
+                    }]
+                  }
+                }
+              },
+              eurekaQuoted ? { quoted: eurekaQuoted } : {}
+            );
+          } else {
+            await eurekaReply(textFallback);
+          }
+        } catch (error) {
+          console.error('[KYARA ANIME SEARCH]', error?.message || error);
+          return eurekaReply('❌ Falha na busca de animes. Tente novamente.');
+        }
+      }
+      break;
+
+      case 'animeinfo': {
+        const eurekaTitleQuery = typeof q !== 'undefined' ? String(q).trim() : '';
+        const eurekaSocket = typeof kya !== 'undefined' ? kya : null;
+        const eurekaChat = typeof from !== 'undefined' ? from : null;
+        const eurekaQuoted = typeof info !== 'undefined' ? info : null;
+
+        const eurekaReply = async (text) => {
+          if (typeof reply === 'function') return reply(text);
+          if (eurekaSocket && eurekaChat) {
+            return eurekaSocket.sendMessage(
+              eurekaChat,
+              { text },
+              eurekaQuoted ? { quoted: eurekaQuoted } : {}
+            );
+          }
+        };
+
+        try {
+          if (!eurekaTitleQuery) {
+            return eurekaReply('⚠️ Uso: #animeinfo Naruto');
+          }
+
+          const response = await axios.get(
+            'https://eurekanimes.com.br/index.php/api/anime/search',
+            {
+              params: { q: eurekaTitleQuery, per_page: 10 },
+              timeout: 20000
+            }
+          );
+
+          const results = Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+
+          const normalizar = value =>
+            String(value || '').trim().toLowerCase();
+
+          const anime = results.find(item =>
+            normalizar(item.title) === normalizar(eurekaTitleQuery) ||
+            normalizar(item.title_english) === normalizar(eurekaTitleQuery) ||
+            normalizar(item.title_pt) === normalizar(eurekaTitleQuery)
+          ) || (results.length === 1 ? results[0] : null);
+
+          if (!anime) {
+            return eurekaReply(
+              '❌ Não encontrei os detalhes exatos. Faça outra busca com #animebuscar.'
+            );
+          }
+
+          const synopsis = String(anime.synopsis || 'Sinopse indisponível')
+            .slice(0, 1200);
+
+          const lines = [
+            `🎌 *${anime.title || 'Anime'}*`,
+            '',
+            `📺 *Tipo:* ${anime.type || 'N/A'}`,
+            `🎞️ *Episódios:* ${anime.episodes ?? 'N/A'}`,
+            `📌 *Estado:* ${anime.status || 'N/A'}`,
+            `⭐ *Nota:* ${anime.score || 'N/A'}`,
+            `⏱️ *Duração:* ${anime.duration || 'N/A'}`,
+            '',
+            `📝 *Sinopse:* ${synopsis}`
+          ];
+
+          if (anime.trailer_url) {
+            lines.push('', `▶️ *Trailer:* ${anime.trailer_url}`);
+          }
+
+          return eurekaReply(lines.join('\n'));
+        } catch (error) {
+          console.error('[KYARA ANIME INFO]', error?.message || error);
+          return eurekaReply('❌ Não consegui consultar os detalhes do anime.');
+        }
+      }
+      break;
+
+
+      case 'poder360': {
+        try {
+          const token = process.env.OBANAI_APITOKEN;
+          if (!token) return reply('⚠️ Configure OBANAI_APITOKEN antes de usar este comando.');
+          const { data } = await axios.get(
+            'https://obanai-apis.eu.cc/api/noticias/poder360',
+            { params: { apitoken: token }, timeout: 20000 }
+          );
+          const items = data?.data?.resultado;
+          if (!data?.status || !Array.isArray(items) || !items.length)
+            return reply('❌ Nenhuma notícia disponível no momento.');
+          const n = items[Math.floor(Math.random() * items.length)];
+          return reply(`📰 *${n.noticia || 'Notícia'}*\n📁 ${n.secao || 'Geral'}\n\n${n.desc || ''}\n\n🔗 ${n.link || ''}`);
+        } catch (e) {
+          console.error('[KYARA PODER360]', e?.message || e);
+          return reply('❌ Erro ao consultar o Poder360.');
+        }
+      }
+      break;
+
+      case 'uol': {
+        try {
+          const token = process.env.OBANAI_APITOKEN;
+          if (!token) return reply('⚠️ Configure OBANAI_APITOKEN antes de usar este comando.');
+          const { data } = await axios.get(
+            'https://obanai-apis.eu.cc/api/noticias/uol',
+            { params: { apitoken: token }, timeout: 20000 }
+          );
+          const items = data?.data?.resultado;
+          if (!data?.status || !Array.isArray(items) || !items.length)
+            return reply('❌ Nenhuma notícia disponível no momento.');
+          const n = items[Math.floor(Math.random() * items.length)];
+          return reply(`📰 *${n.noticia || 'Notícia'}*\n📁 ${n.secao || 'Geral'}\n\n${n.desc || ''}\n\n🔗 ${n.link || ''}`);
+        } catch (e) {
+          console.error('[KYARA UOL]', e?.message || e);
+          return reply('❌ Erro ao consultar o UOL.');
+        }
+      }
+      break;
+
+      case 'g1': {
+        try {
+          const token = process.env.OBANAI_APITOKEN;
+          if (!token) return reply('⚠️ Configure OBANAI_APITOKEN antes de usar este comando.');
+          const { data } = await axios.get(
+            'https://obanai-apis.eu.cc/api/noticias/g1',
+            { params: { apitoken: token }, timeout: 20000 }
+          );
+          const items = data?.data?.resultado;
+          if (!data?.status || !Array.isArray(items) || !items.length)
+            return reply('❌ Nenhuma notícia disponível no momento.');
+          const n = items[Math.floor(Math.random() * items.length)];
+          return reply(`📰 *${n.noticia || 'Notícia'}*\n📁 ${n.secao || 'Geral'}\n🕒 ${n.data || 'N/A'}\n\n${n.desc || ''}\n\n🔗 ${n.link || ''}`);
+        } catch (e) {
+          console.error('[KYARA G1]', e?.message || e);
+          return reply('❌ Erro ao consultar o G1.');
+        }
+      }
+      break;
+
+      case 'conversor':
+      case 'converter': {
+        try {
+          const partes = String(q || '').trim().split(/\s+/);
+          if (partes.length < 3 || !partes[0])
+            return reply(`⚠️ Uso: ${prefix}conversor 10 km mi`);
+          const [valor, de, para] = partes;
+          if (!Number.isFinite(Number(valor)))
+            return reply('❌ O valor precisa ser numérico.');
+          const token = process.env.OBANAI_APITOKEN;
+          if (!token) return reply('⚠️ Configure OBANAI_APITOKEN antes de usar este comando.');
+          const { data } = await axios.get(
+            'https://obanai-apis.eu.cc/api/outros/conversor',
+            { params: { de, para, valor, apitoken: token }, timeout: 20000 }
+          );
+          if (!data?.success)
+            return reply(`❌ Conversão inválida: ${data?.message || 'verifique as unidades.'}`);
+          return reply(`🔄 *${data.data.expressao}*\n📁 Categoria: ${data.data.categoria || 'N/A'}`);
+        } catch (e) {
+          console.error('[KYARA CONVERSOR]', e?.message || e);
+          return reply('❌ Erro ao converter as unidades.');
+        }
+      }
+      break;
+
+      case 'tiktoktag':
+      case 'hashtag': {
+        try {
+          const tag = String(q || '').trim().replace(/^#/, '');
+          if (!tag) return reply(`⚠️ Uso: ${prefix}tiktoktag animes`);
+          const token = process.env.OBANAI_APITOKEN;
+          if (!token) return reply('⚠️ Configure OBANAI_APITOKEN antes de usar este comando.');
+          const { data } = await axios.get(
+            'https://obanai-apis.eu.cc/api/search/tiktok-tag',
+            { params: { q: tag, apitoken: token }, timeout: 20000 }
+          );
+          if (!data?.success || !data.data)
+            return reply('❌ Não foi possível obter as estatísticas.');
+          const r = data.data;
+          let msg =
+            `🔎 *HASHTAG: #${tag}*\n\n` +
+            `📊 Posts: ${r.posts ?? 'N/A'}\n` +
+            `👁️ Visualizações: ${r.views ?? 'N/A'}\n` +
+            `📈 Views por post: ${r.viewsPerPost ?? 'N/A'}\n` +
+            `🔥 Relacionadas: ${r.mostPopular || 'N/A'}\n`;
+          const trending = Array.isArray(r.trending) ? r.trending.slice(0, 8) : [];
+          if (trending.length) {
+            msg += '\n🏆 *Em alta:*\n' + trending.map(t =>
+              `• #${t.hashtag} — ${t.posts ?? '?'} posts`
+            ).join('\n');
+          }
+          return reply(msg);
+        } catch (e) {
+          console.error('[KYARA HASHTAG]', e?.message || e);
+          return reply('❌ Erro ao consultar a hashtag.');
+        }
+      }
+      break;
+
+      case 'npm':
+      case 'npmdownload': {
+        let tempDir = '';
+        try {
+          const partes = String(q || '').trim().split(',');
+          const pacote = String(partes[0] || '').trim();
+          const versao = String(partes[1] || 'latest').trim() || 'latest';
+          if (!/^(?:@[a-z0-9._-]+\/)?[a-z0-9][a-z0-9._-]*$/i.test(pacote) ||
+              pacote.includes('..') ||
+              !/^[a-zA-Z0-9.*^~+_-]+$/.test(versao))
+            return reply(`⚠️ Uso: ${prefix}npm pacote[,versão]`);
+          await reply('⏳ Preparando o pacote NPM...');
+          const fs = await import('node:fs/promises');
+          const os = await import('node:os');
+          const path = await import('node:path');
+          const { execFile } = await import('node:child_process');
+          const { promisify } = await import('node:util');
+          const execFileAsync = promisify(execFile);
+          tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kyara-npm-'));
+          const result = await execFileAsync(
+            'npm',
+            ['pack', `${pacote}@${versao}`],
+            { cwd: tempDir, timeout: 120000, maxBuffer: 5 * 1024 * 1024 }
+          );
+          const nomeArquivo = String(result.stdout || '').trim().split(/\r?\n/).pop();
+          if (!nomeArquivo || !nomeArquivo.endsWith('.tgz'))
+            throw new Error('O NPM não retornou o arquivo .tgz.');
+          const arquivo = path.join(tempDir, nomeArquivo);
+          const stat = await fs.stat(arquivo);
+          if (!stat.size) throw new Error('O pacote baixado está vazio.');
+          if (stat.size > 50 * 1024 * 1024)
+            return reply('⚠️ O pacote excede o limite de envio de 50 MB.');
+          const buffer = await fs.readFile(arquivo);
+          return kya.sendMessage(
+            from,
+            {
+              document: buffer,
+              mimetype: 'application/gzip',
+              fileName: nomeArquivo,
+              caption: `📦 ${pacote}@${versao}\n🔗 https://www.npmjs.com/package/${pacote}`
+            },
+            info ? { quoted: info } : {}
+          );
+        } catch (e) {
+          console.error('[KYARA NPM]', e?.message || e);
+          return reply('❌ Erro ao obter o pacote. Confira nome, versão e conexão.');
+        } finally {
+          if (tempDir) {
+            try {
+              const fs = await import('node:fs/promises');
+              await fs.rm(tempDir, { recursive: true, force: true });
+            } catch {}
+          }
+        }
+      }
+      break;
+
+      case 'waifu': {
+        try {
+          await reply('⏳ Buscando imagens...');
+          const responses = await Promise.allSettled(
+            Array.from({ length: 5 }, () =>
+              axios.get('https://nekos.best/api/v2/waifu', { timeout: 15000 })
+            )
+          );
+          const urls = [...new Set(responses
+            .filter(r => r.status === 'fulfilled')
+            .map(r => r.value.data?.results?.[0]?.url)
+            .filter(url => typeof url === 'string' && /^https?:\/\//i.test(url))
+          )].slice(0, 5);
+          if (!urls.length) return reply('❌ Nenhuma imagem disponível agora.');
+          for (let i = 0; i < urls.length; i++) {
+            await kya.sendMessage(
+              from,
+              {
+                image: { url: urls[i] },
+                caption: `✨ Waifu ${i + 1}/${urls.length}\n🔗 ${urls[i]}`
+              },
+              i === 0 && info ? { quoted: info } : {}
+            );
+          }
+        } catch (e) {
+          console.error('[KYARA WAIFU]', e?.message || e);
+          return reply('❌ Falha ao buscar imagens.');
+        }
+      }
+      break;
+      case 'hndl': {
+        return reply('⚠️ Este extrator antigo foi desativado. '
+          + 'Downloads precisam usar fontes de mídia própria/autorizada.');
+      }
+      break;
+
+      case 'play':
       case 'ytmp3':
 
         try {
@@ -24481,13 +27270,9 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
             }
           }
 
-          await enviarResultadoPlayKyara({
-            nazu,
-            from,
-            info,
-            video: result,
-            prefix
-          });
+          // O painel principal fica sob responsabilidade do kyaraMediaCommands.
+          // O envio legado abaixo gerava o segundo cartao KYARA DL.
+          console.log('[PLAY KYARA] Envio do cartao legado duplicado desativado.');
 
         } catch (error) {
 
@@ -24510,199 +27295,639 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
       // ============================================================
     case 'playaudio': {
       try {
-
-        const rawArgs =
-          String(q || '').trim();
+        const rawArgs = String(q || '').trim();
 
         if (!rawArgs) {
           await reply(
-            '❌ *Mídia não informada.*\n\n' +
-            'Use o botão *Baixar Áudio* do /play.'
+            '🎵 Use: #playaudio nome da música ou URL do YouTube'
           );
-
           break;
         }
 
-        /*
-         * ======================================================
-         * 🎙️ PLAY — VOICE NOTE
-         * ======================================================
-         *
-         * O /play já pode estar preparando o OGG/Opus
-         * em segundo plano.
-         *
-         * Aqui apenas aguardamos o mesmo cache/inflight.
-         */
-
-        const rememberedUrl =
-          resolveButton(rawArgs);
-
-        const resolved =
+        const rememberedUrl = resolveButton(rawArgs);
+        let resolved =
           rememberedUrl ||
-          (
-            /^https?:\/\//i.test(rawArgs)
-              ? rawArgs
-              : /^[A-Za-z0-9_-]{6,20}$/.test(rawArgs)
-                ? `https://www.youtube.com/watch?v=${rawArgs}`
-                : ''
-          );
+          (/^https?:\/\//i.test(rawArgs)
+            ? rawArgs
+            : /^[A-Za-z0-9_-]{6,20}$/.test(rawArgs)
+              ? `https://www.youtube.com/watch?v=${rawArgs}`
+              : '');
 
+        // Se recebeu um nome, pesquisa primeiro e obtém a URL.
         if (!resolved) {
+          console.log('[PLAY AUDIO] 🔎 Pesquisando:', rawArgs);
 
-          await reply(
-            '❌ *URL ou botão expirado.*\n\n' +
-            'Faça um novo /play e tente novamente.'
-          );
+          if (typeof youtube.search !== 'function') {
+            throw new Error('A função youtube.search não está disponível.');
+          }
 
-          break;
+          const found = await youtube.search(rawArgs);
+
+          if (!found?.ok || !found?.data?.url) {
+            throw new Error(
+              found?.msg || 'Nenhum resultado válido encontrado na pesquisa.'
+            );
+          }
+
+          resolved = found.data.url;
+          console.log('[PLAY AUDIO] Resultado:', found.data.title || resolved);
         }
 
-        const started =
-          Date.now();
-
-        console.log(
-          '[PLAY VOICE] 📩 Clique recebido'
-        );
-
-        try {
-          await nazu.sendMessage(
-            from,
-            {
-              text:
-                '🎙️ Preparando áudio, aguarde...'
-            },
-            {
-              quoted: info
-            }
-          );
-        } catch {}
-
-        if (
-          typeof youtube.prefetchVoiceFile !==
-          'function'
-        ) {
-          throw new Error(
-            'prefetchVoiceFile não está disponível no youtube.js.'
-          );
+        if (typeof youtube.prefetchAudioFile !== 'function') {
+          throw new Error('prefetchAudioFile não está disponível.');
         }
 
-        console.log(
-          '[PLAY VOICE] ⏳ Aguardando OGG/Opus...'
-        );
+        console.log('[PLAY AUDIO] ⚡ Obtendo URL direta do áudio...');
+        const audioUrl = await youtube.prefetchAudioFile(resolved);
 
-        const voiceFile =
-          await youtube.prefetchVoiceFile(
-            resolved
-          );
+        if (!audioUrl || !/^https?:\/\//i.test(audioUrl)) {
+          throw new Error('O serviço não retornou uma URL de áudio válida.');
+        }
 
-        console.log(
-          `[PLAY VOICE] ⚡ OGG/Opus pronto em ${Date.now() - started}ms`
-        );
-
-        await nazu.sendMessage(
+        await kya.sendMessage(
           from,
           {
-            audio: {
-              url: voiceFile
-            },
-
-            mimetype:
-              'audio/ogg; codecs=opus',
-
-            ptt:
-              true
+            audio: { url: audioUrl },
+            mimetype: 'audio/mp4',
+            ptt: false,
+            fileName: 'KYARA-AUDIO.m4a'
           },
-          {
-            quoted: info
-          }
+          { quoted: info }
         );
 
-        console.log(
-          `[PLAY VOICE] ✅ Voz enviada em ${Date.now() - started}ms`
-        );
-
+        console.log('[PLAY AUDIO] ✅ Áudio enviado.');
       } catch (err) {
-
-        console.error(
-          '[PLAY VOICE] ❌ Erro:',
-          err
-        );
-
+        console.error('[PLAY AUDIO] Erro:', err);
         await reply(
-          '❌ *Não foi possível enviar o áudio.*\n\n' +
-          `${err?.message || 'Erro desconhecido.'}`
+          '❌ Não consegui obter/enviar o áudio.\n' +
+          String(err?.message || 'Erro desconhecido.').slice(0, 220)
         );
       }
 
       break;
     }
 
+    case 'playvideo2': {
+      try {
+        const termo = String(q || '').trim();
+
+        if (!termo) {
+          await reply('🎬 Use: #playvideo2 nome do vídeo ou música');
+          break;
+        }
+
+        await reply('🔎 Pesquisando no YouTube e preparando o Kyara Prime Player...');
+
+        const ytModule = await import('yt-search');
+        const ytSearch = ytModule.default || ytModule;
+        const searchData = await ytSearch(termo);
+
+        const videos = (Array.isArray(searchData?.videos) ? searchData.videos : [])
+          .filter(v => v && v.videoId)
+          .slice(0, 15)
+          .map(v => ({
+            id: String(v.videoId),
+            title: String(v.title || 'Vídeo sem título').slice(0, 180),
+            channel: String(
+              typeof v.author === 'string'
+                ? v.author
+                : v.author?.name || 'Canal desconhecido'
+            ).slice(0, 100),
+            duration: String(v.timestamp || v.duration?.timestamp || 'Duração indisponível'),
+            views: Number(v.views) || 0,
+            thumb: typeof v.thumbnail === 'string'
+              ? v.thumbnail
+              : (v.thumbnail?.url || 'https://i.ytimg.com/vi/' + v.videoId + '/hqdefault.jpg'),
+            url: 'https://www.youtube.com/watch?v=' + encodeURIComponent(v.videoId)
+          }));
+
+        if (!videos.length) {
+          await reply('❌ Não encontrei vídeos para: ' + termo);
+          break;
+        }
+
+        const packedData = JSON.stringify({ term: termo, videos })
+          .replace(/</g, '\\u003c');
+
+        const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>KYARA PRIME • MEGA BLASTER</title>
+<style>
+:root{color-scheme:dark;--bg:#070910;--panel:#111625;--line:#28334a;--text:#f4f6ff;--muted:#9ba8c2;--purple:#9a70ff;--cyan:#4de4ed}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#1d1740 0,#0a0d18 42%,var(--bg) 100%);font:14px system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);min-height:100vh}
+button,input{font:inherit}
+button{color:white;cursor:pointer}
+.top{padding:22px 16px 16px;max-width:1180px;margin:auto}
+.brand{display:flex;align-items:center;gap:11px;font-size:12px;letter-spacing:2px;color:#c9d1e7;font-weight:800}
+.logo{width:43px;height:43px;border:1px solid #9b7bff;border-radius:15px;display:grid;place-items:center;font-size:21px;color:white;background:linear-gradient(135deg,#6040d7,#171b35);box-shadow:0 0 30px #7551ff40}
+.brand strong{color:var(--cyan);letter-spacing:1px}
+.hero{margin:22px 0 18px}
+.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:3px;font-weight:900}
+h1{font-size:clamp(25px,5vw,39px);line-height:1.08;margin:8px 0}
+h1 span{color:var(--purple)}
+.subtitle{color:var(--muted);line-height:1.65;margin:9px 0}
+.layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(270px,1fr);gap:16px;max-width:1180px;margin:auto;padding:0 16px 28px}
+.panel{background:linear-gradient(145deg,#131a2b,#0d111d);border:1px solid var(--line);border-radius:19px;padding:15px;min-width:0;box-shadow:0 12px 36px #0003}
+.panelhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:13px}
+.panelhead h2{font-size:14px;margin:0}
+.tag{font-size:10px;color:var(--cyan);border:1px solid #4de4ed44;border-radius:99px;padding:5px 8px;white-space:nowrap}
+#playerWrap{background:#000;border:1px solid #343c52;border-radius:14px;overflow:hidden;position:relative}
+#ytPlayer,#localVideo{display:block;width:100%;aspect-ratio:16/9;border:0;background:#030407}
+#localVideo{display:none;object-fit:contain}
+.now{padding:14px 2px 5px}
+.now strong{display:block;font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+#status{font-size:12px;line-height:1.6;color:var(--muted);margin-top:7px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:12px}
+.btn{border:1px solid #39445d;background:#1b2337;padding:11px 6px;border-radius:10px;font-size:12px;font-weight:750}
+.btn.primary{background:linear-gradient(130deg,#8558f3,#4c63db);border-color:transparent}
+.btn:hover,.result:hover{border-color:var(--purple)}
+.local{margin-top:19px;padding-top:16px;border-top:1px solid var(--line)}
+.local p{font-size:12px;color:var(--muted);line-height:1.6}
+.filelabel{display:block;text-align:center;border:1px dashed #7d6ac8;background:#1b1732;padding:14px;border-radius:12px;font-weight:800;cursor:pointer}
+.filelabel input{display:none}
+#localList{display:grid;gap:7px;margin-top:10px}
+.localitem{background:#151d2d;border:1px solid var(--line);border-radius:9px;text-align:left;padding:10px;font-size:12px;overflow-wrap:anywhere}
+.localitem.active{border-color:var(--cyan);background:#153039}
+.results{display:grid;gap:9px}
+.result{width:100%;display:grid;grid-template-columns:112px minmax(0,1fr);gap:11px;align-items:center;background:#151b2b;border:1px solid #29334a;border-radius:12px;padding:8px;text-align:left;min-width:0}
+.result.active{border-color:var(--cyan);background:#13242d}
+.result img{width:112px;aspect-ratio:16/9;object-fit:cover;border-radius:7px;background:#080b12}
+.details{min-width:0}
+.details strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;line-height:1.4}
+.details span{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:5px;overflow-wrap:anywhere}
+.smallprint{color:#8491ad;font-size:10px;line-height:1.6;margin-top:15px}
+#emptyLocal{color:var(--muted);font-size:12px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.top{padding-top:17px}.result{grid-template-columns:100px minmax(0,1fr)}.result img{width:100px}}
+@media(max-width:360px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.result{grid-template-columns:86px minmax(0,1fr)}.result img{width:86px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="logo">K</div><div>KYARA <strong>PRIME SUPREMO</strong><br><span style="font-size:10px;color:#8491ad;letter-spacing:3px">MEGA BLASTER PLAYER</span></div></div>
+  <div class="hero">
+    <div class="eyebrow">◈ SEU CENTRO DE MÍDIA</div>
+    <h1>KYARA <span>PRIME</span></h1>
+    <p class="subtitle">Vídeos do YouTube, reprodução local e uma fila prática, tudo numa interface só.</p>
+  </div>
+</header>
+
+<div class="layout">
+  <section class="panel">
+    <div class="panelhead"><h2>▶ REPRODUTOR</h2><span class="tag">PLAYER V2</span></div>
+    <div id="playerWrap">
+      <iframe id="ytPlayer" title="Player do YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <video id="localVideo" controls playsinline></video>
+    </div>
+    <div class="now"><strong id="nowTitle">Selecione um vídeo da fila</strong><div id="status">Os resultados abaixo foram pesquisados pelo bot antes do envio deste HTML.</div></div>
+    <div class="controls">
+      <button class="btn" id="previous">◀ Anterior</button>
+      <button class="btn primary" id="next">Próximo ▶</button>
+      <button class="btn" id="openYoutube">↗ YouTube</button>
+      <button class="btn" id="pip">▣ Flutuante</button>
+    </div>
+
+    <div class="local">
+      <div class="panelhead"><h2>▣ VÍDEOS DO CELULAR</h2><span class="tag">LOCAL</span></div>
+      <label class="filelabel">＋ Selecionar vídeos ou músicas do Android
+        <input id="files" type="file" accept="video/*,audio/*" multiple>
+      </label>
+      <p>Os arquivos são reproduzidos no navegador, sem serem enviados a nenhum servidor. Para o modo flutuante, o suporte do navegador é necessário.</p>
+      <div id="localList"><div id="emptyLocal">Nenhum arquivo local selecionado.</div></div>
+    </div>
+    <p class="smallprint">Se um vídeo não tocar dentro deste arquivo, use “YouTube” para abri-lo diretamente. Alguns vídeos bloqueiam reprodução incorporada ou exigem login.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panelhead"><h2>⌕ RESULTADOS DA PESQUISA</h2><span class="tag" id="resultCount">0 VÍDEOS</span></div>
+    <div id="searchLabel" class="subtitle" style="font-size:12px;margin-top:0"></div>
+    <div id="results" class="results"></div>
+    <p class="smallprint">A fila inicial contém os resultados encontrados para a pesquisa feita pelo comando. Clique em qualquer cartão para reproduzir ou use Anterior/Próximo para navegar.</p>
+  </section>
+</div>
+
+<script>
+const DATA = ${packedData};
+const resultsEl = document.getElementById('results');
+const ytPlayer = document.getElementById('ytPlayer');
+const localVideo = document.getElementById('localVideo');
+const nowTitle = document.getElementById('nowTitle');
+const statusEl = document.getElementById('status');
+const openYoutube = document.getElementById('openYoutube');
+const localList = document.getElementById('localList');
+let currentMode = 'youtube';
+let currentIndex = -1;
+let localTracks = [];
+let localIndex = -1;
+
+document.getElementById('searchLabel').textContent = 'Pesquisa: ' + DATA.term;
+document.getElementById('resultCount').textContent = DATA.videos.length + ' VÍDEOS';
+
+function formatViews(n) {
+  if (!n) return 'Visualizações indisponíveis';
+  try { return new Intl.NumberFormat('pt-BR', {notation:'compact', maximumFractionDigits:1}).format(n) + ' visualizações'; }
+  catch(e) { return n + ' visualizações'; }
+}
+
+function renderResults() {
+  resultsEl.replaceChildren();
+  DATA.videos.forEach(function(v, index) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'result' + (currentMode === 'youtube' && currentIndex === index ? ' active' : '');
+
+    const img = document.createElement('img');
+    img.src = v.thumb;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.onerror = function() { img.style.visibility = 'hidden'; };
+
+    const details = document.createElement('div');
+    details.className = 'details';
+    const title = document.createElement('strong');
+    title.textContent = v.title;
+    const meta = document.createElement('span');
+    meta.textContent = v.channel + ' · ' + v.duration + ' · ' + formatViews(v.views);
+    details.append(title, meta);
+    card.append(img, details);
+    card.addEventListener('click', function() { playYoutube(index); });
+    resultsEl.append(card);
+  });
+}
+
+function showStatus(message) {
+  statusEl.textContent = message;
+}
+
+function playYoutube(index) {
+  const v = DATA.videos[index];
+
+  if (!v) {
+    console.warn('[KYARA PLAYER] Vídeo não encontrado:', index);
+    return;
+  }
+
+  const getVideoId = (item) => {
+    const allowed = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+    const isValidId = (value) =>
+      typeof value === 'string' &&
+      value.length === 11 &&
+      [...value].every((char) => allowed.includes(char));
+
+    const suppliedId = String(item.id || '').trim();
+    if (isValidId(suppliedId)) return suppliedId;
+
+    const url = String(item.url || '').trim();
+
+    try {
+      const parsed = new URL(url);
+      let host = parsed.hostname.toLowerCase();
+
+      if (host.startsWith('www.')) {
+        host = host.slice(4);
+      }
+
+      let candidate = '';
+
+      if (host === 'youtu.be') {
+        candidate = parsed.pathname.split('/').filter(Boolean)[0] || '';
+      } else if ([
+        'youtube.com',
+        'm.youtube.com',
+        'music.youtube.com',
+        'youtube-nocookie.com'
+      ].includes(host)) {
+        candidate = parsed.searchParams.get('v') || '';
+
+        if (!candidate) {
+          const parts = parsed.pathname.split('/').filter(Boolean);
+
+          if (
+            parts.length > 1 &&
+            ['embed', 'shorts', 'live', 'v'].includes(parts[0])
+          ) {
+            candidate = parts[1];
+          }
+        }
+      }
+
+      return isValidId(candidate) ? candidate : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const id = getVideoId(v);
+
+  if (!id) {
+    alert('Não consegui reconhecer o link deste vídeo.');
+    return;
+  }
+
+  const frameSelectors = [
+    '#youtubeFrame',
+    '#ytFrame',
+    '#youtubePlayer',
+    '#ytPlayer',
+    '#player iframe',
+    '.player iframe',
+    '.video-container iframe'
+  ];
+
+  let frame = null;
+
+  for (const selector of frameSelectors) {
+    frame = document.querySelector(selector);
+    if (frame) break;
+  }
+
+  if (!frame) {
+    frame = [...document.querySelectorAll('iframe')].find(el =>
+      /youtube(-nocookie)?\\.com|youtu\\.be/i.test(el.src || '')
+    );
+  }
+
+  const localVideo = document.querySelector(
+    '#localVideo, #local-player, video'
+  );
+
+  if (!frame) {
+    const host =
+      document.querySelector('#player, #videoPlayer, .player-screen, .video-container') ||
+      (localVideo && localVideo.parentElement);
+
+    if (!host) {
+      console.error('[KYARA PLAYER] Não encontrei o contêiner do player.');
+      alert('Não encontrei a área do player no HTML.');
+      return;
+    }
+
+    frame = document.createElement('iframe');
+    frame.id = 'kyaraEmbeddedYoutube';
+    frame.title = 'KYARA PRIME PLAYER';
+    frame.allow =
+      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    host.appendChild(frame);
+  }
+
+  document.querySelectorAll('#ytLaunch').forEach(el => el.remove());
+
+  if (localVideo) {
+    localVideo.pause?.();
+    localVideo.style.display = 'none';
+  }
+
+  frame.style.display = 'block';
+  frame.style.width = '100%';
+  frame.style.aspectRatio = '16 / 9';
+  frame.style.minHeight = '220px';
+  frame.style.border = '0';
+  frame.style.background = '#000';
+  frame.allowFullscreen = true;
+  frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture; fullscreen');
+  frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+
+  const title = String(v.title || 'Vídeo selecionado');
+  const status = document.querySelector(
+    '#playerStatus, #statusPlayer, #player-status, .player-status, #status'
+  );
+
+  if (status) status.textContent = 'Carregando no player: ' + title;
+
+  frame.src =
+    'https://www.youtube-nocookie.com/embed/' + id +
+    '?autoplay=1&playsinline=1&rel=0';
+
+  console.log('[KYARA PLAYER] Reprodução incorporada:', title, id);
+}
+
+function playLocal(index) {
+  if (!localTracks.length) return;
+  const ytLaunch = document.getElementById('ytLaunch');
+  if (ytLaunch) ytLaunch.style.display = 'none';
+  localIndex = (index + localTracks.length) % localTracks.length;
+  const track = localTracks[localIndex];
+  currentMode = 'local';
+  ytPlayer.src = 'about:blank';
+  ytPlayer.style.display = 'none';
+  localVideo.style.display = 'block';
+  localVideo.src = track.url;
+  nowTitle.textContent = track.title;
+  showStatus('Reproduzindo arquivo local. Use os controles nativos para pausar, avançar e ajustar o volume.');
+  renderLocalList();
+}
+
+function renderLocalList() {
+  localList.replaceChildren();
+  if (!localTracks.length) {
+    const empty = document.createElement('div');
+    empty.id = 'emptyLocal';
+    empty.textContent = 'Nenhum arquivo local selecionado.';
+    localList.append(empty);
+    return;
+  }
+
+  localTracks.forEach(function(track, index) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'localitem' + (currentMode === 'local' && localIndex === index ? ' active' : '');
+    button.textContent = (index + 1) + '. ' + track.title;
+    button.addEventListener('click', function() { playLocal(index); });
+    localList.append(button);
+  });
+}
+
+function stepTrack(direction) {
+  if (currentMode === 'local' && localTracks.length) {
+    playLocal((localIndex < 0 ? 0 : localIndex) + direction);
+    return;
+  }
+  if (DATA.videos.length) playYoutube((currentIndex < 0 ? 0 : currentIndex) + direction);
+}
+
+document.getElementById('previous').addEventListener('click', function() { stepTrack(-1); });
+document.getElementById('next').addEventListener('click', function() { stepTrack(1); });
+
+openYoutube.addEventListener('click', function() {
+  if (currentMode === 'local') {
+    showStatus('Você está reproduzindo um arquivo local.');
+    return;
+  }
+  if (currentIndex < 0 || !DATA.videos[currentIndex]) {
+    showStatus('Selecione primeiro um resultado.');
+    return;
+  }
+  window.open(DATA.videos[currentIndex].url, '_blank', 'noopener');
+});
+
+document.getElementById('files').addEventListener('change', function(event) {
+  localTracks.forEach(function(track) { URL.revokeObjectURL(track.url); });
+  localTracks = Array.from(event.target.files || []).map(function(file) {
+    return {title:file.name, url:URL.createObjectURL(file)};
+  });
+  localIndex = -1;
+  renderLocalList();
+  if (localTracks.length) playLocal(0);
+});
+
+document.getElementById('pip').addEventListener('click', async function() {
+  if (currentMode === 'local' && document.pictureInPictureEnabled && localVideo.requestPictureInPicture) {
+    try {
+      await localVideo.requestPictureInPicture();
+      showStatus('Modo Picture-in-Picture ativado.');
+    } catch(e) {
+      showStatus('O navegador não permitiu o modo flutuante. Tente iniciar a reprodução e tocar novamente.');
+    }
+    return;
+  }
+
+  if (currentMode === 'youtube' && currentIndex >= 0 && DATA.videos[currentIndex]) {
+    window.open(DATA.videos[currentIndex].url, '_blank', 'noopener');
+    showStatus('O vídeo foi aberto no YouTube. O modo flutuante depende do navegador e dos recursos disponíveis.');
+  } else {
+    showStatus('Selecione um vídeo local para tentar ativar o modo flutuante.');
+  }
+});
+
+localVideo.addEventListener('ended', function() {
+  if (localTracks.length > 1) playLocal(localIndex + 1);
+});
+
+renderResults();
+if (DATA.videos.length) {
+  nowTitle.textContent = 'Pronto para reproduzir';
+  showStatus(DATA.videos.length + ' resultados carregados para: ' + DATA.term);
+}
+</script>
+</body>
+</html>`;
+
+        const htmlFinal = html.replace('${packedData}', packedData);
+
+        await kya.sendMessage(
+          from,
+          {
+            document: Buffer.from(htmlFinal, 'utf8'),
+            mimetype: 'text/html',
+            fileName: 'Kyara-Prime-Mega-Blaster.html',
+            caption:
+              '🎬 *KYARA PRIME — MEGA BLASTER PLAYER*\n\n' +
+              '🔎 Pesquisa: *' + termo + '*\n' +
+              '📺 Resultados encontrados: *' + videos.length + '*\n\n' +
+              'Baixe o HTML e abra no Chrome para usar o player e os vídeos locais.'
+          },
+          { quoted: info }
+        );
+      } catch (err) {
+        console.error('[PLAYVIDEO2 KYARA]', err);
+        await reply(
+          '❌ Não consegui preparar o player.\n' +
+          String(err?.message || 'Erro desconhecido.').slice(0, 250)
+        );
+      }
+      break;
+    }
+
     case 'playvideo': {
+      const started = Date.now();
+
       try {
         const rawArgs = String(q || '').trim();
 
         if (!rawArgs) {
           await reply(
-            '❌ *Mídia não informada.*\n\n' +
-            'Use o botão *Baixar Vídeo* do /play.'
+            '🎬 Use: #playvideo nome do vídeo ou URL do YouTube'
           );
           break;
         }
 
-        const url =
-          /^https?:\/\//i.test(rawArgs)
+        const rememberedUrl = resolveButton(rawArgs);
+        let url =
+          rememberedUrl ||
+          (/^https?:\/\//i.test(rawArgs)
             ? rawArgs
             : /^[A-Za-z0-9_-]{6,20}$/.test(rawArgs)
               ? `https://www.youtube.com/watch?v=${rawArgs}`
-              : '';
+              : '');
 
+        // Se recebeu um nome, pesquisa primeiro e obtém a URL.
         if (!url) {
-          await reply(
-            '❌ *URL ou ID inválido.*\n\n' +
-            'Use o botão *Baixar Vídeo* do /play.'
-          );
-          break;
+          console.log('[PLAY VIDEO] 🔎 Pesquisando:', rawArgs);
+
+          if (typeof youtube.search !== 'function') {
+            throw new Error('A função youtube.search não está disponível.');
+          }
+
+          const found = await youtube.search(rawArgs);
+
+          if (!found?.ok || !found?.data?.url) {
+            throw new Error(
+              found?.msg || 'Nenhum resultado válido encontrado na pesquisa.'
+            );
+          }
+
+          url = found.data.url;
+          console.log('[PLAY VIDEO] Resultado:', found.data.title || url);
         }
 
-        // UMA ÚNICA mensagem.
-        await reply(
-          '🎬 *Baixando vídeo...*\n\n' +
-          '⏳ Aguarde um momento.'
-        );
-
-        // Nenhum callback de progresso.
-        const dlRes = await youtube.mp4(url);
-
-        if (!dlRes?.ok || !dlRes?.buffer) {
-          await reply(
-            '❌ *Não foi possível baixar o vídeo.*\n\n' +
-            'Tente novamente em alguns instantes.'
-          );
-          break;
+        if (typeof youtube.streamVideo !== 'function') {
+          throw new Error('O método streamVideo não está disponível.');
         }
 
-        await nazu.sendMessage(
+        console.log('[PLAY VIDEO] Obtendo stream...');
+        const result = await youtube.streamVideo(url);
+
+        if (!result?.ok || !result?.url) {
+          throw new Error(
+            result?.msg || 'O serviço não retornou um vídeo válido.'
+          );
+        }
+
+        let videoMedia;
+        const isLocalResult = Boolean(result.local) ||
+          !/^https?:\/\//i.test(String(result.url));
+
+        if (isLocalResult) {
+          const localPath = String(result.url);
+
+          if (!fs.existsSync(localPath) || !fs.statSync(localPath).isFile()) {
+            throw new Error('O arquivo temporário do vídeo não existe.');
+          }
+
+          videoMedia = fs.createReadStream(localPath);
+        } else {
+          videoMedia = { url: result.url };
+        }
+
+        await kya.sendMessage(
           from,
           {
-            video: dlRes.buffer,
-            mimetype: 'video/mp4',
-            fileName:
-              dlRes.filename || 'video.mp4'
+            video: videoMedia,
+            mimetype: result.mimetype || 'video/mp4',
+            fileName: 'Kyara-Play.mp4'
           },
-          {
-            quoted: info
-          }
+          { quoted: info }
         );
 
-      } catch (err) {
-        console.error(
-          '[PLAYVIDEO KYARA] ❌ Erro:',
-          err
+        if (isLocalResult) {
+          try { fs.unlinkSync(String(result.url)); } catch {}
+        }
+
+        console.log(
+          `[PLAY VIDEO] ✅ Envio solicitado em ${Date.now() - started}ms`
         );
+      } catch (err) {
+        console.error('[PLAY VIDEO] Erro:', err);
 
         await reply(
-          '❌ *Erro ao baixar o vídeo.*\n\n' +
-          `${err?.message || 'Erro desconhecido.'}`
+          '❌ Não consegui pesquisar/obter o vídeo.\n' +
+          String(err?.message || 'Erro desconhecido.').slice(0, 220)
         );
       }
 
@@ -24724,7 +27949,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 if (!dlRes.ok) return reply(dlRes.msg);
 
                 try {
-                  await nazu.sendMessage(from, {
+                  await kya.sendMessage(from, {
                     video: dlRes.buffer,
                     fileName: `${dlRes.filename}`,
                     mimetype: 'video/mp4'
@@ -24734,7 +27959,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 } catch (videoError) {
                   if (String(videoError).includes("ENOSPC") || String(videoError).includes("size")) {
                     await reply('Arquivo muito grande, enviando como documento...');
-                    await nazu.sendMessage(from, {
+                    await kya.sendMessage(from, {
                       document: dlRes.buffer,
                       fileName: `${dlRes.filename}`,
                       mimetype: 'video/mp4'
@@ -24760,7 +27985,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
 
                 const caption = `\n🎬 *Vídeo Encontrado* 🎬\n\n📌 *Título:* ${videoInfo.data.title}\n👤 *Artista/Canal:* ${videoInfo.data.author.name}\n⏱ *Duração:* ${videoInfo.data.timestamp} (${videoInfo.data.seconds} segundos)\n👀 *Visualizações:* ${videoInfo.data.views.toLocaleString()}\n📅 *Publicado:* ${videoInfo.data.ago}\n📜 *Descrição:* ${videoInfo.data.description.slice(0, 100)}${videoInfo.data.description.length > 100 ? '...' : ''}\n🔗 *Link:* ${videoInfo.data.url}\n\n📹 *Enviando seu vídeo, aguarde!*`;
 
-                nazu.sendMessage(from, {
+                kya.sendMessage(from, {
                   image: { url: videoInfo.data.thumbnail },
                   caption: caption,
                   footer: `By: ${nomebot}`
@@ -24772,7 +27997,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 if (!dlRes.ok) return reply(dlRes.msg);
 
                 try {
-                  await nazu.sendMessage(from, {
+                  await kya.sendMessage(from, {
                     video: dlRes.buffer,
                     fileName: `${dlRes.filename}`,
                     mimetype: 'video/mp4'
@@ -24780,7 +28005,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 } catch (videoError) {
                   if (String(videoError).includes("ENOSPC") || String(videoError).includes("size")) {
                     await reply('Arquivo muito grande, enviando como documento...');
-                    await nazu.sendMessage(from, {
+                    await kya.sendMessage(from, {
                       document: dlRes.buffer,
                       fileName: `${dlRes.filename}`,
                       mimetype: 'video/mp4'
@@ -24820,12 +28045,12 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
           }
 
           if (!res.image) {
-            return await nazu.sendMessage(from, {
+            return await kya.sendMessage(from, {
               text: res.text
             }, { quoted: info });
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: { url: res.image },
             caption: res.text
           }, { quoted: info });
@@ -24860,7 +28085,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 return reply('❌ Não foi possível obter o link do vídeo.');
               }
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 [datinha.type || 'video']: {
                   url: urlz
                 },
@@ -24919,7 +28144,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 `\n📥 *Enviando vídeo...*`;
 
               try {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   image: { url: result.thumbnail },
                   caption
                 }, { quoted: info });
@@ -24928,7 +28153,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               }
 
               try {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   video: result.buffer,
                   mimetype: 'video/mp4',
                   fileName: result.filename
@@ -24936,7 +28161,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               } catch (videoError) {
                 if (String(videoError).includes("ENOSPC") || String(videoError).includes("size")) {
                   await reply('📦 Vídeo muito grande, enviando como documento...');
-                  await nazu.sendMessage(from, {
+                  await kya.sendMessage(from, {
                     document: result.buffer,
                     fileName: result.filename,
                     mimetype: 'video/mp4'
@@ -24975,7 +28200,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
 
               for (const item of datinha.data) {
 
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   [item.type]: {
                     url: item.url
                   }
@@ -25014,7 +28239,7 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
               if (!datinha.ok) return reply(datinha.msg);
 
               for (const item of datinha.data) {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   [item.type]: item.buff
                 }, {
                   quoted: info
@@ -25081,26 +28306,26 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
 
           // Determinar o tipo de mídia e enviar
           if (mimetype.startsWith('image/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: fileBuffer,
               caption: `📁 *${fileName}*\n📊 Tamanho: ${fileSize}`,
               mimetype: mimetype
             }, { quoted: info });
           } else if (mimetype.startsWith('video/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: fileBuffer,
               caption: `📁 *${fileName}*\n📊 Tamanho: ${fileSize}`,
               mimetype: mimetype
             }, { quoted: info });
           } else if (mimetype.startsWith('audio/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: fileBuffer,
               mimetype: mimetype,
               ptt: false
             }, { quoted: info });
           } else {
             // Enviar como documento para outros tipos
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               document: fileBuffer,
               fileName: fileName,
               mimetype: mimetype,
@@ -25179,26 +28404,26 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
 
           // Determinar o tipo de mídia e enviar
           if (mimeType.startsWith('image/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: fileBuffer,
               caption: `📁 *${fileName}*\n📊 Tamanho: ${fileSize}`,
               mimetype: mimeType
             }, { quoted: info });
           } else if (mimeType.startsWith('video/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: fileBuffer,
               caption: `📁 *${fileName}*\n📊 Tamanho: ${fileSize}`,
               mimetype: mimeType
             }, { quoted: info });
           } else if (mimeType.startsWith('audio/')) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: fileBuffer,
               mimetype: mimeType,
               ptt: false
             }, { quoted: info });
           } else {
             // Enviar como documento para outros tipos
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               document: fileBuffer,
               fileName: fileName,
               mimetype: mimeType,
@@ -25256,20 +28481,20 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
                 // Usar a melhor qualidade disponível
                 const videoUrl = item.bestQuality?.url || item.url;
 
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   video: { url: videoUrl },
                   caption: caption,
                   mimetype: 'video/mp4'
                 }, { quoted: info });
 
               } else if (item.type === 'photo' || item.type === 'image') {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   image: { url: item.url },
                   caption: caption
                 }, { quoted: info });
 
               } else if (item.type === 'gif' || item.type === 'animated_gif') {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   video: { url: item.url },
                   caption: caption,
                   gifPlayback: true
@@ -25309,10 +28534,10 @@ ${caption ? `│ 📝 *Legenda:* ${caption}\n` : ''}${flagsStr}${usageStr}
 brat texto | cor_fundo | cor_texto | blur
 
 📌 Exemplos:
-${prefix}brat Vex API
-• ${prefix}brat Vex API | black
-• ${prefix}brat Vex API | black | white
-• ${prefix}brat Vex API | purple | white | 3
+${prefix}brat 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 API
+• ${prefix}brat 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 API | black
+• ${prefix}brat 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 API | black | white
+• ${prefix}brat 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 API | purple | white | 3
 
 ⚡ Padrão:
 Se não definir cores:
@@ -25336,10 +28561,17 @@ Se não definir cores:
             return reply(datinha?.msg || 'Erro ao gerar o sticker Brat. 😕');
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             sticker: { url: datinha.url },
             mimetype: 'image/webp'
           }, { quoted: info });
+
+          await sendGroupStickerCaption(
+            kya,
+            from,
+            info,
+            'Figurinha Brat criada'
+          );
 
           console.log(`[comando brat] ✅ Sticker enviado para: "${texto}"`);
 
@@ -25369,10 +28601,10 @@ Se não definir cores:
 bratvid texto | cor_fundo | cor_texto | bpm
 
 📌 Exemplos:
-${prefix}bratvid vex api
-• ${prefix}bratvid vex api | purple
-• ${prefix}bratvid vex api | purple | white
-• ${prefix}bratvid vex api | black | white | 140
+${prefix}bratvid 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 api
+• ${prefix}bratvid 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 api | purple
+• ${prefix}bratvid 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 api | purple | white
+• ${prefix}bratvid 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 api | black | white | 140
 
 🎨 Parâmetros:
 - bg = cor do fundo (ex: purple, %23FF0000)
@@ -25434,8 +28666,8 @@ Se não definir cores, a API usa padrão automaticamente.`
             '[BRATVID LOCAL] 🎬 Convertendo para figurinha animada...'
           );
 
-          await sendSticker(
-            nazu,
+          await sendStickerWithGroupCaption(
+            kya,
             from,
             {
               sticker: videoBuffer,
@@ -25506,7 +28738,7 @@ Se não definir cores, a API usa padrão automaticamente.`
             );
           }
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               document: zipBuffer,
@@ -25619,7 +28851,7 @@ Se não definir cores, a API usa padrão automaticamente.`
 │ • Clone: ${repo.clone_url}
 │
 │ ☁️ *Hospedagem oficial*
-│ Vex Hostinger: https://vexhost.com.br
+│ 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 Hostinger: https://vexhost.com.br
 │
 │ 📞 *Suporte:* wa.me/553285076326
 │
@@ -25850,6 +29082,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
 
           config.kyaraChannel = {
             ...(config.kyaraChannel || {}),
+            enabled: true,
 
             name:
               'BOT-KYARA',
@@ -25880,20 +29113,14 @@ function kyaraMenuIsNativeFlowMessage(message) {
           }
 
           if (action === 'off') {
+            config.kyaraChannel.enabled = true;
+            globalThis.__KYARA_CHANNEL_ENABLED__ = true;
 
-            config.kyaraChannel.enabled =
-              false;
-
-            globalThis.__KYARA_CHANNEL_ENABLED__ =
-              false;
-
-            writeJsonFile(
-              CONFIG_FILE,
-              config
-            );
+            writeJsonFile(CONFIG_FILE, config);
 
             return reply(
-              '❌ Ver canal BOT-KYARA desativado GLOBALMENTE.'
+              '🔒 O Ver canal BOT-KYARA é permanente e não pode ser desativado. ' +
+              'Use ' + prefix + 'verificado on/off para controlar somente a marca de resposta.'
             );
           }
 
@@ -25901,9 +29128,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
             action === 'status'
           ) {
 
-            const enabled =
-              config.kyaraChannel.enabled !== false &&
-              globalThis.__KYARA_CHANNEL_ENABLED__ !== false;
+            const enabled = true;
 
             return reply(
               `📢 *VER CANAL — BOT-KYARA*\\n\\n` +
@@ -25915,7 +29140,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
           }
 
           return reply(
-            '❌ Use: on | off | status'
+            '❌ Use: on | status. O comando off está bloqueado permanentemente.'
           );
 
         } catch (error) {
@@ -25940,7 +29165,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
           const canal =
             'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r';
 
-          await nazu.relayMessage(
+          await kya.relayMessage(
             from,
             {
               viewOnceMessage: {
@@ -26001,260 +29226,530 @@ function kyaraMenuIsNativeFlowMessage(message) {
       // 🎛️ KYARA TESTEMENU V1
       // ============================================================
 
-      case 'testemenu': {
+      /*
+       * TESTEMENU:
+       *
+       * O executor real agora é tratado ANTES do switch,
+       * através do WhatsApp Flow.
+       *
+       * Mantemos este ponto apenas como proteção caso alguma
+       * mensagem antiga consiga chegar ao switch.
+       */
+      case 'testemenu':
+      case 'menuteste': {
         try {
-          globalThis.__KYARA_TESTEMENU__.delete(
-            __kyaraTestMenuKey
-          );
-
-          const buttons = [
-            {
-              name: 'single_select',
-              buttonParamsJson: JSON.stringify({
-                title: 'Escolher comando',
-                sections: [
-                  {
-                    title: '🎛️ Executor de teste',
-                    rows: [
-                      {
-                        title: '📋 Selecionar comando',
-                        description:
-                          'Escolha qual executor receberá sua pesquisa.',
-                        id:
-                          `${prefix}testemenu_selecionar`
-                      }
-                    ]
-                  }
-                ]
-              })
-            }
-          ];
-
-          const msg =
-            generateWAMessageFromContent(
-              from,
-              {
-                viewOnceMessage: {
-                  message: {
-                    messageContextInfo: {
-                      deviceListMetadata: {},
-                      deviceListMetadataVersion: 2
-                    },
-
-                    interactiveMessage: {
-                      body: {
-                        text:
-                          '🎛️ *EXECUTOR KYARA — TESTE V1*\\n\\n' +
-                          'Use o botão abaixo para escolher o comando que receberá sua pesquisa.'
-                      },
-
-                      footer: {
-                        text:
-                          'KYARA TESTEMENU'
-                      },
-
-                      nativeFlowMessage: {
-                        buttons,
-                        messageParamsJson: '{}',
-                        messageVersion: 1
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                quoted: info,
-                userJid: nazu?.user?.id
-              }
-            );
-
-          await nazu.relayMessage(
-            from,
-            msg.message,
-            {
-              messageId: msg.key.id
-            }
-          );
-
-          console.log(
-            '[KYARA TESTEMENU] Menu inicial enviado.'
-          );
-
+          await __kyaraMenuTesteLocal();
         } catch (e) {
           console.error(
-            '[KYARA TESTEMENU] Erro:',
+            '[KYARA MENUTESTE] Erro:',
             e
           );
 
           await reply(
-            '❌ Não consegui abrir o Executor de Teste.'
+            '❌ Não consegui abrir o MenuTeste.'
           );
         }
 
         break;
       }
 
-      case 'testemenu_selecionar': {
+      case 'zipmenus':
+      case 'zipmenu': {
+        if (!isOwner) {
+          await reply(OWNER_ONLY_MESSAGE);
+          break;
+        }
+
         try {
-          const buttons = [
-            {
-              name: 'single_select',
-              buttonParamsJson: JSON.stringify({
-                title: 'Selecionar comando',
+          const { execFile } =
+            await import('node:child_process');
 
-                sections: [
-                  {
-                    title: '🎛️ Comandos de teste',
-
-                    rows: [
-                      {
-                        title: '▶️ #play',
-                        description:
-                          'Executar pesquisa usando o comando play',
-                        id:
-                          `${prefix}testemenu_play`
-                      },
-
-                      {
-                        title: '🎵 #play2',
-                        description:
-                          'Executar pesquisa usando o comando play2',
-                        id:
-                          `${prefix}testemenu_play2`
-                      },
-
-                      {
-                        title: '📥 #baixar',
-                        description:
-                          'Executar pesquisa usando o comando baixar',
-                        id:
-                          `${prefix}testemenu_baixar`
-                      }
-                    ]
-                  }
-                ]
-              })
-            }
-          ];
-
-          const msg =
-            generateWAMessageFromContent(
-              from,
-              {
-                viewOnceMessage: {
-                  message: {
-                    messageContextInfo: {
-                      deviceListMetadata: {},
-                      deviceListMetadataVersion: 2
-                    },
-
-                    interactiveMessage: {
-                      body: {
-                        text:
-                          '📋 *SELECIONE O COMANDO*\\n\\n' +
-                          'Depois da escolha, a próxima mensagem será usada como pesquisa.'
-                      },
-
-                      footer: {
-                        text:
-                          'KYARA TESTEMENU'
-                      },
-
-                      nativeFlowMessage: {
-                        buttons,
-                        messageParamsJson: '{}',
-                        messageVersion: 1
-                      }
-                    }
-                  }
-                }
-              },
-              {
-                quoted: info,
-                userJid: nazu?.user?.id
-              }
+          const menuDir =
+            path.resolve(
+              process.cwd(),
+              'dados',
+              'src',
+              'menus'
             );
 
-          await nazu.relayMessage(
-            from,
-            msg.message,
+          const outputDir =
+            path.resolve(
+              process.cwd(),
+              'dados',
+              'backup-menus'
+            );
+
+          fs.mkdirSync(
+            outputDir,
             {
-              messageId: msg.key.id
+              recursive: true
             }
           );
 
-          console.log(
-            '[KYARA TESTEMENU] Seletor enviado.'
-          );
+          const requested =
+            String(
+              args[0] || ''
+            )
+              .trim()
+              .replace(
+                /\.js$/i,
+                ''
+              );
 
-        } catch (e) {
-          console.error(
-            '[KYARA TESTEMENU] Erro no seletor:',
-            e
-          );
+          const files =
+            fs
+              .readdirSync(
+                menuDir
+              )
+              .filter(
+                name =>
+                  name.endsWith('.js') &&
+                  !/\.legacy\.js$/i.test(name) &&
+                  !/\.bak/i.test(name)
+              )
+              .filter(
+                name =>
+                  !requested ||
+                  path.basename(
+                    name,
+                    '.js'
+                  ).toLowerCase() ===
+                  requested.toLowerCase()
+              )
+              .sort();
+
+          if (!files.length) {
+            await reply(
+              requested
+                ? `❌ Menu *${requested}* não encontrado.`
+                : '❌ Nenhum arquivo de menu encontrado.'
+            );
+
+            break;
+          }
+
+          const stamp =
+            new Date()
+              .toISOString()
+              .replace(
+                /[-:]/g,
+                ''
+              )
+              .replace(
+                /\.\d{3}Z$/,
+                'Z'
+              );
+
+          const runZip =
+            (
+              archivePath,
+              sourcePath
+            ) =>
+              new Promise(
+                (
+                  resolve,
+                  reject
+                ) => {
+                  execFile(
+                    'zip',
+                    [
+                      '-q',
+                      '-j',
+                      archivePath,
+                      sourcePath
+                    ],
+                    error => {
+                      if (error) {
+                        reject(error);
+                      } else {
+                        resolve();
+                      }
+                    }
+                  );
+                }
+              );
+
+          const created = [];
+
+          for (
+            const name
+            of files
+          ) {
+            const archivePath =
+              path.join(
+                outputDir,
+                `${path.basename(
+                  name,
+                  '.js'
+                )}-${stamp}.zip`
+              );
+
+            await runZip(
+              archivePath,
+              path.join(
+                menuDir,
+                name
+              )
+            );
+
+            created.push(
+              path.basename(
+                archivePath
+              )
+            );
+          }
 
           await reply(
-            '❌ Não consegui abrir a seleção de comandos.'
+            `✅ *ZIP DOS MENUS CONCLUÍDO*\\n\\n` +
+            `📦 Criados: *${created.length}*\\n` +
+            `📁 *dados/backup-menus/*\\n\\n` +
+            created
+              .slice(0, 30)
+              .map(
+                name =>
+                  `• ${name}`
+              )
+              .join('\\n') +
+            (
+              created.length > 30
+                ? `\\n• ... e mais ${created.length - 30}`
+                : ''
+            )
           );
+
+        } catch (error) {
+
+          const message =
+            String(
+              error?.message ||
+              error
+            );
+
+          if (
+            /ENOENT|spawn zip/i.test(
+              message
+            )
+          ) {
+
+            await reply(
+              `❌ O comando *zip* não está instalado no Termux.\\n\\n` +
+              `Execute uma vez:\\n` +
+              `pkg install zip -y\\n\\n` +
+              `Depois use ${prefix}zipmenus novamente.`
+            );
+
+          } else {
+
+            console.error(
+              '[ZIP MENUS] Erro:',
+              error
+            );
+
+            await reply(
+              `❌ Falha ao criar os ZIPs.\\n${message}`
+            );
+          }
         }
 
         break;
       }
 
-      case 'testemenu_play':
-      case 'testemenu_play2':
-      case 'testemenu_baixar': {
+      case 'menuinput': {
+        /*
+         * 🌸 KYARA TESTEMENU
+         *
+         * O botão do menu envia:
+         *
+         *   #menuinput play
+         *
+         * Não executamos "play" ainda.
+         * Guardamos o comando e usamos a PRÓXIMA
+         * mensagem do usuário como pesquisa.
+         */
+
         const selectedCommand =
-          command === 'testemenu_play'
-            ? 'play'
-            : command === 'testemenu_play2'
-              ? 'play2'
-              : 'baixar';
+          normalizar(
+            String(q || '')
+          )
+          .replace(/\s+/g, '')
+          .replace(/^[#!./$]+/, '');
+
+        const allowedMenuCommands = new Set([
+          'play',
+          'play2',
+          'letra',
+          'playvid',
+          'tiktok',
+          'instagram',
+          'kwai',
+          'igstory',
+          'facebook',
+          'gdrive',
+          'mediafire',
+          'twitter',
+          'pinterest',
+          'cosmos'
+        ]);
+
+        if (
+          !selectedCommand ||
+          !allowedMenuCommands.has(selectedCommand)
+        ) {
+          await reply(
+            `⚠️ Comando de menu inválido.\n\n` +
+            `Use ${prefix}menu e selecione uma opção válida.`
+          );
+          break;
+        }
+
+        if (
+          !(globalThis.__KYARA_TESTEMENU__ instanceof Map)
+        ) {
+          globalThis.__KYARA_TESTEMENU__ = new Map();
+        }
 
         globalThis.__KYARA_TESTEMENU__.set(
           __kyaraTestMenuKey,
           {
-            command:
-              selectedCommand,
+            command: selectedCommand,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 120000
+          }
+        );
 
-            createdAt:
-              Date.now(),
-
-            expiresAt:
-              Date.now() +
-              (2 * 60 * 1000)
+        console.log(
+          '[KYARA TESTEMENU] Seleção armazenada:',
+          {
+            key: __kyaraTestMenuKey,
+            command: selectedCommand
           }
         );
 
         await reply(
-          `🔎 *PESQUISA DO TESTE*\\n\\n` +
-          `Comando selecionado: *${prefix}${selectedCommand}*\\n\\n` +
-          `Digite agora a pesquisa que deseja executar.\\n\\n` +
-          `⏱️ A seleção expira em 2 minutos.\\n` +
-          `❌ Para cancelar: *${prefix}testemenu_cancelar*`
-        );
-
-        console.log(
-          '[KYARA TESTEMENU] Comando selecionado:',
-          selectedCommand,
-          'key:',
-          __kyaraTestMenuKey
+          `🎯 *${selectedCommand.toUpperCase()} selecionado!*\n\n` +
+          `Digite agora a pesquisa, nome ou URL.\n\n` +
+          `⏱️ Você tem 2 minutos.\n` +
+          `❌ Para cancelar: ${prefix}menucancelar`
         );
 
         break;
       }
 
-      case 'testemenu_cancelar': {
-        globalThis.__KYARA_TESTEMENU__.delete(
-          __kyaraTestMenuKey
-        );
+      case 'menucancelar': {
+        if (
+          globalThis.__KYARA_TESTEMENU__ instanceof Map
+        ) {
+          globalThis.__KYARA_TESTEMENU__.delete(
+            __kyaraTestMenuKey
+          );
+        }
 
         await reply(
-          '✅ *EXECUTOR DE TESTE CANCELADO.*'
+          '✅ Seleção do menu cancelada.'
         );
 
         break;
       }
+
+      case 'verificado':
+      case 'verificadomensagens':
+      case 'seloverificado': {
+        if (!isOwner) {
+          await reply('🚫 Apenas o dono pode alterar esta configuração.');
+          break;
+        }
+
+        const action = String(q || '').trim().toLowerCase();
+        const configPath = path.resolve(
+          process.cwd(), 'dados', 'src', 'config.json'
+        );
+
+        try {
+          const saved = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+          if (['status', 'estado'].includes(action)) {
+            const enabled =
+              saved.kyaraMarkEnabled === true ||
+              (
+                saved.kyaraMarkEnabled === undefined &&
+                saved.verificadoMensagens === true
+              );
+
+            await reply(
+              '🧩 *MARCA DE RESPOSTA KYARA*\n\n' +
+              'Estado: ' + (enabled ? '*ATIVADA*' : '*DESATIVADA*') + '\n' +
+              prefix + 'verificado on — ativar\n' +
+              prefix + 'verificado off — desativar\n\n' +
+              '🔒 Ver canal permanece ativo.'
+            );
+            break;
+          }
+
+          let enabled;
+
+          if (['on', 'ativar', 'ligar', '1', 'sim'].includes(action)) {
+            enabled = true;
+          } else if (
+            ['off', 'desativar', 'desligar', '0', 'nao', 'não'].includes(action)
+          ) {
+            enabled = false;
+          } else {
+            await reply('Use: ' + prefix + 'verificado on | off | status');
+            break;
+          }
+
+          saved.kyaraMarkEnabled = enabled;
+          saved.verificadoMensagens = enabled;
+          saved.kyaraChannel = {
+            ...(saved.kyaraChannel || {}),
+            enabled: true,
+            name: 'BOT-KYARA',
+            invite: '0029VbCs39EIyPtbsseKIP3r',
+            url: 'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r'
+          };
+
+          fs.writeFileSync(configPath, JSON.stringify(saved, null, 2) + '\n');
+          Object.assign(config, saved);
+
+          globalThis.ENABLE_KYARA_MARK = enabled;
+          globalThis.ENABLE_KYARA_SYSTEM_MARK = enabled;
+          globalThis.__KYARA_CHANNEL_ENABLED__ = true;
+
+          await reply(
+            enabled
+              ? '✅ Marca de resposta ativada. Ver canal permanece ativo.'
+              : '✅ Marca de resposta desativada. Ver canal permanece ativo.'
+          );
+        } catch (error) {
+          console.error('[VERIFICADO]', error);
+          await reply('❌ Falha ao salvar a configuração.');
+        }
+
+        break;
+      }
+
+      case 'ativarbotoes':
+      case 'ativarbotoesmenu':
+      case 'ativarmenubotoes':
+      case 'ativarbotões':
+      case 'desativarbotoes':
+      case 'desativarbotoesmenu':
+      case 'desativarmenubotoes':
+      case 'desativarbotões':
+      case 'botoesmenu':
+      case 'menubotoes': {
+        if (!isOwner) {
+          await reply('🚫 Apenas o dono pode alterar os botões dos menus.');
+          break;
+        }
+
+        const action = String(q || '').trim().toLowerCase();
+        if (['status', 'estado'].includes(action)) {
+          const active = areMenuButtonsEnabled();
+          await reply(
+            '⚙️ *ESTADO DOS BOTÕES*\n\n' +
+            'Estado: ' + (active ? '*ATIVADOS*' : '*DESATIVADOS*') + '\n' +
+            'Ativar: ' + prefix + 'botoesmenu on\n' +
+            'Desativar: ' + prefix + 'botoesmenu off'
+          );
+          break;
+        }
+
+        let enable;
+
+        if (command.startsWith('ativar')) {
+          enable = true;
+        } else if (command.startsWith('desativar')) {
+          enable = false;
+        } else if (['on', 'ativar', 'ligar', '1', 'sim'].includes(action)) {
+          enable = true;
+        } else if (['off', 'desativar', 'desligar', '0', 'nao', 'não'].includes(action)) {
+          enable = false;
+        } else {
+          await reply(
+            '⚙️ *CONTROLE DOS BOTÕES DO MENU*\n\n' +
+            '• Ativar: ' + prefix + 'botoesmenu on\n' +
+            '• Desativar: ' + prefix + 'botoesmenu off'
+          );
+          break;
+        }
+
+        try {
+          setMenuButtonsEnabled(enable);
+
+
+          setMenuMode(enable ? 'interactive' : 'normal');
+
+          console.log(
+            `[MENU] Botões ${enable ? 'ATIVADOS' : 'DESATIVADOS'} por comando.`
+          );
+
+          await reply(
+            enable
+              ? `✅ *Botões do menu ativados!*\n\n${prefix}menu abre o menu com botões. ${prefix}menudono mantém o fluxo próprio do painel do dono.`
+              : `✅ *Botões do menu desativados!*\n\n${prefix}menu será enviado em texto com capa, sem botões.`,
+          );
+        } catch (error) {
+          console.error('[MENU] Falha ao salvar configuração:', error);
+          await reply('❌ Não consegui salvar a configuração dos botões. Confira o terminal.');
+        }
+
+        break;
+      }
+
+      case 'kyaraselectmenus':
+      case 'kyara_select_menus':
+        try {
+          const { menuKyaraAdaptativo } = await import(
+            './core/menuAdaptativo/menu-adaptativo.js'
+          );
+
+          await menuKyaraAdaptativo(kya, from, pushname, {
+            sender,
+            prefix,
+            isGroup,
+            isAdmin: typeof isGroupAdmin !== 'undefined' ? !!isGroupAdmin : false,
+            info,
+            stage: 'categories'
+          });
+        } catch (error) {
+          console.error('[MENU] Erro ao abrir categorias:', error?.stack || error);
+          await reply('❌ Não consegui abrir as categorias. Tente #menu novamente.');
+        }
+        break;
+
+      case 'kyarachannelcomeco':
+      case 'kyara_channel_comeco':
+        await reply('↗ O COMEÇO • CANAL OFICIAL\nhttps://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w');
+        break;
+
+      case 'kyarachannelbot':
+      case 'kyara_channel_bot':
+        await reply('↗ 𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠 • CANAL OFICIAL\nhttps://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r');
+        break;
+
+      case 'kyara_copiar_comando':
+        await reply('📋 Comando do menu:\n' + String(prefix) + 'menu\n\nCopie o comando acima.');
+        break;
+
+      case 'atualizacoes':
+      case 'novidades':
+        try {
+          const { gerarAtualizacoes } =
+            await import('./modules/atualizacoes.js');
+
+          await reply(gerarAtualizacoes(3, prefix));
+        } catch (updateError) {
+          console.error(
+            '[ATUALIZACOES] Erro ao montar o histórico:',
+            updateError
+          );
+
+          await reply(
+            '❌ Não consegui carregar as atualizações agora.'
+          );
+        }
+        break;
 
       case 'menu':
         try {
@@ -26267,11 +29762,12 @@ function kyaraMenuIsNativeFlowMessage(message) {
             );
 
           await menuKyaraAdaptativo(
-            nazu,
+            kya,
             from,
             pushname,
             {
               sender,
+              prefix,
               isGroup,
                 isAdmin:
                   typeof isGroupAdmin !== 'undefined'
@@ -26282,19 +29778,36 @@ function kyaraMenuIsNativeFlowMessage(message) {
           );
 
         } catch (error) {
-
           console.error(
             '[MENU] Erro no Native Flow:',
-            error?.stack ||
-            error?.message ||
-            error
+            error?.stack || error?.message || error
           );
 
           try {
-            await reply(
-              '❌ Não foi possível abrir o menu interativo.'
+            const fallbackBotName = getConfiguredBotName() || nomebot || 'KYARA';
+            const fallbackDesign = getMenuDesignWithDefaults(fallbackBotName, pushname);
+            const fallbackText = await menu(
+              prefix,
+              fallbackBotName,
+              pushname,
+              {
+                ...fallbackDesign,
+                cargo: isOwner ? 'dono' : isGroupAdmin ? 'adm' : 'membro'
+              }
             );
-          } catch {}
+
+            await kya.sendMessage(
+              from,
+              { text: String(fallbackText || '').trim() || 'Menu principal da Kyara.' },
+              { quoted: info }
+            );
+            console.warn('[MENU] Fallback textual enviado após falha do Native Flow.');
+          } catch (fallbackError) {
+            console.error('[MENU] Falha também no fallback textual:', fallbackError?.stack || fallbackError);
+            try {
+              await reply('❌ Não foi possível abrir o menu. Confira o terminal da Kyara.');
+            } catch {}
+          }
         }
 
         break;
@@ -26303,7 +29816,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
       case 'comandos':
       case 'commands':
         try {
-          let customBotName = nomebot;
+          let customBotName = getConfiguredBotName() || nomebot || 'KYARA';
           let customMediaPath = null;
 
           if (isGroup && isGroupCustomizationEnabled()) {
@@ -26331,11 +29844,23 @@ function kyaraMenuIsNativeFlowMessage(message) {
             mediaPath = customMediaPath;
             useVideo = false;
           } else {
-            const menuVideoPath = __dirname + '/../midias/menu.mp4';
-            const menuImagePath = __dirname + '/../midias/menu.jpg';
+            const configuredMedia = await getMenuMedia('global').catch(
+              (mediaError) => {
+                console.warn('[MENU HELP] Falha ao ler mídia configurada:', mediaError?.message || mediaError);
+                return null;
+              }
+            );
 
-            useVideo = fs.existsSync(menuVideoPath);
-            mediaPath = useVideo ? menuVideoPath : menuImagePath;
+            if (configuredMedia?.path && fs.existsSync(configuredMedia.path)) {
+              mediaPath = configuredMedia.path;
+              useVideo = configuredMedia.type === 'video';
+            } else {
+              const menuVideoPath = __dirname + '/../midias/menu.mp4';
+              const menuImagePath = __dirname + '/../midias/menu.jpg';
+
+              useVideo = fs.existsSync(menuVideoPath);
+              mediaPath = useVideo ? menuVideoPath : menuImagePath;
+            }
           }
 
           mediaBuffer = fs.readFileSync(mediaPath);
@@ -26347,7 +29872,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
             try {
               const preparedMenuMedia = await prepareWAMessageMedia(
                 { image: mediaBuffer },
-                { upload: nazu.waUploadToServer }
+                { upload: kya.waUploadToServer }
               );
 
               menuImageMessage =
@@ -26383,6 +29908,47 @@ function kyaraMenuIsNativeFlowMessage(message) {
 
           const lerMaisPrefix = getMenuLerMaisText();
 
+          if (isNormalMenu()) {
+            try {
+              if (mediaBuffer && useVideo) {
+                await kya.sendMessage(
+                  from,
+                  { video: mediaBuffer, mimetype: 'video/mp4', caption: menuText, gifPlayback: true },
+                  { quoted: info }
+                );
+              } else if (mediaBuffer) {
+                await kya.sendMessage(
+                  from,
+                  { image: mediaBuffer, caption: menuText },
+                  { quoted: info }
+                );
+              } else {
+                await kya.sendMessage(from, { text: menuText }, { quoted: info });
+              }
+            } catch (normalMenuError) {
+              console.warn('[MENU COMANDOS] Mídia/caption falhou; enviando texto:', normalMenuError?.message || normalMenuError);
+              await kya.sendMessage(from, { text: menuText }, { quoted: info });
+            }
+
+            if (isMenuAudioEnabled()) {
+              try {
+                const audioPath = getMenuAudioPath();
+                if (audioPath && fs.existsSync(audioPath)) {
+                  await kya.sendMessage(
+                    from,
+                    { audio: fs.readFileSync(audioPath), mimetype: 'audio/mpeg', ptt: false },
+                    { quoted: info }
+                  );
+                }
+              } catch (audioError) {
+                console.warn('[MENU COMANDOS] Áudio opcional não enviado:', audioError?.message || audioError);
+              }
+            }
+
+            console.log('[MENU COMANDOS] Modo NORMAL — menu enviado sem Native Flow.');
+            break;
+          }
+
           /*
            * MENU PRINCIPAL CLICÁVEL
            * A legenda continua sendo o menu normal.
@@ -26393,49 +29959,49 @@ function kyaraMenuIsNativeFlowMessage(message) {
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '📥 DOWNLOADS',
+                display_text: '📥 ᴅᴏᴡɴʟᴏᴀᴅs',
                 id: `${prefix}menudown`
               })
             },
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '🎨 LOGOS',
+                display_text: '🎨 ʟᴏɢᴏs',
                 id: `${prefix}menulogos`
               })
             },
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '🛠️ EDITS',
+                display_text: '🛠️ ᴇᴅɪᴛs',
                 id: `${prefix}menuedits`
               })
             },
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '🛡️ ADMIN',
+                display_text: '🛡️ ᴀᴅᴍɪɴɪsᴛʀᴀᴄ̧ᴀ̃ᴏ',
                 id: `${prefix}menuadm`
               })
             },
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '🎮 RPG',
+                display_text: '🎮 ʀᴘɢ',
                 id: `${prefix}menurpg`
               })
             },
             {
               name: 'quick_reply',
               buttonParamsJson: JSON.stringify({
-                display_text: '💕 QUIZ CASAL',
+                display_text: '💕 ǫᴜɪᴢ ᴄᴀsᴀʟ',
                 id: `${prefix}quizcasal`
               })
             }
           ];
 
           const textoInterativo =
-            'Escolha uma categoria abaixo.';
+            'sᴇʟᴇᴄɪᴏɴᴇ ᴜᴍᴀ ᴄᴀᴛᴇɢᴏʀɪᴀ ᴀʙᴀɪxᴏ.';
 
           const msg = generateWAMessageFromContent(
             from,
@@ -26467,7 +30033,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
                     // ==================================================
 
                     body: {
-                      text: 'Escolha uma categoria abaixo.'
+                      text: 'sᴇʟᴇᴄɪᴏɴᴇ ᴜᴍᴀ ᴄᴀᴛᴇɢᴏʀɪᴀ ᴀʙᴀɪxᴏ.'
                     },
 
                     // ==================================================
@@ -26486,7 +30052,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
             },
             {
               quoted: info,
-              userJid: nazu?.user?.id
+              userJid: kya?.user?.id
             }
           );
 
@@ -26548,7 +30114,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
             if (audioPath && fs.existsSync(audioPath)) {
               const audioBuffer = fs.readFileSync(audioPath);
 
-              await nazu.sendMessage(
+              await kya.sendMessage(
                 from,
                 {
                   audio: audioBuffer,
@@ -26569,7 +30135,7 @@ function kyaraMenuIsNativeFlowMessage(message) {
            * Não existe mais um segundo enviarBotoesKyara()
            * depois daqui.
            */
-          await nazu.relayMessage(
+          await kya.relayMessage(
             from,
             msg.message,
             {
@@ -26636,6 +30202,78 @@ function kyaraMenuIsNativeFlowMessage(message) {
         }
         break;
 
+      case 'apiia': {
+        const inicioApi = Date.now();
+
+        try {
+          const tokenPath = `${process.env.HOME}/kyara-api/.kyara-client-token`;
+
+          if (!fs.existsSync(tokenPath)) {
+            await reply('❌ Token da API não encontrado no Termux.');
+            break;
+          }
+
+          const tokenApi = fs.readFileSync(tokenPath, 'utf8').trim();
+          const perguntaApi = typeof args !== 'undefined' && args.length
+            ? args.join(' ')
+            : 'Responda em português: a API da Kyara está funcionando?';
+
+          const respostaHttp = await fetch(
+            process.env.KYARA_API_URL
+              ? process.env.KYARA_API_URL.replace(/\/$/, '') + '/api/kyara'
+              : 'http://127.0.0.1:3000/api/kyara',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + tokenApi,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                usuario: String(from || 'teste-api').slice(0, 100),
+                mensagem: perguntaApi
+              }),
+              signal: AbortSignal.timeout(15000)
+            }
+          );
+
+          const dadosApi = await respostaHttp.json().catch(() => ({}));
+          const tempoApi = Date.now() - inicioApi;
+
+          if (!respostaHttp.ok) {
+            console.error('[KYARA API TESTE]', respostaHttp.status, dadosApi);
+            await reply(
+              '❌ *TESTE DA KYARA API*\n' +
+              'HTTP: ' + respostaHttp.status + '\n' +
+              'Verifique o terminal da API.'
+            );
+            break;
+          }
+
+          if (!dadosApi.resposta) {
+            await reply('⚠️ A API respondeu, mas não retornou o campo resposta.');
+            break;
+          }
+
+          await reply(
+            '✅ *KYARA API — TESTE OK*\n\n' +
+            '📡 HTTP: ' + respostaHttp.status + '\n' +
+            '⏱️ Tempo: ' + tempoApi + ' ms\n' +
+            '🧠 Memória: ' + (dadosApi.memoria || 'não informado') +
+            '\n\n💬 *Resposta da IA:*\n' + dadosApi.resposta
+          );
+        } catch (erroApi) {
+          console.error('[KYARA API TESTE] Falha:', erroApi);
+          await reply(
+            '❌ *KYARA API INDISPONÍVEL*\n' +
+            (erroApi.name === 'TimeoutError'
+              ? 'A API demorou mais de 15 segundos.'
+              : 'Não consegui acessar a API. Confira se ela está ligada no outro Termux.')
+          );
+        }
+
+        break;
+      }
+
       case 'kyara':
         try {
           const lerMaisPrefix = getMenuLerMaisText();
@@ -26675,7 +30313,7 @@ ${cleanLink}
             return reply("❌ Imagem do menu não encontrada. Defina ela primeiro.");
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: fs.readFileSync(imgPath),
             caption: texto
           }, { quoted: info });
@@ -26701,7 +30339,7 @@ ${cleanLink}
       case 'menubrincadeiras':
       case 'gamemenu':
         try {
-          const customDesign = getMenuDesignWithDefaults(nomebot, pushname);
+          const customDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
           let menuContent = await menubn(prefix, nomebot, pushname, isModoLite, customDesign);
           await sendMenuWithMedia('brincadeiras', async () => menuContent);
         } catch (error) {
@@ -26714,13 +30352,176 @@ ${cleanLink}
       case 'menudownloads':
       case 'downmenu':
       case 'downloadmenu':
+      case 'menudown2': {
         try {
-          await sendMenuWithMedia('downloads', menudown);
+          const groups = [
+            {
+              title: 'MÚSICA & VÍDEO',
+              items: [
+                ['🎵', 'play', 'Buscar música'],
+                ['⚡', 'playaudio', 'Baixar áudio direto'],
+                ['🎧', 'play2', 'Player alternativo'],
+                ['🎬', 'playvideo', 'Baixar vídeo direto'],
+                ['▶️', 'playvid', 'Pesquisar vídeo'],
+                ['🎼', 'letra', 'Letra da música']
+              ]
+            },
+            {
+              title: 'PLATAFORMAS',
+              items: [
+                ['🎵', 'tiktok', 'TikTok'],
+                ['📸', 'instagram', 'Instagram'],
+                ['📱', 'igstory', 'Stories'],
+                ['📱', 'kwai', 'Kwai'],
+                ['📘', 'facebook', 'Facebook'],
+                ['🐦', 'twitter', 'Twitter / X'],
+                ['📌', 'pinterest', 'Pinterest'],
+                ['🌌', 'cosmos', 'Cosmos']
+              ]
+            },
+            {
+              title: 'ARQUIVOS',
+              items: [
+                ['☁️', 'gdrive', 'Google Drive'],
+                ['📁', 'mediafire', 'MediaFire']
+              ]
+            }
+          ];
+
+          const authorJid =
+            sender || info?.key?.participant || info?.participant || from;
+
+          const number = String(authorJid || '')
+            .split('@')[0].split(':')[0].replace(/\D/g, '');
+
+          const userLabel = number
+            ? '@' + number
+            : String(pushname || 'Usuário');
+
+          const botName =
+            getConfiguredBotName() || nomebot || 'KYARA';
+
+          const design = getMenuDesignWithDefaults(botName, userLabel);
+          const hour = new Date().getHours();
+          const greeting = hour < 12
+            ? 'Bom dia'
+            : hour < 18 ? 'Boa tarde' : 'Boa noite';
+
+          const defaultHeader = [
+            '╭┈⊰ {botName}-ᴍᴇɴᴜ',
+            '┊ {greeting}, {userName}!',
+            '╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯'
+          ].join('\n');
+
+          const header = String(design.header || defaultHeader)
+            .replace(/\{botName\}/g, botName)
+            .replace(/\{greeting\}/g, greeting)
+            .replace(/\{userName\}/g, userLabel);
+
+          const top = String(design.menuTopBorder || '╭┈');
+          const titleIcon = String(design.menuTitleIcon || '❁');
+          const middle = String(design.middleBorder || '┊');
+          const itemIcon = String(design.menuItemIcon || ' 亗⃝ ');
+          const bottom = String(
+            design.bottomBorder || '╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯'
+          );
+
+          const lines = groups.flatMap(group => [
+            `${middle} *${group.title}*`,
+            ...group.items.map(([emoji, action, description]) =>
+              `${middle}${itemIcon}${emoji} ${prefix}${action}  ·  ${description}`
+            )
+          ]);
+
+          const menuText = applyMenuFont([
+            header,
+            '',
+            top + titleIcon + ' 📥 KYARA DOWNLOADS',
+            middle,
+            ...lines,
+            bottom
+          ].join('\n'), design.fontStyle, prefix);
+
+          const mentions = sender ? [sender] : [];
+          const menuMedia = await getMenuMedia('global').catch(() => null);
+
+          const mediaCandidates = [
+            menuMedia?.path,
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu.jpg'),
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu.jpeg'),
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu.png'),
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu.webp'),
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu-admin.jpg'),
+            path.resolve(process.cwd(), 'dados', 'midias', 'menu.mp4')
+          ].filter((candidate, index, all) =>
+            typeof candidate === 'string' &&
+            fs.existsSync(candidate) &&
+            all.indexOf(candidate) === index
+          );
+
+          const longCaption = false;
+          const mediaCaption = longCaption
+            ? '📥 KYARA DOWNLOADS\nLista completa de comandos abaixo.'
+            : menuText;
+
+          let delivered = false;
+
+          for (const mediaPath of mediaCandidates) {
+            try {
+              const buffer = fs.readFileSync(mediaPath);
+              if (!buffer.length) continue;
+
+              const isVideo =
+                (menuMedia?.path === mediaPath && menuMedia?.type === 'video') ||
+                /\.mp4$/i.test(mediaPath);
+
+              if (isVideo) {
+                await kya.sendMessage(from, {
+                  video: buffer,
+                  mimetype: 'video/mp4',
+                  caption: mediaCaption,
+                  gifPlayback: true,
+                  mentions
+                }, { quoted: info });
+              } else {
+                await kya.sendMessage(from, {
+                  image: buffer,
+                  caption: mediaCaption,
+                  mentions
+                }, { quoted: info });
+              }
+
+              delivered = true;
+              break;
+            } catch (mediaError) {
+              console.warn(
+                '[MENU DOWNLOADS] Falha ao enviar ' + mediaPath + ':',
+                mediaError?.message || mediaError
+              );
+            }
+          }
+
+          if (!delivered || longCaption) {
+            await kya.sendMessage(from, {
+              text: menuText,
+              mentions
+            }, { quoted: info });
+          }
+
+          console.log(
+            delivered
+              ? (longCaption
+                ? '[MENU DOWNLOADS] Capa enviada; lista completa em texto.'
+                : '[MENU DOWNLOADS] Capa e legenda enviadas, sem botões.')
+              : '[MENU DOWNLOADS] Capa indisponível; menu enviado em texto.'
+          );
         } catch (error) {
           console.error('Erro ao enviar menu de downloads:', error);
-          await reply("❌ Ocorreu um erro ao carregar o menu de downloads");
+          await reply('❌ Ocorreu um erro ao carregar o menu de downloads.');
         }
+
         break;
+      }
       case 'ferramentas':
       case 'menuferramentas':
       case 'menuferramenta':
@@ -26756,6 +30557,103 @@ ${cleanLink}
           await reply("❌ Ocorreu um erro ao carregar o menu de membros");
         }
         break;
+      case 'similares':
+      case 'similar': {
+        if (!isOwner) return reply(OWNER_ONLY_MESSAGE);
+
+        const settings =
+          loadKyaraCommandHintsSettings();
+
+        const action =
+          String(args[0] || '').trim().toLowerCase();
+
+        const enable = [
+          'on', 'ativar', 'ligar', 'ativo'
+        ].includes(action);
+
+        const disable = [
+          'off', 'desativar', 'desligar', 'inativo'
+        ].includes(action);
+
+        if (enable || disable) {
+          settings.similarEnabled = enable;
+
+          if (!saveKyaraCommandHintsSettings(settings)) {
+            return reply(
+              '❌ Não consegui salvar a configuração de similares.'
+            );
+          }
+
+          return reply(
+            enable
+              ? '✅ *Comandos similares ativados!*\nQuando alguém errar um comando, mostrarei a opção mais parecida.'
+              : '🔕 *Comandos similares desativados.*\nA mensagem normal de comando não encontrado continuará funcionando.'
+          );
+        }
+
+        return reply(
+          `🌸 *KYARA • COMANDOS SIMILARES*\n\n` +
+          `Status: ${settings.similarEnabled ? '🟢 Ligado' : '🔴 Desligado'}\n\n` +
+          `• ${prefix}similares on\n` +
+          `• ${prefix}similares off`
+        );
+      }
+
+      case 'erro':
+      case 'erros': {
+        if (!isOwner) return reply(OWNER_ONLY_MESSAGE);
+
+        const settings =
+          loadKyaraCommandHintsSettings();
+
+        const action =
+          String(args[0] || '').trim().toLowerCase();
+
+        const enable = [
+          'on', 'ativar', 'ligar', 'ativo'
+        ].includes(action);
+
+        const disable = [
+          'off', 'desativar', 'desligar', 'inativo'
+        ].includes(action);
+
+        if (enable || disable) {
+          settings.errorEnabled = enable;
+
+          if (!saveKyaraCommandHintsSettings(settings)) {
+            return reply(
+              '❌ Não consegui salvar a configuração de erro.'
+            );
+          }
+
+          if (enable) {
+            const legacyConfig = loadCmdNotFoundConfig();
+            legacyConfig.enabled = true;
+
+            saveCmdNotFoundConfig(
+              legacyConfig,
+              'reativado pelo comando erro'
+            );
+          }
+
+          return reply(
+            enable
+              ? '✅ *Avisos de erro ativados!*'
+              : '🔕 *Avisos de erro desativados.*\nSe similares estiver ligado, somente a sugestão será enviada.'
+          );
+        }
+
+        const legacyConfig = loadCmdNotFoundConfig();
+
+        return reply(
+          `🌸 *KYARA • AVISOS DE ERRO*\n\n` +
+          `Status: ${settings.errorEnabled ? '🟢 Ligado' : '🔴 Desligado'}\n` +
+          `Mensagem personalizada: ${legacyConfig.enabled ? '🟢 Ligada' : '🔴 Desligada'}\n\n` +
+          `• ${prefix}erro on\n` +
+          `• ${prefix}erro off`
+        );
+      }
+
       case 'configcmdnotfound':
       case 'setcmdmsg':
         if (!isOwner) return reply(OWNER_ONLY_MESSAGE);
@@ -27488,6 +31386,41 @@ Precisa de ajuda? Entre em contato:
         }
         break;
 
+      case 'configuraçãodobot':
+      case 'configuracaodobot':
+      case 'configurarbot': {
+        if (!isOwner) {
+          await reply('⚠️ Este painel é exclusivo do dono do bot.');
+          break;
+        }
+
+        try {
+          let painelAtivo = false;
+          try {
+            const teste = await fetch('http://127.0.0.1:3210/api/health', {
+              signal: AbortSignal.timeout(1200)
+            });
+            painelAtivo = teste.ok;
+          } catch {}
+
+          if (!painelAtivo) {
+            await import('../api/server.mjs');
+            await new Promise(resolve => setTimeout(resolve, 250));
+          }
+
+          await reply(
+            '⚙️ *PAINEL DE CONFIGURAÇÃO DA KYARA*\n\n' +
+            'Abra este link no navegador deste mesmo celular:\n' +
+            'http://127.0.0.1:3210\n\n' +
+            'Edite os campos e toque em SALVAR CONFIGURAÇÕES.'
+          );
+        } catch (error) {
+          console.error('[KYARA-PAINEL] Erro ao iniciar:', error);
+          await reply('❌ Não consegui iniciar o painel. Confira o terminal da Kyara.');
+        }
+        break;
+      }
+
       case 'menudono':
       case 'ownermenu':
         try {
@@ -27502,7 +31435,7 @@ Precisa de ajuda? Entre em contato:
             );
 
           await flowModule.sendOwnerMain(
-            nazu,
+            kya,
             from,
             {
               botName:
@@ -27656,10 +31589,296 @@ Precisa de ajuda? Entre em contato:
         // ============================================================
         // 🌸 KYARA NEWSLETTER / PUBLICADOR DO CANAL
         //
-        // BAKI / BAKIZINHO
+        // 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 / BAKIZINHO
         // Usa o mesmo conteúdo do #statusgp, mas envia como postagem
         // normal de Newsletter para o canal BOT-KYARA.
         // ============================================================
+
+        function kyaraFlowEscapeRegExp(value) {
+          return String(value || '')
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function kyaraFlowBuildRows(
+          submenuText,
+          currentPrefix
+        ) {
+
+          const text =
+            String(
+              submenuText || ''
+            );
+
+          const prefixEsc =
+            kyaraFlowEscapeRegExp(
+              currentPrefix || '#'
+            );
+
+          const lines =
+            text.split(/\r?\n/);
+
+          const seen =
+            new Set();
+
+          /*
+           * Comandos que precisam receber texto,
+           * pesquisa ou URL depois da seleção.
+           */
+          const inputCommands =
+            new Set([
+
+              'play',
+              'play2',
+              'playvid',
+              'letra',
+
+              'tiktok',
+              'instagram',
+              'kwai',
+              'igstory',
+
+              'facebook',
+              'gdrive',
+              'mediafire',
+              'twitter',
+              'pinterest',
+              'cosmos',
+
+              'calc',
+              'qrcode',
+              'horoscopo',
+
+              'nota',
+              'notaadd',
+              'notaver',
+              'notadel',
+              'notafixar',
+              'notabuscar',
+
+              'hora',
+              'clima',
+              'tradutor',
+
+              'lembrete',
+              'verificar',
+
+              'encurtalink',
+              'upload',
+
+              'gerarnick',
+              'pacote'
+
+            ]);
+
+          const rows = [];
+
+          for (
+            const line of lines
+          ) {
+
+            const match =
+              line.match(
+                new RegExp(
+                  prefixEsc +
+                  '([a-z0-9][a-z0-9_-]*)' +
+                  '(?:\\s+(.+?))?' +
+                  '(?=\\s*$)',
+                  'i'
+                )
+              );
+
+            if (!match) {
+              continue;
+            }
+
+            const commandName =
+              String(
+                match[1] || ''
+              )
+                .toLowerCase();
+
+            if (
+              !commandName ||
+              seen.has(commandName)
+            ) {
+              continue;
+            }
+
+            seen.add(
+              commandName
+            );
+
+            const rawArgs =
+              String(
+                match[2] || ''
+              ).trim();
+
+            const hasPlaceholder =
+              /[<\[][^\]>\[]+[>\]]/.test(
+                rawArgs
+              );
+
+            const needsInput =
+              hasPlaceholder ||
+              inputCommands.has(
+                commandName
+              );
+
+            const icons = {
+
+              play:
+                '🎵',
+
+              play2:
+                '🎵',
+
+              playvid:
+                '🎬',
+
+              letra:
+                '🎼',
+
+              tiktok:
+                '🎵',
+
+              instagram:
+                '📸',
+
+              kwai:
+                '📱',
+
+              igstory:
+                '📸',
+
+              facebook:
+                '📘',
+
+              gdrive:
+                '☁️',
+
+              mediafire:
+                '📁',
+
+              twitter:
+                '🐦',
+
+              pinterest:
+                '📌',
+
+              cosmos:
+                '🌌',
+
+              amongus:
+                '🎮',
+
+              royal:
+                '🎨',
+
+              qrcode:
+                '🔳',
+
+              calc:
+                '🧮',
+
+              hora:
+                '🕐',
+
+              clima:
+                '🌦️'
+
+            };
+
+            const icon =
+              icons[commandName] ||
+              '⚡';
+
+            let title =
+              `${icon} ${commandName.toUpperCase()}`;
+
+            if (
+              rawArgs &&
+              !hasPlaceholder &&
+              rawArgs.length < 12
+            ) {
+              title +=
+                ` ${rawArgs}`;
+            }
+
+            title =
+              title.slice(
+                0,
+                48
+              );
+
+            let description;
+
+            if (needsInput) {
+
+              if (
+                /play2?|playvid/i.test(
+                  commandName
+                )
+              ) {
+
+                description =
+                  'Digite a música, vídeo ou URL';
+
+              } else if (
+                /tiktok|instagram|kwai|igstory|facebook|gdrive|mediafire|twitter|pinterest|cosmos/i.test(
+                  commandName
+                )
+              ) {
+
+                description =
+                  'Digite a URL ou pesquisa';
+
+              } else if (
+                commandName === 'letra'
+              ) {
+
+                description =
+                  'Digite o nome da música';
+
+              } else {
+
+                description =
+                  rawArgs
+                    ? `Digite ${rawArgs.replace(/[<>\[\]]/g, '')}`
+                    : 'Digite os dados do comando';
+
+              }
+
+            } else {
+
+              description =
+                'Toque para executar';
+
+            }
+
+            rows.push({
+
+              title,
+
+              description:
+                String(
+                  description
+                ).slice(
+                  0,
+                  72
+                ),
+
+              id:
+                needsInput
+                  ? `${currentPrefix}menuinput ${commandName}`
+                  : `${currentPrefix}${commandName}`
+
+            });
+
+          }
+
+          return rows;
+        }
+
 
         async function sendMenuWithMedia(menuType, menuFunction) {
           try {
@@ -27667,7 +31886,7 @@ Precisa de ajuda? Entre em contato:
             // PERSONALIZAÇÃO DO GRUPO
             // --------------------------------------------------------
 
-            let customBotName = nomebot;
+            let customBotName = getConfiguredBotName() || nomebot || 'KYARA';
             let customMediaPath = null;
 
             if (
@@ -27744,12 +31963,10 @@ Precisa de ajuda? Entre em contato:
                   'menu.mp4'
                 );
 
-              // ANIMAÇÃO TEM PRIORIDADE:
-              // menu.jpg não pode bloquear menu.mp4.
-              if (fs.existsSync(menuVideoPath)) {
-                mediaPath = menuVideoPath;
-              } else if (fs.existsSync(menuImagePath)) {
+              if (fs.existsSync(menuImagePath)) {
                 mediaPath = menuImagePath;
+              } else if (fs.existsSync(menuVideoPath)) {
+                mediaPath = menuVideoPath;
               } else {
                 mediaPath = null;
               }
@@ -27795,10 +32012,34 @@ const kyaraMenuHeader = ({
             // GERA O TEXTO ORIGINAL DO MENU
             // --------------------------------------------------------
 
+            // Usuário do menu:
+            // em grupos usa o participante; no privado usa o remetente.
+            const menuAuthorJid =
+              info?.key?.participant ||
+              info?.participant ||
+              from;
+
+            const menuUserName = (() => {
+              const number = String(
+                menuAuthorJid || ''
+              )
+                .split('@')[0]
+                .split(':')[0]
+                .replace(/\D/g, '');
+
+              return number
+                ? `@${number}`
+                : String(
+                    pushname ||
+                    'Usuário'
+                  );
+            })();
+
+
             const customDesign =
               getMenuDesignWithDefaults(
                 customBotName,
-                pushname
+                menuUserName
               );
 
             const menuText =
@@ -27806,7 +32047,7 @@ const kyaraMenuHeader = ({
                 ? await menuFunction(
                     prefix,
                     customBotName,
-                    pushname,
+                    menuUserName,
                     customDesign
                   )
                 : 'Menu não disponível';
@@ -27840,27 +32081,105 @@ const kyaraMenuHeader = ({
             //
             // ========================================================
 
-            if (isNormalMenu()) {
+            // Submenus de categoria: mídia + comandos em legenda/texto.
+            if (isNormalMenu() && !['menu', 'menudono'].includes(String(menuType || '').toLowerCase())) {
+              const portableText = String(menuText || '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+              const portableMentions = sender ? [sender] : [];
+              const longCaption = false;
+              const mediaCaption = longCaption
+                ? '🌸 ' + customBotName + ' • ' + String(menuType || 'MENU').toUpperCase() + '\n📋 Lista completa de comandos abaixo.'
+                : portableText;
+
+              let coverSent = false;
+
+              if (mediaBuffer && mediaPath) {
+                try {
+                  if (/\.mp4$/i.test(String(mediaPath))) {
+                    await kya.sendMessage(from, {
+                      video: mediaBuffer,
+                      mimetype: 'video/mp4',
+                      caption: mediaCaption,
+                      gifPlayback: true,
+                      mentions: portableMentions
+                    }, { quoted: info });
+                  } else {
+                    await kya.sendMessage(from, {
+                      image: mediaBuffer,
+                      caption: mediaCaption,
+                      mentions: portableMentions
+                    }, { quoted: info });
+                  }
+
+                  coverSent = true;
+                } catch (mediaError) {
+                  console.warn(
+                    '[MENU] Falha ao enviar capa de ' + menuType + ':',
+                    mediaError?.message || mediaError
+                  );
+                }
+              }
+
+              if (!coverSent || longCaption) {
+                await kya.sendMessage(from, {
+                  text: portableText,
+                  mentions: portableMentions
+                }, { quoted: info });
+              }
+
+              console.log(
+                coverSent
+                  ? '[MENU] ' + menuType + (longCaption
+                    ? ' — capa enviada; lista completa em texto.'
+                    : ' — capa e comandos enviados, sem botões.')
+                  : '[MENU] ' + menuType + ' — capa indisponível; comandos enviados em texto.'
+              );
+
+              return;
+            }
+
+            if (isNormalMenu() && !['menu', 'menudono', 'logotipos'].includes(menuType)) {
               console.log(
                 `[MENU] Modo NORMAL — enviando ${menuType} somente como texto...`
               );
 
               try {
                 const normalDesign = getMenuDesignWithDefaults(
-                  nomebot,
-                  pushname
+                  customBotName,
+                  menuUserName
                 );
 
                 if (typeof menuFunction === 'function') {
                   const normalTextBase =
                     await menuFunction(
                       prefix,
-                      nomebot,
-                      pushname,
+                      customBotName,
+                      sender ? `@${String(sender).split('@')[0]}` : pushname,
                       normalDesign
                     );
 
-                  const normalText = normalTextBase;
+                  const __kyaraMenuFontRaw =
+                    typeof menuType !== 'undefined' ? String(menuType) : 'menu';
+                  const __kyaraMenuFontSlug = __kyaraMenuFontRaw
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .replace(/[\s_-]+/g, '');
+                  const __kyaraMenuFontAliases = MENU_FONT_ALIASES;
+                  const __kyaraMenuFontKey =
+                    __kyaraMenuFontAliases[__kyaraMenuFontSlug] ||
+                    __kyaraMenuFontSlug;
+                  const __kyaraSelectedMenuFont =
+                    normalDesign.menuFonts?.[__kyaraMenuFontKey] ??
+                    normalDesign.globalFontStyle ??
+                    normalDesign.fontStyle ??
+                    'normal';
+                  const normalText = applyMenuFont(
+                    normalTextBase,
+                    __kyaraSelectedMenuFont,
+                    prefix
+                  );
 
                   // --------------------------------------------------------
                   // ENVIO NORMAL COM MÍDIA
@@ -27879,13 +32198,14 @@ const kyaraMenuHeader = ({
                     /\.mp4$/i.test(mediaPath);
 
                   if (mediaBuffer && normalIsVideo) {
-                    await nazu.sendMessage(
+                    await kya.sendMessage(
                       from,
                       {
                         video: mediaBuffer,
                         mimetype: 'video/mp4',
                         caption: normalText,
-                        gifPlayback: true
+                        gifPlayback: true,
+                        mentions: sender ? [sender] : []
                       },
                       {
                         quoted: info
@@ -27897,11 +32217,12 @@ const kyaraMenuHeader = ({
                     );
 
                   } else if (mediaBuffer) {
-                    await nazu.sendMessage(
+                    await kya.sendMessage(
                       from,
                       {
                         image: mediaBuffer,
-                        caption: normalText
+                        caption: normalText,
+                        mentions: sender ? [sender] : []
                       },
                       {
                         quoted: info
@@ -27909,10 +32230,11 @@ const kyaraMenuHeader = ({
                     );
 
                   } else {
-                    await nazu.sendMessage(
+                    await kya.sendMessage(
                       from,
                       {
-                        text: normalText
+                        text: normalText,
+                        mentions: sender ? [sender] : []
                       },
                       {
                         quoted: info
@@ -27964,21 +32286,39 @@ const kyaraMenuHeader = ({
               const submenuDesign =
                 getMenuDesignWithDefaults(
                   customBotName,
-                  pushname
+                  menuUserName
                 );
 
               const generatedMenu =
                 await menuFunction(
                   prefix,
                   customBotName,
-                  pushname,
+                  menuUserName,
                   submenuDesign
                 );
 
-              submenuText =
-                String(
-                  generatedMenu || ''
-                ).trim();
+              submenuText = String(generatedMenu || '').trim();
+              const __kyaraSubFontRaw =
+                typeof menuType !== 'undefined' ? String(menuType) : 'submenu';
+              const __kyaraSubFontSlug = __kyaraSubFontRaw
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[\s_-]+/g, '');
+              const __kyaraSubFontAliases = MENU_FONT_ALIASES;
+              const __kyaraSubFontKey =
+                __kyaraSubFontAliases[__kyaraSubFontSlug] ||
+                __kyaraSubFontSlug;
+              const __kyaraSelectedSubFont =
+                submenuDesign.menuFonts?.[__kyaraSubFontKey] ??
+                submenuDesign.globalFontStyle ??
+                submenuDesign.fontStyle ??
+                'normal';
+              submenuText = applyMenuFont(
+                submenuText,
+                __kyaraSelectedSubFont,
+                prefix
+              );
             }
 
             if (!submenuText) {
@@ -27988,13 +32328,584 @@ const kyaraMenuHeader = ({
                 ).toUpperCase()}`;
             }
 
+            /*
+             * SANDRO_COMPAT_MENU_STATE_V2
+             * O mesmo controle do menu principal vale para os submenus.
+             */
+            try {
+
+              const buttonsEnabled = areMenuButtonsEnabled();
+
+              if (
+                !buttonsEnabled
+              ) {
+
+                if (
+                  mediaBuffer &&
+                  /\.mp4$/i.test(
+                    mediaPath ||
+                    ''
+                  )
+                ) {
+
+                  await kya.sendMessage(
+
+                    from,
+
+                    {
+
+                      video:
+                        mediaBuffer,
+
+                      caption:
+                        submenuText,
+
+                      gifPlayback:
+                        true
+
+                    },
+
+                    {
+                      quoted:
+                        info
+                    }
+
+                  );
+
+                } else if (
+                  mediaBuffer
+                ) {
+
+                  await kya.sendMessage(
+
+                    from,
+
+                    {
+
+                      image:
+                        mediaBuffer,
+
+                      caption:
+                        submenuText
+
+                    },
+
+                    {
+                      quoted:
+                        info
+                    }
+
+                  );
+
+                } else {
+
+                  await kya.sendMessage(
+
+                    from,
+
+                    {
+                      text:
+                        submenuText
+                    },
+
+                    {
+                      quoted:
+                        info
+                    }
+
+                  );
+
+                }
+
+
+                console.log(
+                  `[MENU] ${menuType} — botões desativados.`
+                );
+
+
+                return;
+
+              }
+
+            } catch (
+              buttonConfigError
+            ) {
+
+              console.warn(
+                '[MENU] Configuração dos botões ignorada:',
+                buttonConfigError?.message ||
+                buttonConfigError
+              );
+
+            }
+
+            // ========================================================
+            // 🌸 KYARA NATIVE FLOW — SUBMENU
+            // ========================================================
+            //
+            // Cada comando vira uma linha no Select Options.
+            //
+            // Comandos que precisam de pesquisa/URL:
+            //
+            //   seleção
+            //      ↓
+            //   #menuinput play
+            //      ↓
+            //   usuário escreve
+            //      ↓
+            //   #play <pesquisa>
+            //
+            // ========================================================
+
+            try {
+
+              const flowRows =
+                kyaraFlowBuildRows(
+                  submenuText,
+                  prefix
+                );
+
+              if (
+                flowRows.length
+              ) {
+
+                const sections =
+                  [];
+
+                for (
+                  let i = 0;
+                  i < flowRows.length;
+                  i += 10
+                ) {
+
+                  sections.push({
+
+                    title:
+                      i === 0
+                        ? `📋 ${String(menuType).toUpperCase()} — COMANDOS`
+                        : '📋 MAIS COMANDOS',
+
+                    rows:
+                      flowRows.slice(
+                        i,
+                        i + 10
+                      )
+
+                  });
+
+                }
+
+                const buttons = [
+
+                  {
+
+                    name:
+                      'quick_reply',
+
+                    buttonParamsJson:
+                      JSON.stringify({
+
+                        display_text:
+                          '⬅️ VOLTAR',
+
+                        id:
+                          `${prefix}menu`
+
+                      })
+
+                  },
+
+                  {
+
+                    name:
+                      'single_select',
+
+                    buttonParamsJson:
+                      JSON.stringify({
+
+                        title:
+                          '≡ COMANDOS',
+
+                        sections
+
+                      })
+
+                  }
+
+                ];
+
+                // ----------------------------------------------------
+                // HEADER DE MÍDIA
+                // ----------------------------------------------------
+
+                let flowImageMessage =
+                  null;
+
+                try {
+
+                  let headerImagePath =
+                    mediaPath;
+
+                  if (
+                    !headerImagePath ||
+                    !fs.existsSync(
+                      headerImagePath
+                    ) ||
+                    !/\.(jpe?g|png|webp)$/i.test(
+                      headerImagePath
+                    )
+                  ) {
+
+                    const fallbackImage =
+                      path.resolve(
+                        process.cwd(),
+                        'dados',
+                        'midias',
+                        'menu.jpg'
+                      );
+
+                    headerImagePath =
+                      fs.existsSync(
+                        fallbackImage
+                      )
+                        ? fallbackImage
+                        : null;
+
+                  }
+
+                  if (
+                    headerImagePath
+                  ) {
+
+                    const headerBuffer =
+                      fs.readFileSync(
+                        headerImagePath
+                      );
+
+                    const prepared =
+                      await prepareWAMessageMedia(
+                        {
+                          image:
+                            headerBuffer
+                        },
+                        {
+                          upload:
+                            kya.waUploadToServer
+                        }
+                      );
+
+                    flowImageMessage =
+                      prepared?.imageMessage ||
+                      null;
+
+                  }
+
+                } catch (
+                  mediaFlowError
+                ) {
+
+                  console.warn(
+                    '[MENU FLOW] Mídia do submenu ignorada:',
+                    mediaFlowError?.message ||
+                    mediaFlowError
+                  );
+
+                }
+
+                const readableNames = {
+
+                  menudown:
+                    '📥 DOWNLOADS',
+
+                  logotipos:
+                    '🎨 LOGOTIPOS',
+
+                  menuedits:
+                    '✏️ EDITS',
+
+                  stickers:
+                    '🖼️ FIGURINHAS',
+
+                  ferramentas:
+                    '🧰 FERRAMENTAS',
+
+                  alteradores:
+                    '✨ ALTERADORES',
+
+                  brincadeiras:
+                    '🎮 BRINCADEIRAS',
+
+                  menurpg:
+                    '⚔️ RPG',
+
+                  admin:
+                    '🛡️ ADMINISTRAÇÃO',
+
+                  membros:
+                    '👥 MEMBROS',
+
+                  vip:
+                    '💎 VIP',
+
+                  menudono:
+                    '👑 DONO'
+
+                };
+
+                const flowTitle =
+                  readableNames[
+                    menuType
+                  ] ||
+                  `📂 ${String(
+                    menuType
+                  ).toUpperCase()}`;
+
+                const msg =
+                  generateWAMessageFromContent(
+                    from,
+                    {
+
+                      messageContextInfo: {
+
+                        deviceListMetadata:
+                          {},
+
+                        deviceListMetadataVersion:
+                          2
+
+                      },
+
+                      interactiveMessage: {
+
+                            header:
+                              flowImageMessage
+                                ? {
+
+                                    title:
+                                      flowTitle,
+
+                                    hasMediaAttachment:
+                                      true,
+
+                                    imageMessage:
+                                      flowImageMessage
+
+                                  }
+                                : {
+
+                                    title:
+                                      flowTitle,
+
+                                    hasMediaAttachment:
+                                      false
+
+                                  },
+
+                            body: {
+
+                              text:
+                                `${flowTitle}\n\n` +
+                                'Toca em ≡ COMANDOS para ver as opções 👇'
+
+                            },
+
+                            footer: {
+
+                              text:
+                                '🌸 KYARA-SYSTΞM • Menu Interativo'
+
+                            },
+
+                            nativeFlowMessage: {
+
+                              buttons,
+
+                              messageParamsJson:
+                                '{}',
+
+                              messageVersion:
+                                1
+
+                            }
+
+                      }
+
+                    },
+
+                    {
+
+                      quoted:
+                        info,
+
+                      userJid:
+                        kya?.user?.id
+
+                    }
+
+                  );
+
+                const bizNode = {
+
+                  tag:
+                    'biz',
+
+                  attrs: {
+
+                    actual_actors:
+                      '2',
+
+                    host_storage:
+                      '2',
+
+                    privacy_mode_ts:
+                      String(
+                        Math.floor(
+                          Date.now() /
+                          1000
+                        ) -
+                        77980457
+                      )
+
+                  },
+
+                  content: [
+
+                    {
+
+                      tag:
+                        'interactive',
+
+                      attrs: {
+
+                        type:
+                          'native_flow',
+
+                        v:
+                          '1'
+
+                      },
+
+                      content: [
+
+                        {
+
+                          tag:
+                            'native_flow',
+
+                          attrs: {
+
+                            v:
+                              '9',
+
+                            name:
+                              'mixed'
+
+                          }
+
+                        }
+
+                      ]
+
+                    },
+
+                    {
+
+                      tag:
+                        'quality_control',
+
+                      attrs: {
+
+                        source_type:
+                          'third_party'
+
+                      }
+
+                    }
+
+                  ]
+
+                };
+
+                const additionalNodes =
+                  from.endsWith(
+                    '@g.us'
+                  )
+
+                    ? [
+                        bizNode
+                      ]
+
+                    : [
+
+                        {
+
+                          tag:
+                            'bot',
+
+                          attrs: {
+
+                            biz_bot:
+                              '1'
+
+                          }
+
+                        },
+
+                        bizNode
+
+                      ];
+
+                await kya.relayMessage(
+
+                  from,
+
+                  msg.message,
+
+                  {
+
+                    messageId:
+                      msg.key.id,
+
+                    additionalNodes
+
+                  }
+
+                );
+
+                console.log(
+                  '[MENU FLOW] ✅ Submenu Native Flow enviado:',
+                  menuType,
+                  flowRows.length,
+                  'opções'
+                );
+
+                return;
+
+              }
+
+            } catch (
+              flowError
+            ) {
+
+              console.error(
+                '[MENU FLOW] Falha no Native Flow do submenu:',
+                flowError?.stack ||
+                flowError
+              );
+
+              console.warn(
+                '[MENU FLOW] Mantendo fallback textual do submenu.'
+              );
+
+            }
+
             // --------------------------------------------------------
             // RESOLVE O CANAL
             // --------------------------------------------------------
 
             const kyaraNewsletter =
               await getKyaraNewsletterInfo(
-                nazu
+                kya
               );
 
             let kyaraContextInfo;
@@ -28035,7 +32946,7 @@ const kyaraMenuHeader = ({
                 const audioBuffer =
                   fs.readFileSync(audioPath);
 
-                await nazu.sendMessage(
+                await kya.sendMessage(
                   from,
 
                   {
@@ -28091,7 +33002,7 @@ const kyaraMenuHeader = ({
 
               try {
 
-                await nazu.sendMessage(
+                await kya.sendMessage(
                   from,
                   videoMessage,
                   sendContext
@@ -28104,7 +33015,7 @@ const kyaraMenuHeader = ({
                   gifError
                 );
 
-                await nazu.sendMessage(
+                await kya.sendMessage(
                   from,
                   {
                     text:
@@ -28136,7 +33047,7 @@ const kyaraMenuHeader = ({
                   kyaraContextInfo;
               }
 
-              await nazu.sendMessage(
+              await kya.sendMessage(
                 from,
                 imageMessage,
                 sendContext
@@ -28160,7 +33071,7 @@ const kyaraMenuHeader = ({
                   kyaraContextInfo;
               }
 
-              await nazu.sendMessage(
+              await kya.sendMessage(
                 from,
                 textMessage,
                 sendContext
@@ -28205,8 +33116,8 @@ const kyaraMenuHeader = ({
 
               const fallbackDesign =
                 getMenuDesignWithDefaults(
-                  nomebot,
-                  pushname
+                  customBotName,
+                  menuUserName
                 );
 
               const fallbackText =
@@ -28304,7 +33215,7 @@ const kyaraMenuHeader = ({
           if (!isOwner) return reply("Este comando é apenas para o meu dono 💔");
           if (!q || !q.includes('chat.whatsapp.com')) return reply('Digite um link de convite válido! Exemplo: ' + prefix + 'entrar https://chat.whatsapp.com/...');
           const code = q.split('https://chat.whatsapp.com/')[1];
-          await nazu.groupAcceptInvite(code).then(res => {
+          await kya.groupAcceptInvite(code).then(res => {
             reply(`✅ Entrei no grupo com sucesso!`);
           }).catch(err => {
             reply('❌ Erro ao entrar no grupo. Link inválido ou permissão negada.');
@@ -28340,7 +33251,7 @@ const kyaraMenuHeader = ({
 
           // Tenta obter informações do grupo para confirmar
           try {
-            const groupMetadata = await nazu.groupMetadata(groupId).catch(() => null);
+            const groupMetadata = await kya.groupMetadata(groupId).catch(() => null);
             if (!groupMetadata) {
               return reply('❌ Grupo não encontrado ou não tenho acesso a ele.');
             }
@@ -28348,11 +33259,11 @@ const kyaraMenuHeader = ({
             const groupName = groupMetadata.subject || 'Grupo desconhecido';
 
             // Sai do grupo
-            await nazu.groupLeave(groupId);
+            await kya.groupLeave(groupId);
             await reply(`✅ Sai do grupo "${groupName}" com sucesso!`);
           } catch (error) {
             // Tenta sair mesmo assim
-            await nazu.groupLeave(groupId).catch(() => { });
+            await kya.groupLeave(groupId).catch(() => { });
             await reply(`✅ Comando de saída executado para o grupo ${groupId}`);
           }
         } catch (e) {
@@ -28417,7 +33328,7 @@ const kyaraMenuHeader = ({
             };
           }
 
-          const groups = await nazu.groupFetchAllParticipating();
+          const groups = await kya.groupFetchAllParticipating();
           const totalGroups = Object.keys(groups).length;
           let enviados = 0;
 
@@ -28433,7 +33344,7 @@ const kyaraMenuHeader = ({
                 message.text = `${message.text}\n\n> ID: ${suffix}`;
               }
 
-              await nazu.sendMessage(group.id, message);
+              await kya.sendMessage(group.id, message);
               enviados++;
 
               if (enviados < totalGroups) {
@@ -28576,7 +33487,7 @@ const kyaraMenuHeader = ({
                 message.text = `${message.text}\n\n> ID: ${suffix}`;
               }
 
-              await nazu.sendMessage(subscriber.id, message);
+              await kya.sendMessage(subscriber.id, message);
               enviados++;
 
               // Incrementa contador de mensagens recebidas pelo usuário
@@ -28838,7 +33749,7 @@ const kyaraMenuHeader = ({
               }
             );
 
-          await nazu.relayMessage(
+          await kya.relayMessage(
             from,
             msg.message,
             {
@@ -29098,7 +34009,7 @@ const kyaraMenuHeader = ({
           if (!isGroupAdmin && !isOwner) return reply('❌ Apenas administrador ou dono pode adicionar a Meta AI.');
           if (!isBotAdmin) return reply(`❌ ${nomebot || 'KYARA'} precisa ser administrador do grupo para adicionar a Meta AI.`);
 
-          await nazu.groupParticipantsUpdate(
+          await kya.groupParticipantsUpdate(
             from,
             ['867051314767696@bot'],
             'add'
@@ -29115,7 +34026,7 @@ const kyaraMenuHeader = ({
       case 'seradm':
         try {
           if (!isOwner) return reply("Este comando é apenas para o meu dono");
-          await nazu.groupParticipantsUpdate(from, [sender], "promote");
+          await kya.groupParticipantsUpdate(from, [sender], "promote");
         } catch (e) {
           console.error(e);
           await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
@@ -29124,7 +34035,7 @@ const kyaraMenuHeader = ({
       case 'sermembro':
         try {
           if (!isOwner) return reply("Este comando é apenas para o meu dono");
-          await nazu.groupParticipantsUpdate(from, [sender], "demote");
+          await kya.groupParticipantsUpdate(from, [sender], "demote");
         } catch (e) {
           console.error(e);
           await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
@@ -29171,6 +34082,66 @@ const kyaraMenuHeader = ({
         }
         break;
 
+      case 'textodono':
+      case 'text-dono':
+      case 'textdono':
+
+        if (!isOwner) {
+          return reply(
+            '❌ Este comando é exclusivo do dono.'
+          );
+        }
+
+        {
+
+          const texto =
+            String(q || '').trim();
+
+          if (!texto) {
+            return reply(
+              `👑 *TEXTO DONO*\\n\\nUse: ${prefix}textodono <texto>`
+            );
+          }
+
+          const upper =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+          const upperStyle =
+            '𝘼𝘽𝘾𝘿𝙀𝙁𝙂𝙃𝙄𝙅𝙆𝙇𝙈𝙉𝙊𝙋𝙌𝙍𝙎𝙏𝙐𝙑𝙒𝙓𝙔𝙕';
+
+          const lower =
+            'abcdefghijklmnopqrstuvwxyz';
+
+          const lowerStyle =
+            '𝙖𝙗𝙘𝙙𝙚𝙛𝙜𝙝𝙞𝙟𝙠𝙡𝙢𝙣𝙤𝙥𝙦𝙧𝙨𝙩𝙪𝙫𝙬𝙭𝙮𝙯';
+
+          const estilizado =
+            Array.from(texto)
+              .map(ch => {
+
+                const u =
+                  upper.indexOf(ch);
+
+                if (u >= 0) {
+                  return upperStyle[u];
+                }
+
+                const l =
+                  lower.indexOf(ch);
+
+                if (l >= 0) {
+                  return lowerStyle[l];
+                }
+
+                return ch;
+              })
+              .join('');
+
+          return reply(
+            '👑 ' + estilizado
+          );
+        }
+
       case 'nomedono':
 
         try {
@@ -29185,7 +34156,7 @@ const kyaraMenuHeader = ({
               `📝 *Como usar:*\n` +
               `• Digite o novo nome após o comando\n` +
               `• Ex: ${prefix}${command} Tokyo\n` +
-              `• Ex: ${prefix}${command} Vex Tech Solutions\n\n` +
+              `• Ex: ${prefix}${command} 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 Tech Solutions\n\n` +
               `✅ O nome do dono será atualizado!`
             );
           }
@@ -29776,7 +34747,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           try {
             // Processa a imagem com ffmpeg antes de atualizar
             const processedBuffer = await processImageForProfile(imageBuffer);
-            await nazu.updateProfilePicture(nazu.user.id, processedBuffer);
+            await kya.updateProfilePicture(kya.user.id, processedBuffer);
             reply('✅ Foto de perfil do bot alterada com sucesso!');
           } catch (updateError) {
             console.error('Erro ao alterar foto de perfil:', updateError);
@@ -29972,6 +34943,161 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       // COMANDOS DE DESIGN DO MENU
       // ================================
 
+      case 'fontes':
+      case 'fonte': {
+        try {
+          if (!isOwner) {
+            await reply('⚠️ Apenas o dono pode alterar as fontes.');
+            break;
+          }
+
+          const styles = {
+            normal: 'Normal',
+            bold: 'Negrito',
+            italic: 'Itálico',
+            bolditalic: 'Negrito + itálico',
+            mono: 'Monoespaçado',
+            small: 'Small caps'
+          };
+
+          const aliases = {
+            normal: 'normal', padrao: 'normal', original: 'normal',
+            bold: 'bold', negrito: 'bold',
+            italic: 'italic', italico: 'italic',
+            bolditalic: 'bolditalic', negritoitalico: 'bolditalic',
+            mono: 'mono', monospace: 'mono', monoespacado: 'mono',
+            small: 'small', smallcaps: 'small', letraspequenas: 'small'
+          };
+
+          const menuAliases = {
+            principal: 'menu', menuprincipal: 'menu', menu: 'menu',
+            dono: 'dono', owner: 'dono', menudono: 'dono',
+            down: 'menudown', download: 'menudown',
+            downloader: 'menudown', menudown: 'menudown',
+            adm: 'menuadm', admin: 'menuadm', menuadm: 'menuadm',
+            vip: 'menuvip', menuvip: 'menuvip',
+            submenu: 'submenu', submenus: 'submenu'
+          };
+
+          const norm = value => String(value ?? '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '');
+
+          const args = String(q || '').trim().split(/\s+/).filter(Boolean);
+          const design = loadMenuDesign() || {};
+          const globalStyle =
+            design.globalFontStyle || design.fontStyle || 'normal';
+
+          if (!args.length) {
+            const previews = Object.entries(styles).map(([style, label]) =>
+              (globalStyle === style ? '👉 ' : '• ') +
+              applyMenuFont(label, style, prefix) + ': ' +
+              applyMenuFont('Kyara Bot 123', style, prefix)
+            );
+
+            const individual = Object.entries(design.menuFonts || {})
+              .map(([name, style]) =>
+                '• ' + name + ': ' + (styles[style] || style)
+              ).join('\n') || 'Nenhuma; os menus herdam a fonte global.';
+
+            await reply([
+              '🎨 *FONTES*',
+              '',
+              'Global atual: ' + (styles[globalStyle] || globalStyle),
+              '',
+              ...previews,
+              '',
+              '*Fontes individuais*',
+              individual,
+              '',
+              prefix + 'fontes bold',
+              prefix + 'fontes dono italic',
+              prefix + 'fontes menu mono',
+              prefix + 'fontes menudown small',
+              prefix + 'fontes dono global'
+            ].join('\n'));
+            break;
+          }
+
+          const last = norm(args[args.length - 1]);
+          const style = aliases[last];
+          const inherit = ['global', 'herdar', 'inherit', 'padrao', 'default']
+            .includes(last);
+
+          if (args.length === 1 && style) {
+            if (!saveMenuDesign({
+              ...design,
+              fontStyle: style,
+              globalFontStyle: style
+            })) {
+              await reply('❌ Não consegui salvar a fonte global.');
+              break;
+            }
+            await reply('✅ Fonte global definida: ' + styles[style]);
+            break;
+          }
+
+          if ((!style && !inherit) || args.length < 2) {
+            await reply('❌ Estilo inválido. Use ' + prefix + 'fontes para ver as opções.');
+            break;
+          }
+
+          let words = args.slice(0, -1);
+          if (norm(words[0]) === 'menu' && words.length > 1) {
+            words = words.slice(1);
+          }
+
+          const target = norm(words.join(' '));
+
+          if (!target) {
+            await reply('❌ Informe o nome do menu.');
+            break;
+          }
+
+          if (['global', 'todos', 'all'].includes(target)) {
+            if (!style) {
+              await reply('❌ Informe uma fonte para a configuração global.');
+              break;
+            }
+            if (!saveMenuDesign({
+              ...design,
+              fontStyle: style,
+              globalFontStyle: style
+            })) {
+              await reply('❌ Não consegui salvar a fonte global.');
+              break;
+            }
+            await reply('✅ Fonte global definida: ' + styles[style]);
+            break;
+          }
+
+          const key = menuAliases[target] || target;
+          if (!/^[a-z0-9]+$/.test(key)) {
+            await reply('❌ Nome de menu inválido.');
+            break;
+          }
+
+          const menuFonts = { ...(design.menuFonts || {}) };
+          if (inherit) delete menuFonts[key];
+          else menuFonts[key] = style;
+
+          if (!saveMenuDesign({ ...design, menuFonts })) {
+            await reply('❌ Não consegui salvar a fonte do menu.');
+            break;
+          }
+
+          await reply(inherit
+            ? '✅ O menu ' + key + ' herdará a fonte global.'
+            : '✅ Fonte de ' + key + ': ' + styles[style]);
+        } catch (error) {
+          console.error('[FONTES]', error);
+          await reply('❌ Erro ao configurar as fontes.');
+        }
+        break;
+      }
+
       case 'setborda':
       case 'setbordatopo':
       case 'settopborder':
@@ -30127,13 +35253,14 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           if (!isOwner) return reply("Este comando é apenas para o meu dono");
 
           const defaultDesign = {
-            header: `╭┈⊰ 🌸 『 *{botName}* 』\n┊Olá, {userName}!\n╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
-            menuTopBorder: "╭┈",
-            bottomBorder: "╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯",
-            menuTitleIcon: "🍧ฺꕸ▸",
-            menuItemIcon: "•.̇𖥨֗🍓⭟",
-            separatorIcon: "❁",
-            middleBorder: "┊"
+            fontStyle: "normal",
+            header: `╭━━━━━━〔 ✦ {botName} ✦ 〕━━━━━━╮\n┃ 👋 {greeting}, {userName}!\n╰━━━━━━━━━━━━ ◈ ━━━━━━━━━━━━╯`,
+            menuTopBorder: "╭━━〔 ",
+            bottomBorder: "╰━━━━━━━━━━━━━━━━━━━━╯",
+            menuTitleIcon: "✦",
+            menuItemIcon: "✧ ",
+            separatorIcon: "◇",
+            middleBorder: "┃"
           };
 
           if (saveMenuDesign(defaultDesign)) {
@@ -30150,70 +35277,50 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       case 'designmenu':
       case 'verdesign':
       case 'configmenu':
+        if (info?.key?.id) {
+          if (!(globalThis.__KYARA_HANDLED_COMMAND_IDS__ instanceof Set)) globalThis.__KYARA_HANDLED_COMMAND_IDS__ = new Set();
+          globalThis.__KYARA_HANDLED_COMMAND_IDS__.add(String(info.key.id));
+        }
         try {
           if (!isOwner) return reply("⛔ Este comando é exclusivo do dono da Kyara.");
 
-          const currentDesign = loadMenuDesign();
+          const currentDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
 
-          const headerPreview = String(currentDesign.header || "")
-            .replace(/{botName}/g, nomebot)
-            .replace(/{userName}/g, pushname);
+          const previewClean = (value, fallback = "—") => {
+            const text = String(value ?? "").trim();
+            return (text || fallback)
+              .replaceAll("•.̇𖥨֗🍓⭟", "›")
+              .replaceAll("🍓", "✦");
+          };
 
-          const designText = `╭━━━〔 🎨 *KYARA DESIGN SYSTEM* 〕━━━╮
-┃
-┃  ◈ *IDENTIDADE VISUAL*
-┃  ├─ 🌸 Cabeçalho
-┃  │  ${headerPreview}
-┃  │
-┃  ├─ ╭┈ Borda superior
-┃  ├─ ${currentDesign.menuTopBorder || "—"}
-┃  │
-┃  ├─ ╰┈ Borda inferior
-┃  ├─ ${currentDesign.bottomBorder || "—"}
-┃  │
-┃  └─ ${currentDesign.middleBorder || "┊"} Borda interna
-┃
-┣━━━〔 ✦ *ELEMENTOS* 〕━━━━━━━━━━━━
-┃
-┃  ${currentDesign.menuTitleIcon || "✦"}  *Título*
-┃  └─ ${currentDesign.menuTitleIcon || "—"}
-┃
-┃  ${currentDesign.menuItemIcon || "•"}  *Item*
-┃  └─ ${currentDesign.menuItemIcon || "—"}
-┃
-┃  ${currentDesign.separatorIcon || "❖"}  *Separador*
-┃  └─ ${currentDesign.separatorIcon || "—"}
-┃
-┣━━━〔 🛠️ *PERSONALIZAÇÃO* 〕━━━━━━
-┃
-┃  ${prefix}setborda
-┃  └─ Alterar a borda superior
-┃
-┃  ${prefix}setbordafim
-┃  └─ Alterar a borda inferior
-┃
-┃  ${prefix}setbordameio
-┃  └─ Alterar a borda interna
-┃
-┃  ${prefix}setitem
-┃  └─ Alterar ícone dos itens
-┃
-┃  ${prefix}setseparador
-┃  └─ Alterar separador visual
-┃
-┃  ${prefix}settitulo
-┃  └─ Alterar ícone dos títulos
-┃
-┃  ${prefix}setheader
-┃  └─ Alterar cabeçalho
-┃
-┣━━━〔 ♻️ *CONTROLE* 〕━━━━━━━━━━━━
-┃
-┃  ${prefix}resetdesign
-┃  └─ Restaurar o design padrão
-┃
-╰━━━〔 👑 *BKkyara • Design Engine* 〕━━━╯`;
+          const headerPreview = previewClean(
+            String(currentDesign.header || "")
+              .replace(/{botName}/g, nomebot)
+              .replace(/{userName}/g, pushname)
+          );
 
+          const designText = `╭━━━━━━〔 ⚡ *KYARA-SYSTΞM* 〕━━━━━━╮
+┃             CENTRAL DE DESIGN
+┣━━━━━━━━━━〔 ◈ PRÉVIA 〕━━━━━━━━━━
+┃ ${headerPreview}
+┣━━━━━━━━〔 ✦ CONFIGURAÇÃO ATUAL 〕━━━━
+┃ Borda superior : ${previewClean(currentDesign.menuTopBorder)}
+┃ Borda inferior : ${previewClean(currentDesign.bottomBorder)}
+┃ Borda interna  : ${previewClean(currentDesign.middleBorder)}
+┃ Ícone do título: ${previewClean(currentDesign.menuTitleIcon)}
+┃ Ícone do item  : ${previewClean(currentDesign.menuItemIcon)}
+┃ Separador      : ${previewClean(currentDesign.separatorIcon)}
+┣━━━━━━━━〔 ⚙ PERSONALIZAÇÃO 〕━━━━━━━━
+┃ ${prefix}setborda     › Borda superior
+┃ ${prefix}setbordafim  › Borda inferior
+┃ ${prefix}setbordameio › Borda interna
+┃ ${prefix}setitem      › Ícone dos itens
+┃ ${prefix}setseparador › Separador visual
+┃ ${prefix}settitulo    › Ícone dos títulos
+┃ ${prefix}setheader    › Cabeçalho
+┣━━━━━━━━〔 ♻ RESTAURAÇÃO 〕━━━━━━━━━━
+┃ ${prefix}resetdesign › Restaurar o padrão
+╰━━━━━━〔 ⚡ KYARA-SYSTΞM • DESIGN CORE 〕━━━━━━╯`;
           await sendMenuWithMedia(
             'design',
             async () => designText
@@ -30234,7 +35341,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       case 'listgp':
         try {
           if (!isOwner) return reply('⛔ Desculpe, este comando é exclusivo para o meu dono!');
-          const getGroups = await nazu.groupFetchAllParticipating();
+          const getGroups = await kya.groupFetchAllParticipating();
           const groups = Object.entries(getGroups).slice(0).map(entry => entry[1]);
           const sortedGroups = groups.sort((a, b) => a.subject.localeCompare(b.subject));
           let teks = `🌟 *Lista de Grupos e Comunidades* 🌟\n📊 *Total de Grupos:* ${sortedGroups.length}\n\n`;
@@ -30306,7 +35413,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           if (!menc_os2) return reply("Marque alguém 🙄");
           if (!!premiumListaZinha[menc_os2]) return reply('O usuário ja esta na lista premium.');
           premiumListaZinha[menc_os2] = true;
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `✅ @${getUserName(menc_os2)} foi adicionado(a) a lista premium.`,
             mentions: [menc_os2]
           }, {
@@ -30327,7 +35434,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           if (!menc_os2) return reply("Marque alguém 🙄");
           if (!premiumListaZinha[menc_os2]) return reply('O usuário não esta na lista premium.');
           delete premiumListaZinha[menc_os2];
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `🫡 @${getUserName(menc_os2)} foi removido(a) da lista premium.`,
             mentions: [menc_os2]
           }, {
@@ -30346,7 +35453,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
           if (!!premiumListaZinha[from]) return reply('O grupo ja esta na lista premium.');
           premiumListaZinha[from] = true;
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `✅ O grupo foi adicionado a lista premium.`
           }, {
             quoted: info
@@ -30366,7 +35473,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
           if (!premiumListaZinha[from]) return reply('O grupo não esta na lista premium.');
           delete premiumListaZinha[from];
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `🫡 O grupo foi removido da lista premium.`
           }, {
             quoted: info
@@ -30417,7 +35524,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
 
             teks += `   Nenhum grupo premium encontrado.\n`;
           }
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: teks,
             mentions: usersPremium
           }, {
@@ -30440,7 +35547,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
           targetData.bank = 0;
           saveEconomy(econ);
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `🧹 @${getUserName(menc_os2)} teve o gold resetado (carteira e banco).`,
             mentions: [menc_os2]
           }, {
@@ -30458,7 +35565,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       case 'vipmenu':
         try {
           await sendMenuWithMedia('vip', async () => {
-            const customDesign = getMenuDesignWithDefaults(nomebot, pushname);
+            const customDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
             return await menuVIP(prefix, nomebot, pushname, customDesign);
           });
         } catch (error) {
@@ -30470,7 +35577,7 @@ ${prefix}${command} 1a0b5879-bc22-4f4a
       case 'infovip':
       case 'vipinfo':
         try {
-          const customDesign = getMenuDesignWithDefaults(nomebot, pushname);
+          const customDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
           const infoText = await menuVIP(prefix, nomebot, pushname, customDesign);
           await reply(infoText);
         } catch (error) {
@@ -30543,7 +35650,7 @@ ${prefix}addcmdvip menudown all`);
 
             try {
               // Gera o menu para extrair os comandos
-              const customDesign = getMenuDesignWithDefaults(nomebot, pushname);
+              const customDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
               const menuText = await menuFunction(prefix, nomebot, pushname, customDesign);
 
               // Extrai comandos do menu usando regex
@@ -30716,7 +35823,7 @@ ${prefix}removecmdvip premium_ia`);
             return reply('🚫 Este comando é apenas para o dono ou usuários VIP!');
           }
 
-          const customDesign = getMenuDesignWithDefaults(nomebot, pushname);
+          const customDesign = getMenuDesignWithDefaults(getConfiguredBotName() || nomebot || 'KYARA', pushname);
           const listText = await menuVIP(prefix, nomebot, pushname, customDesign);
 
           await reply(listText);
@@ -30830,7 +35937,7 @@ ${prefix}togglecmdvip premium_ia off`);
 
           writeJsonFile(indicacoesFile, indicacoesData);
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `✅ *Indicação adicionada com sucesso!*\n\n👤 @${getUserName(menc_os2)} agora tem *${indicacoesData.users[menc_os2].count}* indicação(ões)! 🎉`,
             mentions: [menc_os2]
           }, { quoted: info });
@@ -30876,7 +35983,7 @@ ${prefix}togglecmdvip premium_ia off`);
 
           const mentions = usersArray.slice(0, maxShow).map(u => u.userId);
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: mensagem,
             mentions: mentions
           }, { quoted: info });
@@ -30917,7 +36024,7 @@ ${prefix}togglecmdvip premium_ia off`);
             ? `✅ Removidas *${Math.min(parseInt(q), countBefore)}* indicação(ões) de @${getUserName(menc_os2)}!\n\n📊 Total restante: *${indicacoesData.users[menc_os2]?.count || 0}*`
             : `✅ Todas as indicações de @${getUserName(menc_os2)} foram removidas! (Total: *${countBefore}*)`;
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: finalMsg,
             mentions: [menc_os2]
           }, { quoted: info });
@@ -30963,6 +36070,47 @@ ${prefix}togglecmdvip premium_ia off`);
       case 'dragonfire':
       case 'pubgavatar':
       case 'comics':
+      case 'anime':
+      case 'anime2':
+      case 'game':
+      case 'pubvideo':
+      case 'pubgvideo':
+      case 'lolavatar':
+      case 'mascote':
+      case 'ffrose':
+      case 'ffgren':
+      case 'lava-logo':
+      case 'fire-logo':
+      case 'ice-logo':
+      case 'fluffy-logo':
+      case 'cool-logo':
+      case 'comic-logo':
+      case 'water-logo':
+      case 'elegant-logo':
+      case 'gold-logo':
+      case 'fortune-logo':
+      case 'blue-logo':
+      case 'silver-logo':
+      case 'neon-logo':
+      case 'skate-name':
+      case 'retro-logo':
+      case 'candy-logo':
+      case 'glossy-logo':
+      case 'newyear':
+      case 'tiger':
+      case 'galaxy-light':
+      case 'graffiti':
+      case 'metallic':
+      case 'goldpink':
+      case 'titanium':
+      case '3dcrack':
+      case 'ballon':
+      case 'graffitipaint':
+      case 'captain':
+      case 'graffitiwall':
+      case 'blackpink':
+      case 'glitter':
+      case 'retro':
         try {
           if (!q) return reply(`❌ Cadê o texto?\nExemplo: .${command} Olá Mundo`);
 
@@ -30982,21 +36130,30 @@ ${prefix}togglecmdvip premium_ia off`);
             return reply('❌ Não foi possível gerar o logotipo');
           }
 
-          await nazu.sendMessage(from, {
-            image: resultado.buffer,
-            caption: `✅ Logotipo gerado com sucesso!`
-          }, { quoted: info });
+          if (resultado.type === 'video' ||
+              String(resultado.mime || '').startsWith('video/')) {
+            await kya.sendMessage(from, {
+              video: resultado.buffer,
+              mimetype: resultado.mime || 'video/mp4',
+              caption: '✅ Logo em vídeo gerado com sucesso!'
+            }, { quoted: info });
+          } else {
+            await kya.sendMessage(from, {
+              image: resultado.buffer,
+              mimetype: resultado.mime || 'image/png',
+              caption: '✅ Logotipo gerado com sucesso!'
+            }, { quoted: info });
+          }
 
         } catch (e) {
           console.error(`Erro no comando ${command}:`, e);
           await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
         }
         break;
+      case 'phlogo':
       case 'pornhub':
       case 'avengers':
       case 'deadpool':
-      case 'avengers':
-      case 'marvel':
 
         try {
           const [texto1, texto2] = q.split('/').map(i => i.trim());
@@ -31024,10 +36181,20 @@ ${prefix}togglecmdvip premium_ia off`);
             return reply('❌ Não foi possível gerar o logotipo');
           }
 
-          await nazu.sendMessage(from, {
-            image: resultado.buffer,
-            caption: `✅ Logotipo gerado com sucesso!`
-          }, { quoted: info });
+          if (resultado.type === 'video' ||
+              String(resultado.mime || '').startsWith('video/')) {
+            await kya.sendMessage(from, {
+              video: resultado.buffer,
+              mimetype: resultado.mime || 'video/mp4',
+              caption: '✅ Logo em vídeo gerado com sucesso!'
+            }, { quoted: info });
+          } else {
+            await kya.sendMessage(from, {
+              image: resultado.buffer,
+              mimetype: resultado.mime || 'image/png',
+              caption: '✅ Logotipo gerado com sucesso!'
+            }, { quoted: info });
+          }
 
         } catch (e) {
           console.error(`Erro no comando ${command}:`, e);
@@ -31075,7 +36242,7 @@ ${prefix}togglecmdvip premium_ia off`);
             return reply('❌ Não foi possível gerar o logotipo.');
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: resultado.buffer,
             caption: '✅ Edição aplicada com sucesso!'
           }, { quoted: info });
@@ -31090,101 +36257,88 @@ ${prefix}togglecmdvip premium_ia off`);
       case 'rvisu':
       case 'open':
       case 'revelar': {
-    try {
-        const quoted = msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-        const quotedKey = msg?.message?.extendedTextMessage?.contextInfo?.stanzaId;
+        try {
+          const contextInfo =
+            info?.message?.extendedTextMessage?.contextInfo ||
+            msg?.message?.extendedTextMessage?.contextInfo ||
+            {};
 
-        if (!quoted || !quotedKey) {
-            await nazu.sendMessage(from, {
-                text: '🌸 Responda uma mensagem com /revelar para tentar recuperar a mídia disponível.'
-            });
+          const quoted = contextInfo.quotedMessage;
+
+          if (!quoted) {
+            await reply(
+              '📎 Responda à mensagem de visualização única que deseja revelar com /revelar.'
+            );
             break;
-        }
+          }
 
-        const mediaTypes = [
-            'imageMessage',
-            'videoMessage',
-            'audioMessage',
-            'documentMessage'
-        ];
+          let mediaMessage = null;
+          let mediaType = null;
 
-        const type = mediaTypes.find(t => quoted[t]);
+          const innerMessage =
+            quoted.viewOnceMessage?.message ||
+            quoted.viewOnceMessageV2?.message ||
+            quoted.viewOnceMessageV2Extension?.message ||
+            quoted;
 
-        if (!type) {
-            await sock.sendMessage(from, {
-                text: '⚠️ A mensagem respondida não contém uma mídia disponível para reenvio.'
-            });
+          if (innerMessage.imageMessage) {
+            mediaMessage = innerMessage.imageMessage;
+            mediaType = 'image';
+          } else if (innerMessage.videoMessage) {
+            mediaMessage = innerMessage.videoMessage;
+            mediaType = 'video';
+          } else if (innerMessage.audioMessage) {
+            mediaMessage = innerMessage.audioMessage;
+            mediaType = 'audio';
+          }
+
+          if (!mediaMessage || !mediaType) {
+            await reply(
+              '❌ A mensagem respondida não contém uma mídia de visualização única compatível (imagem, vídeo ou áudio).'
+            );
             break;
-        }
+          }
 
-        const media = quoted[type];
-
-        if (media.viewOnce === true) {
-            await sock.sendMessage(from, {
-                text: '⚠️ Essa mídia é de visualização única e não pode ser recuperada por este comando.'
-            });
-            break;
-        }
-
-        if (!media.url && !media.directPath) {
-            await sock.sendMessage(from, {
-                text: '⚠️ A mídia não está mais disponível para download nesta mensagem.'
-            });
-            break;
-        }
-
-        const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-
-        const stream = await downloadContentFromMessage(
-            media,
-            type.replace('Message', '')
-        );
-
-        const chunks = [];
-
-        for await (const chunk of stream) {
+          const stream = await downloadContentFromMessage(mediaMessage, mediaType);
+          const chunks = [];
+          for await (const chunk of stream) {
             chunks.push(chunk);
-        }
+          }
+          const buffer = Buffer.concat(chunks);
 
-        const buffer = Buffer.concat(chunks);
+          if (!buffer || buffer.length === 0) {
+            await reply('❌ Não consegui baixar o conteúdo da mídia. Ela pode ter expirado.');
+            break;
+          }
 
-        if (!buffer.length) {
-            throw new Error('Mídia vazia');
-        }
+          const options = { quoted: msg };
 
-        const options = {};
-
-        if (type === 'imageMessage') {
+          if (mediaType === 'image') {
             options.image = buffer;
-        } else if (type === 'videoMessage') {
+            options.caption = mediaMessage.caption ? `🔓 *Revelado:* ${mediaMessage.caption}` : '🔓 *Mídia revelada com sucesso!*';
+          } else if (mediaType === 'video') {
             options.video = buffer;
-        } else if (type === 'audioMessage') {
+            options.caption = mediaMessage.caption ? `🔓 *Revelado:* ${mediaMessage.caption}` : '🔓 *Mídia revelada com sucesso!*';
+          } else if (mediaType === 'audio') {
             options.audio = buffer;
-            options.mimetype = media.mimetype || 'audio/ogg; codecs=opus';
-        } else {
-            options.document = buffer;
-            options.fileName = media.fileName || 'revelado';
-            options.mimetype = media.mimetype || 'application/octet-stream';
+            options.mimetype = mediaMessage.mimetype || 'audio/ogg; codecs=opus';
+            options.ptt = !!mediaMessage.ptt;
+          }
+
+          await sock.sendMessage(from, options);
+          console.log('[REVELAR] Mídia de visualização única reenviada sem restrições.');
+
+        } catch (err) {
+          console.error('[REVELAR] Erro ao revelar mídia:', err);
+          await reply('❌ Falha ao processar e revelar a mídia.').catch(() => {});
         }
+        break;
+      }
 
-        await sock.sendMessage(from, options);
-
-        console.log('[REVELAR] Mídia reenviada com sucesso.');
-
-    } catch (err) {
-        console.error('[REVELAR] Erro:', err);
-
-        await sock.sendMessage(from, {
-            text: '❌ Não consegui recuperar essa mídia. Ela pode não estar mais disponível.'
-        }).catch(() => {});
-    }
-
-    break;
-}
       case 'limpardb':
         try {
           if (!isOwner) return reply("Apenas o dono pode limpar o banco de dados.");
-          const allGroups = await nazu.groupFetchAllParticipating();
+          const allGroups = await kya.groupFetchAllParticipating();
           const currentGroupIds = Object.keys(allGroups);
           const groupFiles = fs.readdirSync(GRUPOS_DIR).filter(file => file.endsWith('.json'));
           let removedCount = 0;
@@ -31523,7 +36677,7 @@ ${prefix}togglecmdvip premium_ia off`);
               }
             }
           }
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: blad,
             mentions: menc
           }, {
@@ -31594,7 +36748,7 @@ ${prefix}togglecmdvip premium_ia off`);
               menc.push(blue67[i6].id);
             }
           }
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: blad,
             mentions: menc
           }, {
@@ -31710,7 +36864,7 @@ ${prefix}togglecmdvip premium_ia off`);
             }
           });
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: activityMessage,
             mentions: mentions
           }, {
@@ -31727,7 +36881,7 @@ ${prefix}togglecmdvip premium_ia off`);
           fs.readFile(__dirname + '/index.js', 'utf8', async (err, data) => {
             if (err) throw err;
             const comandos = [...data.matchAll(/case [`'"](\w+)[`'"]/g)].map(m => m[1]);
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `╭〔 🤖 *Meus Comandos* 〕╮\n` + `┣ 📌 Total: *${comandos.length}* comandos\n` + `╰━━━━━━━━━━━━━━━╯`
             }, {
               quoted: info
@@ -31774,11 +36928,11 @@ ${prefix}togglecmdvip premium_ia off`);
           const userStatus = isOwner ? 'Dono' : isPremium ? 'Premium' : isGroupAdmin ? 'Admin' : 'Membro';
           let profilePic = null;
           try {
-            profilePic = await nazu.profilePictureUrl(sender, 'image');
+            profilePic = await kya.profilePictureUrl(sender, 'image');
           } catch (e) { }
           const statusMessage = `📊 *Meu Status - ${userName}* 📊\n\n👤 *Nome*: ${userName}\n📱 *Número*: @${getUserName(sender)}\n⭐ *Status*: ${userStatus}\n\n${isGroup ? `\n📌 *No Grupo: ${groupName}*\n💬 Mensagens: ${groupMessages}\n⚒️ Comandos: ${groupCommands}\n🎨 Figurinhas: ${groupStickers}\n` : ''}\n\n🌐 *Geral (Todos os Grupos)*\n💬 Mensagens: ${totalMessages}\n⚒️ Comandos: ${totalCommands}\n🎨 Figurinhas: ${totalStickers}\n\n✨ *Bot*: ${nomebot} by ${nomedono} ✨`;
           if (profilePic) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: {
                 url: profilePic
               },
@@ -31788,7 +36942,7 @@ ${prefix}togglecmdvip premium_ia off`);
               quoted: info
             });
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: statusMessage,
               mentions: [sender]
             }, {
@@ -31997,7 +37151,7 @@ ${prefix}togglecmdvip premium_ia off`);
           const botMemUsage = process.memoryUsage();
           const memUsed = (botMemUsage.heapUsed / 1024 / 1024).toFixed(2);
           const memTotal = (botMemUsage.heapTotal / 1024 / 1024).toFixed(2);
-          const allGroups = await nazu.groupFetchAllParticipating();
+          const allGroups = await kya.groupFetchAllParticipating();
           const totalGroups = Object.keys(allGroups).length;
           let totalUsers = 0;
           Object.values(allGroups).forEach(group => {
@@ -32059,7 +37213,7 @@ ${prefix}togglecmdvip premium_ia off`);
           const mediaPath = useVideo ? menuVideoPath : menuImagePath;
           const mediaBuffer = fs.readFileSync(mediaPath);
           const menuText = await menuTopCmd(prefix, nomebot, pushname, topCommands);
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             [useVideo ? 'video' : 'image']: mediaBuffer,
             caption: menuText,
             gifPlayback: useVideo,
@@ -32090,7 +37244,7 @@ ${prefix}togglecmdvip premium_ia off`);
           }).join('\n') : 'Nenhum usuário registrado';
           const lastUsed = new Date(stats.lastUsed).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
           const infoMessage = `📊 *Estatísticas do Comando: ${prefix}${stats.name}* 📊\n\n` + `📈 *Total de Usos*: ${stats.count}\n` + `👥 *Usuários Únicos*: ${stats.uniqueUsers}\n` + `🕒 *Último Uso*: ${lastUsed}\n\n` + `🏆 *Top Usuários*:\n${topUsersText}\n\n` + `✨ *Bot*: ${nomebot} by ${nomedono} ✨`;
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: infoMessage,
             mentions: stats.topUsers.map(u => u.userId)
           }, {
@@ -32216,17 +37370,135 @@ ${prefix}togglecmdvip premium_ia off`);
         break;
       case 'dono':
         try {
-          const numeroDonoFormatado = numerodono ? String(numerodono).replace(/\D/g, '') : 'Não configurado';
-          const TextinDonoInfo = `╭━━━⊱ 👑 *DONO DO BOT* 👑 ⊱━━━╮
-│
-│ 👤 *Nome:* ${nomedono}
-│ 📱 *Contato:* wa.me/${numeroDonoFormatado}
-│
-╰━━━━━━━━━━━━━━━━━━━━━━━━╯`;
-          await reply(TextinDonoInfo);
+          const cfg = JSON.parse(fs.readFileSync(
+            path.join(process.cwd(), 'dados/src/config.json'), 'utf8'
+          ));
+
+          const pkg = JSON.parse(fs.readFileSync(
+            path.join(process.cwd(), 'package.json'), 'utf8'
+          ));
+
+          const p = cfg.kyaraOwnerProfile || {};
+          const nome = String(
+            p.name || cfg.nomedono || nomedono || 'Proprietário'
+          );
+
+          const numero = String(
+            p.contact || cfg.numerodono || numeroDonoFormatado || ''
+          ).replace(/\D/g, '');
+
+          const bio = String(
+            p.bio || 'Responsável pela configuração e manutenção do projeto.'
+          );
+
+          const cargo = String(
+            p.role || 'Proprietário / Desenvolvedor'
+          );
+
+          const botName = String(
+            cfg.nomebot || nomebot || 'KYARA-SYSTΞM'
+          );
+
+          const prefixBot = String(cfg.prefixo || prefix || '#');
+
+          const creatorCredit = String(
+            cfg.autor || pkg.author || 'Créditos não configurados'
+          );
+
+          const repo = String(
+            cfg.github_ofc || pkg.repository?.url || ''
+          ).replace(/^git\+/, '').replace(/\.git$/, '');
+
+          const channel = String(
+            cfg.kyaraChannel?.url || cfg.channels?.botKyara || ''
+          );
+
+          const uptimeTotal = Math.max(0, Math.floor(process.uptime()));
+          const days = Math.floor(uptimeTotal / 86400);
+          const hours = Math.floor((uptimeTotal % 86400) / 3600);
+          const minutes = Math.floor((uptimeTotal % 3600) / 60);
+
+          const uptime = [
+            days ? `${days}d` : '',
+            hours ? `${hours}h` : '',
+            `${minutes}min`
+          ].filter(Boolean).join(' ');
+
+          const memoryMb = (
+            process.memoryUsage().rss / 1024 / 1024
+          ).toFixed(1);
+
+          const url = numero ? 'https://wa.me/' + numero : '';
+
+          const caption = [
+            `╭━━━━━━━━〔 👑 ${botName} 〕━━━━━━━━╮`,
+            '                 PERFIL DO PROPRIETÁRIO',
+            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯',
+            '',
+            `👤 *${nome}*`,
+            `🛡️ ${cargo}`,
+            '',
+            '┏━━〔 SOBRE O RESPONSÁVEL 〕',
+            `┃ ${bio}`,
+            `┃ WhatsApp: ${url || 'Não configurado'}`,
+            '┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            '',
+            '┏━━〔 SISTEMA 〕',
+            `┃ Bot: ${botName}`,
+            `┃ Versão: ${pkg.version || 'Não informada'}`,
+            `┃ Prefixo: ${prefixBot}`,
+            `┃ Runtime: Node ${process.version}`,
+            `┃ Tempo ativo: ${uptime}`,
+            `┃ Memória RAM: ${memoryMb} MB`,
+            '┃ Estado: 🟢 Online',
+            '┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            '',
+            '┏━━〔 PROJETO 〕',
+            `┃ Créditos do criador: ${creatorCredit}`,
+            repo ? `┃ Repositório: ${repo}` : '',
+            channel ? `┃ Canal oficial: ${channel}` : '',
+            '┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+            '',
+            `🌸 ${botName} · Perfil oficial do responsável`
+          ].filter(Boolean).join('\n');
+
+          const video = path.join(
+            process.cwd(), 'dados/api/uploads/kyara-owner-card.mp4'
+          );
+
+          if (fs.existsSync(video)) {
+            await kya.sendMessage(from, {
+              video: fs.readFileSync(video),
+              mimetype: 'video/mp4',
+              caption
+            }, { quoted: info });
+          } else {
+            await reply(caption);
+          }
+
+          if (url) {
+            await kya.sendMessage(from, {
+              text: '📲 *CONTATO DO PROPRIETÁRIO*\n' + url
+            }, { quoted: info });
+
+            const vcard = [
+              'BEGIN:VCARD',
+              'VERSION:3.0',
+              'FN:' + nome.replace(/[\r\n]/g, ' '),
+              'TEL;type=CELL;type=VOICE;waid=' + numero + ':+' + numero,
+              'END:VCARD'
+            ].join('\n');
+
+            await kya.sendMessage(from, {
+              contacts: {
+                displayName: nome,
+                contacts: [{ displayName: nome, vcard }]
+              }
+            }, { quoted: info });
+          }
         } catch (e) {
-          console.error(e);
-          await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
+          console.error('Erro no comando dono:', e);
+          await reply('❌ Não consegui enviar o perfil do proprietário.');
         }
         break;
 
@@ -32234,9 +37506,8 @@ ${prefix}togglecmdvip premium_ia off`);
         try {
           const TextinCriadorInfo = `╭━━━⊱ 👨‍💻 *CRIADOR* 👨‍💻 ⊱━━━╮
 │
-│ 💎 *Nome:* DevTokyo
-│ 📱 *WhatsApp:* wa.me/5532985076326
-│ 🌐 *GitHub:* github.com/DevTokyoVx
+│ 💎 *Nome:* 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠
+│ 📱 *WhatsApp:* wa.me/5584987480834
 │
 ╰━━━━━━━━━━━━━━━━━━━━━━━━╯`;
           await reply(TextinCriadorInfo);
@@ -32313,7 +37584,442 @@ ${prefix}togglecmdvip premium_ia off`);
         break;
       }
 
-      case 'ping':
+      case 'ping2': {
+  const inicioPing2 = Date.now();
+
+  try {
+    const osPing2 = await import('node:os');
+    const fsPing2 = await import('node:fs');
+    const pathPing2 = await import('node:path');
+    const baileysPing2 = await import('baileys');
+
+    const msgPing2 = await kya.sendMessage(from, {
+      text: '🏓 *PING 2 — KYARA AI*\n\n██░░░░░░░░░░ 17%\n⏳ Conectando...'
+    }, { quoted: info });
+
+    const framesPing2 = [
+      ['██░░░░░░░░░░ 17%', '⏳ Conectando...'],
+      ['████░░░░░░░░ 33%', '⏳ Coletando dados...'],
+      ['██████░░░░░░ 50%', '⏳ Analisando sistema...'],
+      ['████████░░░░ 67%', '⏳ Calculando RAM...'],
+      ['██████████░░ 83%', '⏳ Gerando resultado...'],
+      ['████████████ 100%', '✅ Concluído!']
+    ];
+
+    for (const [barra, status] of framesPing2) {
+      await new Promise(resolve => setTimeout(resolve, 250));
+      await kya.sendMessage(from, {
+        text: '🏓 *PING 2 — KYARA AI*\n\n' + barra + '\n' + status,
+        edit: msgPing2.key
+      });
+    }
+
+    const totalMemPing2 = osPing2.totalmem();
+    const livreMemPing2 = osPing2.freemem();
+    const usadaMemPing2 = totalMemPing2 - livreMemPing2;
+    const gbPing2 = n => (n / 1024 ** 3).toFixed(2);
+
+    const timestampPing2 = Number(info?.messageTimestamp || 0);
+    const velocidadePing2 = timestampPing2
+      ? Math.max(0, Date.now() / 1000 - timestampPing2).toFixed(3)
+      : ((Date.now() - inicioPing2) / 1000).toFixed(3);
+
+    const uptimePing2 = Math.floor(process.uptime());
+    const horasPing2 = Math.floor(uptimePing2 / 3600);
+    const minutosPing2 = Math.floor((uptimePing2 % 3600) / 60);
+    const segundosPing2 = uptimePing2 % 60;
+
+    const onlinePing2 = [
+      horasPing2 ? horasPing2 + 'h' : '',
+      minutosPing2 ? minutosPing2 + 'min' : '',
+      segundosPing2 + 's'
+    ].filter(Boolean).join(' ');
+
+    const textoPlacaPing2 = [
+      '🏓 *STATUS PING 2 — KYARA AI*',
+      '',
+      '┃ 👤 Usuário: ' + (pushname || 'Usuário'),
+      '┃ ⏱️ Online: ' + onlinePing2,
+      '┃ ⚡ Velocidade: ' + velocidadePing2 + 's',
+      '┃ 📊 RAM Total: ' + gbPing2(totalMemPing2) + ' GB',
+      '┃ 📉 RAM Usada: ' + gbPing2(usadaMemPing2) + ' GB',
+      '┃ 📈 RAM Livre: ' + gbPing2(livreMemPing2) + ' GB',
+      '┃ 🧾 Uso Sistema: ' +
+        ((usadaMemPing2 / totalMemPing2) * 100).toFixed(1) + '%',
+      '┃ 🟢 Status: Online'
+    ].join('\n');
+
+
+    // RESPOSTA RICA: título, tabela e rodapé no mesmo envio.
+    try {
+      const cryptoPing2 = await import('node:crypto');
+
+      const linhasTabelaPing2 = [
+        ['Indicador', 'Resultado'],
+        ['👤 Usuário', String(pushname || 'Usuário')],
+        ['⏱️ Online', onlinePing2],
+        ['⚡ Velocidade', velocidadePing2 + 's'],
+        ['📊 RAM Total', gbPing2(totalMemPing2) + ' GB'],
+        ['📉 RAM Usada', gbPing2(usadaMemPing2) + ' GB'],
+        ['📈 RAM Livre', gbPing2(livreMemPing2) + ' GB'],
+        [
+          '🧾 Uso do sistema',
+          ((usadaMemPing2 / totalMemPing2) * 100).toFixed(1) + '%'
+        ],
+        ['🟢 Status', 'Online']
+      ];
+
+      const partesRichPing2 = [
+        {
+          messageType: 2,
+          messageText: '🏓 STATUS PING 2 — KYARA AI'
+        },
+        {
+          messageType: 4,
+          tableMetadata: {
+            rows: linhasTabelaPing2.map((linha, indice) => ({
+              items: linha.map(valor => String(valor ?? '')),
+              isHeading: indice === 0
+            }))
+          }
+        },
+        {
+          messageType: 2,
+          messageText: '✅ Kyara conectada e operacional.'
+        }
+      ];
+
+      const montarSecaoRichPing2 = parte => {
+        if (parte.messageType === 2) {
+          return {
+            view_model: {
+              primitive: {
+                text: parte.messageText,
+                __typename: 'GenAIMarkdownTextUXPrimitive'
+              },
+              __typename: 'GenAISingleLayoutViewModel'
+            }
+          };
+        }
+
+        if (parte.messageType === 4) {
+          return {
+            view_model: {
+              primitive: {
+                rows: parte.tableMetadata.rows.map(linha => ({
+                  is_header: Boolean(linha.isHeading),
+                  cells: linha.items.map(valor => String(valor ?? ''))
+                })),
+                __typename: 'GenATableUXPrimitive'
+              },
+              __typename: 'GenAISingleLayoutViewModel'
+            }
+          };
+        }
+
+        return null;
+      };
+
+      const idRichPing2 = 'kyara-ping2-' + Date.now();
+
+      const richResponsePing2 = {
+        messageType: 1,
+        submessages: partesRichPing2,
+        unifiedResponse: {
+          data: Buffer.from(JSON.stringify({
+            response_id: idRichPing2,
+            sections: partesRichPing2
+              .map(montarSecaoRichPing2)
+              .filter(Boolean)
+          })).toString('base64')
+        },
+        contextInfo: {
+          isForwarded: true,
+          forwardingScore: 1,
+          forwardOrigin: 4,
+          forwardedAiBotMessageInfo: {
+            botName: 'Meta AI',
+            botJid: '867051314767696@bot',
+            creatorName: 'Meta'
+          },
+          botMessageSharingInfo: {
+            botEntryPointOrigin: String(from || '').endsWith('@g.us') ? 30 : 29,
+            forwardScore: 1
+          }
+        }
+      };
+
+      const payloadRichPing2 = proto.Message.fromObject({
+        botForwardedMessage: {
+          message: {
+            richResponseMessage: richResponsePing2
+          }
+        },
+        messageContextInfo: {
+          messageSecret: cryptoPing2.randomBytes(32),
+          botMetadata: {
+            modelMetadata: {
+              modelType: 'LLAMA_PROD',
+              premiumModelStatus: 'AVAILABLE'
+            },
+            botAgeCollectionMetadata: {},
+            botResponseId: idRichPing2,
+            verificationMetadata: { proofs: [] },
+            botInfrastructureDiagnostics: {},
+            capabilityMetadata: {
+              capabilities: [
+                'RICH_RESPONSE_STRUCTURED_RESPONSE',
+                'RICH_RESPONSE_UNIFIED_RESPONSE',
+                'RICH_RESPONSE_UNIFIED_TEXT_COMPONENT',
+                'SESSION_TRANSPARENCY_SYSTEM_MESSAGE',
+                'RICH_RESPONSE_CODE',
+                'RICH_RESPONSE_TABLE'
+              ]
+            }
+          }
+        }
+      });
+
+      const mensagemRichPing2 = generateWAMessageFromContent(
+        from,
+        payloadRichPing2,
+        {
+          userJid: kya?.user?.id,
+          quoted: info
+        }
+      );
+
+      await kya.relayMessage(
+        from,
+        mensagemRichPing2.message,
+        { messageId: mensagemRichPing2.key.id }
+      );
+
+      console.log('[PING2] Resposta rica com tabela enviada.');
+    } catch (erroRichPing2) {
+      console.error(
+        '[PING2] Falha na resposta rica:',
+        erroRichPing2?.stack || erroRichPing2
+      );
+
+      // Alternativa caso o envio rico seja recusado.
+      await kya.sendMessage(
+        from,
+        { text: textoPlacaPing2 },
+        { quoted: info }
+      );
+    }
+
+  } catch (erroPing2) {
+    console.error('[PING2] Erro:', erroPing2?.stack || erroPing2);
+    try {
+      await kya.sendMessage(from, {
+        text: '❌ Erro ao executar o Ping 2: ' +
+          (erroPing2?.message || String(erroPing2))
+      }, { quoted: info });
+    } catch {}
+  }
+}
+break;
+
+case 'ping3': {
+  try {
+    const osPing3 = await import('node:os');
+    const fsPing3 = await import('node:fs/promises');
+    const pathPing3 = await import('node:path');
+    const cryptoPing3 = await import('node:crypto');
+
+    const caminhoPing3 = pathPing3.join(
+      process.cwd(), 'dados', 'midias', 'menu.jpg'
+    );
+
+    const imagemBufferPing3 = await fsPing3.readFile(caminhoPing3);
+    const imagemDataPing3 =
+      'data:image/jpeg;base64,' + imagemBufferPing3.toString('base64');
+
+    const totalPing3 = osPing3.totalmem();
+    const livrePing3 = osPing3.freemem();
+    const usadoPing3 = totalPing3 - livrePing3;
+    const gbPing3 = n => (n / 1024 ** 3).toFixed(2);
+
+    const timestampPing3 = Number(info?.messageTimestamp || 0);
+    const velocidadePing3 = timestampPing3
+      ? Math.max(0, Date.now() / 1000 - timestampPing3).toFixed(3)
+      : 'N/D';
+
+    const uptimePing3 = Math.floor(process.uptime());
+    const onlinePing3 =
+      Math.floor(uptimePing3 / 3600) + 'h ' +
+      Math.floor((uptimePing3 % 3600) / 60) + 'min ' +
+      (uptimePing3 % 60) + 's';
+
+    const linhasPing3 = [
+      ['Indicador', 'Resultado'],
+      ['👤 Solicitante', String(pushname || 'Usuário')],
+      ['⚡ Latência', velocidadePing3 + 's'],
+      ['⏳ Tempo ativa', onlinePing3],
+      ['🧠 Memória total', gbPing3(totalPing3) + ' GB'],
+      ['🔹 Memória usada', gbPing3(usadoPing3) + ' GB'],
+      ['🔸 Memória livre', gbPing3(livrePing3) + ' GB'],
+      ['📊 Uso de RAM', ((usadoPing3 / totalPing3) * 100).toFixed(1) + '%'],
+      ['💠 Sistema', 'OPERACIONAL']
+    ];
+
+    const partesPing3 = [
+      {
+        messageType: 2,
+        messageText: '💠 KYARA SYSTEM — DIAGNÓSTICO'
+      },
+      {
+        messageType: 4,
+        tableMetadata: {
+          rows: linhasPing3.map((linha, indice) => ({
+            items: linha.map(valor => String(valor ?? '')),
+            isHeading: indice === 0
+          }))
+        }
+      },
+      {
+        messageType: 2,
+        messageText: '✨ Diagnóstico concluído. Kyara permanece online.'
+      }
+    ];
+
+    const secaoTextoPing3 = texto => ({
+      __typename: 'GenAIUnifiedResponseSection',
+      view_model: {
+        __typename: 'GenAISingleLayoutViewModel',
+        primitive: {
+          __typename: 'GenAIMarkdownTextUXPrimitive',
+          text: texto
+        }
+      }
+    });
+
+    const secaoTabelaPing3 = {
+      __typename: 'GenAIUnifiedResponseSection',
+      view_model: {
+        __typename: 'GenAISingleLayoutViewModel',
+        primitive: {
+          __typename: 'GenATableUXPrimitive',
+          rows: linhasPing3.map((linha, indice) => ({
+            is_header: indice === 0,
+            cells: linha.map(valor => String(valor ?? ''))
+          }))
+        }
+      }
+    };
+
+    const htmlImagemPing3 =
+      '<div style="text-align:center">' +
+      '<img src="' + imagemDataPing3 + '"' +
+      ' alt="Kyara System" style="width:100%;height:auto;border-radius:12px">' +
+      '</div>';
+
+    const secaoImagemPing3 = {
+      __typename: 'GenAIUnifiedResponseSection',
+      view_model: {
+        __typename: 'GenAISingleLayoutViewModel',
+        primitive: {
+          __typename: 'GenAIaeacdsnwHtmlPrimitive',
+          payload: htmlImagemPing3,
+          trusted_sources: []
+        }
+      }
+    };
+
+    const idPing3 = 'kyara-ping3-' + Date.now();
+
+    const richPing3 = {
+      messageType: 1,
+      submessages: partesPing3,
+      unifiedResponse: {
+        data: Buffer.from(JSON.stringify({
+          __typename: 'GenAIUnifiedResponse',
+          response_id: idPing3,
+          sections: [
+            secaoTextoPing3('💠 KYARA SYSTEM — DIAGNÓSTICO'),
+            secaoImagemPing3,
+            secaoTabelaPing3,
+            secaoTextoPing3(
+              '✨ Diagnóstico concluído. Kyara permanece online.'
+            )
+          ]
+        })).toString('base64')
+      },
+      contextInfo: {
+        isForwarded: true,
+        forwardingScore: 1,
+        forwardOrigin: 4,
+        forwardedAiBotMessageInfo: {
+          botName: 'Meta AI',
+          botJid: '867051314767696@bot',
+          creatorName: 'Meta'
+        },
+        botMessageSharingInfo: {
+          botEntryPointOrigin: String(from || '').endsWith('@g.us') ? 30 : 29,
+          forwardScore: 1
+        }
+      }
+    };
+
+    const payloadPing3 = proto.Message.fromObject({
+      botForwardedMessage: {
+        message: {
+          richResponseMessage: richPing3
+        }
+      },
+      messageContextInfo: {
+        messageSecret: cryptoPing3.randomBytes(32),
+        botMetadata: {
+          modelMetadata: {
+            modelType: 'LLAMA_PROD',
+            premiumModelStatus: 'AVAILABLE'
+          },
+          botAgeCollectionMetadata: {},
+          botResponseId: idPing3,
+          verificationMetadata: { proofs: [] },
+          botInfrastructureDiagnostics: {},
+          capabilityMetadata: {
+            capabilities: [
+              'RICH_RESPONSE_STRUCTURED_RESPONSE',
+              'RICH_RESPONSE_UNIFIED_RESPONSE',
+              'RICH_RESPONSE_UNIFIED_TEXT_COMPONENT',
+              'RICH_RESPONSE_TABLE'
+            ]
+          }
+        }
+      }
+    });
+
+    const mensagemPing3 = generateWAMessageFromContent(
+      from,
+      payloadPing3,
+      {
+        userJid: kya?.user?.id,
+        quoted: info
+      }
+    );
+
+    await kya.relayMessage(
+      from,
+      mensagemPing3.message,
+      { messageId: mensagemPing3.key.id }
+    );
+
+    console.log('[PING3] Resposta rica enviada com imagem incorporada.');
+
+  } catch (erroPing3) {
+    console.error('[PING3] Erro:', erroPing3?.stack || erroPing3);
+
+    await kya.sendMessage(from, {
+      text: '❌ Não foi possível montar o Ping 3: ' +
+        (erroPing3?.message || String(erroPing3))
+    }, { quoted: info });
+  }
+}
+break;
+  case 'ping':
         try {
           const timestamp = Date.now();
           const speedConverted = (timestamp - info.messageTimestamp * 1000) / 1000;
@@ -32338,7 +38044,7 @@ ${prefix}togglecmdvip premium_ia off`);
             statusCor = '🟥';
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `╭⊱ ⚡ *STATUS DA CONEXÃO* ⚡ ⊱╮
 │
 │ 📡 *Informações de Latência*
@@ -32371,7 +38077,7 @@ ${prefix}togglecmdvip premium_ia off`);
         try {
           var buff;
           buff = await getFileBuffer(info.message.extendedTextMessage.contextInfo.quotedMessage.stickerMessage, 'sticker');
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: buff
           }, {
             quoted: info
@@ -32417,7 +38123,7 @@ ${prefix}togglecmdvip premium_ia off`);
               `ffmpeg -i "${outputGif}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -y "${outputMp4}"`
             );
 
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: fs.readFileSync(outputMp4),
               gifPlayback: true,
               mimetype: 'video/mp4',
@@ -32566,7 +38272,7 @@ console.log(
                   socketAtual?.user?.id || 'conectado'
                 );
 
-                const sent = await sendSticker(
+                const sent = await sendStickerWithGroupCaption(
                   socketAtual,
                   from,
                   {
@@ -32636,7 +38342,7 @@ ${nomedono}`,
            * Caso seja /removebg ou /rmbg, envia a imagem PNG
            * transparente diretamente pelo Buffer.
            */
-          return await nazu.sendMessage(
+          return await kya.sendMessage(
             from,
             {
               image: resultBuffer,
@@ -32728,7 +38434,7 @@ ${nomedono}`,
             `[Upscale LOCAL] 📤 Enviando ${resultBuffer.length} bytes...`
           );
 
-          return await nazu.sendMessage(
+          return await kya.sendMessage(
             from,
             {
               image: resultBuffer,
@@ -32754,7 +38460,7 @@ ${nomedono}`,
           if (!q) return reply('Falta o texto.');
           let ppimg = "";
           try {
-            ppimg = await nazu.profilePictureUrl(sender, 'image');
+            ppimg = await kya.profilePictureUrl(sender, 'image');
           } catch {
             ppimg = 'https://telegra.ph/file/b5427ea4b8701bc47e751.jpg';
           }
@@ -32785,7 +38491,7 @@ ${nomedono}`,
               'Content-Type': 'application/json'
             }
           });
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: Buffer.from(res.data.result.image, 'base64'),
             author: `『${pushname}』`,
             packname: `${nomebot}`, type: 'image'
@@ -32806,7 +38512,7 @@ ${nomedono}`,
           if (!q || !emoji1 || !emoji2) return reply(`Formato errado, utilize:\n${prefix}${command} emoji1/emoji2\nEx: ${prefix}${command} 🤓/🙄`);
           var datzc;
           datzc = await emojiMix(emoji1, emoji2);
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: {
               url: datzc
             },
@@ -32854,7 +38560,7 @@ ${nomedono}`,
           // Aplicar quebra de linha para textos longos
           let processedText = q.length > 20 ? breakText(q, 20) : q;
 
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: {
               url: `https://huratera.sirv.com/PicsArt_08-01-10.00.42.png?profile=Example-Text&text.0.text=${encodeURIComponent(processedText)}&text.0.outline.color=000000&text.0.outline.blur=0&text.0.outline.opacity=55&text.0.color=${cores}&text.0.font.family=${fontes}&text.0.font.weight=bold&text.0.background.color=ff0000`
             },
@@ -32947,12 +38653,12 @@ ${nomedono}`,
 
           // Converter para webp animado
           const outputWebp = path.join(tempDir, 'output.webp');
-          const webpCmd = `ffmpeg -i ${outputVideo} -vcodec libwebp -filter:v fps=fps=15 -lossless 0 -compression_level 6 -q:v 50 -loop 0 -preset picture -an -vsync 0 ${outputWebp}`;
+          const webpCmd = `ffmpeg -i ${outputVideo} -vcodec libwebp -filter:v fps=fps=15 -lossless 0 -compression_level 4 -q:v 50 -loop 0 -preset picture -an -vsync 0 ${outputWebp}`;
 
           await execAsync(webpCmd);
 
           // Enviar sticker
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: fs.readFileSync(outputWebp),
             author: `『${pushname}』`,
             packname: `${nomebot}`,
@@ -32975,6 +38681,772 @@ ${nomedono}`,
         break;
       case 'st':
       case 'stk':
+      case 'audiosticker':
+      case 'figurinhasom':
+      case 'figsom': {
+        const MAX_AUDIO_STICKER_SECONDS = 9.5;
+        const AUDIO_STICKER_PENDING_TTL = 10 * 60 * 1000;
+
+        const quotedAudioStickerMessage =
+          info.message?.extendedTextMessage?.contextInfo?.quotedMessage ||
+          info.message?.imageMessage?.contextInfo?.quotedMessage ||
+          info.message?.videoMessage?.contextInfo?.quotedMessage ||
+          null;
+
+        const unwrapAudioStickerMessage = message => {
+          let current = message;
+
+          for (let i = 0; i < 7 && current; i++) {
+            const nested =
+              current.ephemeralMessage?.message ||
+              current.viewOnceMessage?.message ||
+              current.viewOnceMessageV2?.message ||
+              current.viewOnceMessageV2Extension?.message ||
+              current.documentWithCaptionMessage?.message;
+
+            if (!nested) break;
+            current = nested;
+          }
+
+          return current || {};
+        };
+
+        const audioStickerSource = unwrapAudioStickerMessage(
+          quotedAudioStickerMessage || info.message
+        );
+
+        const audioStickerAudioMessage =
+          audioStickerSource.audioMessage || null;
+
+        const audioStickerVideoMessage =
+          audioStickerSource.videoMessage || null;
+
+        const audioStickerImageMessage =
+          audioStickerSource.imageMessage || null;
+
+        const audioStickerStickerMessage =
+          audioStickerSource.stickerMessage || null;
+
+        const pendingAudioStickerMap =
+          global.__KYARA_PENDING_AUDIO_STICKERS instanceof Map
+            ? global.__KYARA_PENDING_AUDIO_STICKERS
+            : (global.__KYARA_PENDING_AUDIO_STICKERS = new Map());
+
+        const audioStickerSender =
+          info.key?.participant || info.key?.remoteJid || from;
+
+        const audioStickerCacheKey =
+          `${from}:${audioStickerSender}`;
+
+        const audioStickerShellQuote = value =>
+          "'" + String(value).replace(/'/g, "'\\''") + "'";
+
+        const audioStickerRun = command =>
+          execAsync(command, {
+            timeout: 120000,
+            maxBuffer: 4 * 1024 * 1024
+          });
+
+        const audioStickerMakeTemp = () => {
+          const root = path.join(DATABASE_DIR, 'tmp');
+
+          fs.mkdirSync(root, { recursive: true });
+
+          return fs.mkdtempSync(
+            path.join(root, 'kyara-audiosticker-')
+          );
+        };
+
+        const audioStickerProbeDuration = async (
+          file,
+          fallback = 0
+        ) => {
+          try {
+            const result = await audioStickerRun(
+              `ffprobe -v error -show_entries format=duration ` +
+              `-of default=noprint_wrappers=1:nokey=1 ` +
+              `${audioStickerShellQuote(file)}`
+            );
+
+            const seconds = Number.parseFloat(
+              String(result.stdout || '').trim()
+            );
+
+            return Number.isFinite(seconds) && seconds > 0
+              ? seconds
+              : Number(fallback) || 0;
+
+          } catch {
+            return Number(fallback) || 0;
+          }
+        };
+
+        const audioStickerNormalizeAudio = async (
+          inputBuffer,
+          tempDir,
+          inputName = 'audio-input.bin',
+          fallbackDuration = 0
+        ) => {
+          if (
+            !Buffer.isBuffer(inputBuffer) ||
+            inputBuffer.length < 100
+          ) {
+            throw new Error('O áudio recebido está vazio ou inválido.');
+          }
+
+          const inputFile = path.join(tempDir, inputName);
+          const outputFile = path.join(
+            tempDir,
+            'audio-sticker.ogg'
+          );
+
+          fs.writeFileSync(inputFile, inputBuffer);
+
+          const sourceDuration =
+            await audioStickerProbeDuration(
+              inputFile,
+              fallbackDuration
+            );
+
+          if (!sourceDuration || sourceDuration < 0.25) {
+            throw new Error(
+              'Não consegui identificar a duração do áudio.'
+            );
+          }
+
+          const clipDuration = Math.min(
+            sourceDuration,
+            MAX_AUDIO_STICKER_SECONDS
+          );
+
+          await audioStickerRun(
+            `ffmpeg -hide_banner -loglevel error -nostdin -y ` +
+            `-i ${audioStickerShellQuote(inputFile)} ` +
+            `-map 0:a:0 -vn -t ${clipDuration.toFixed(2)} ` +
+            `-ac 1 -ar 48000 -c:a libopus -b:a 48k ` +
+            `-application audio -f ogg ` +
+            `${audioStickerShellQuote(outputFile)}`
+          );
+
+          if (
+            !fs.existsSync(outputFile) ||
+            fs.statSync(outputFile).size < 100
+          ) {
+            throw new Error(
+              'O FFmpeg não conseguiu preparar o áudio.'
+            );
+          }
+
+          return {
+            buffer: fs.readFileSync(outputFile),
+            seconds: clipDuration,
+            trimmed: sourceDuration > MAX_AUDIO_STICKER_SECONDS
+          };
+        };
+
+        const audioStickerEncodePatch = () => {
+          const messageType = proto?.Message;
+          const patchKey = Symbol.for(
+            'kyara.audioSticker.encoder.v1'
+          );
+
+          if (
+            !messageType?.encode ||
+            !messageType.FutureProofMessage?.encode ||
+            !messageType.StickerMessage?.encode ||
+            !messageType.AudioMessage?.encode
+          ) {
+            throw new Error(
+              'Esta versão do Baileys não expõe os tipos protobuf necessários.'
+            );
+          }
+
+          if (messageType[patchKey]) return;
+
+          const encodeVarint = value => {
+            const bytes = [];
+            let current = value >>> 0;
+
+            while (current > 127) {
+              bytes.push((current & 127) | 128);
+              current >>>= 7;
+            }
+
+            bytes.push(current);
+            return Buffer.from(bytes);
+          };
+
+          const schemaAlreadyHasField = (
+            schema,
+            field,
+            tag
+          ) => {
+            try {
+              const encoded = schema
+                .encode({ [field]: {} })
+                .finish();
+
+              const marker = Buffer.concat([
+                encodeVarint(tag),
+                Buffer.from([0])
+              ]);
+
+              return encoded.indexOf(marker) !== -1;
+
+            } catch {
+              return false;
+            }
+          };
+
+          const targets = [
+            [
+              messageType,
+              'audioStickerMessage',
+              1074,
+              messageType.FutureProofMessage
+            ],
+            [
+              messageType.StickerMessage,
+              'audioMessage',
+              210,
+              messageType.AudioMessage
+            ]
+          ].filter(([target, field, tag]) =>
+            !schemaAlreadyHasField(target, field, tag)
+          );
+
+          for (const [target, field, tag, schema] of targets) {
+            const encodeOriginal = target.encode;
+
+            target.encode = function (message, writer) {
+              const result = encodeOriginal.call(
+                this,
+                message,
+                writer
+              );
+
+              if (message && message[field]) {
+                return schema
+                  .encode(
+                    message[field],
+                    result.uint32(tag).fork()
+                  )
+                  .ldelim();
+              }
+
+              return result;
+            };
+          }
+
+          Object.defineProperty(messageType, patchKey, {
+            value: true,
+            configurable: false,
+            enumerable: false
+          });
+        };
+
+        const audioStickerSend = async (
+          stickerBuffer,
+          audioBuffer,
+          animated = false,
+          stickerDetails = {}
+        ) => {
+          if (typeof kya.waUploadToServer !== 'function') {
+            throw new Error(
+              'O upload de mídia do Baileys não está disponível.'
+            );
+          }
+
+          audioStickerEncodePatch();
+
+          // KYARA_AUDIO_STICKER_EXIF
+          // Metadados técnicos da figurinha. A exibição depende do WhatsApp.
+          try {
+            const stickerExifImage = new webpmux.Image();
+            await stickerExifImage.load(stickerBuffer);
+          
+            const packName = String(
+              typeof nomebot !== 'undefined' && nomebot
+                ? nomebot
+                : 'KYARA-SYSTΞM'
+            ).slice(0, 128);
+          
+            const packAuthor = '© VØX-SYSTΞM';
+            const details = stickerDetails || {};
+            const descriptionLines = [
+              '🌸 KYARA-SYSTΞM',
+              details.seconds ? `Duração: ${Number(details.seconds).toFixed(1)}s` : null,
+              details.resolution ? `Resolução: ${details.resolution}` : null,
+              details.fps ? `FPS: ${details.fps}` : null,
+              details.quality ? `Qualidade: ${details.quality}` : null,
+              details.bytes ? `Tamanho: ${Math.max(1, Math.round(details.bytes / 1024))} KB` : null,
+              details.audioSource ? `Áudio: ${details.audioSource}` : 'Áudio: integrado',
+              details.trimmed ? 'Duração otimizada' : null,
+              '© VØX-SYSTΞM'
+            ].filter(Boolean);
+          
+            const metadata = {
+              'sticker-pack-id': 'vox-system-kyara-audiosticker',
+              'sticker-pack-name': packName,
+              'sticker-pack-publisher': packAuthor,
+              'sticker-pack-description': descriptionLines.join('\\n'),
+              emojis: ['🎵', '🌸']
+            };
+          
+            const metadataJSON = Buffer.from(JSON.stringify(metadata), 'utf8');
+            const exifHeader = Buffer.from([
+              0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00,
+              0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00,
+              0x00, 0x00, 0x16, 0x00, 0x00, 0x00
+            ]);
+            exifHeader.writeUIntLE(metadataJSON.length, 14, 4);
+            stickerExifImage.exif = Buffer.concat([exifHeader, metadataJSON]);
+            stickerBuffer = await stickerExifImage.save(null);
+          
+            console.log('[AUDIO STICKER] Metadados técnicos aplicados.');
+          } catch (metadataError) {
+            console.warn(
+              '[AUDIO STICKER] Falha nos metadados:',
+              metadataError?.message || metadataError
+            );
+          }
+          
+          const preparedSticker = await prepareWAMessageMedia(
+            {
+              sticker: stickerBuffer,
+              mimetype: 'image/webp'
+            },
+            {
+              upload: kya.waUploadToServer
+            }
+          );
+
+          const preparedAudio = await prepareWAMessageMedia(
+            {
+              audio: audioBuffer,
+              mimetype: 'audio/ogg; codecs=opus',
+              ptt: false
+            },
+            {
+              upload: kya.waUploadToServer
+            }
+          );
+
+          if (
+            !preparedSticker?.stickerMessage ||
+            !preparedAudio?.audioMessage
+          ) {
+            throw new Error(
+              'Não foi possível preparar as duas mídias para envio.'
+            );
+          }
+
+          const stickerProto = proto.Message.fromObject({
+            stickerMessage: {
+              ...preparedSticker.stickerMessage,
+              mimetype: 'image/webp',
+              isAnimated: Boolean(animated)
+            }
+          });
+
+          stickerProto.stickerMessage.audioMessage =
+            preparedAudio.audioMessage;
+
+          await kya.relayMessage(
+            from,
+            {
+              proto: stickerProto,
+
+              audioStickerMessage: {
+                message: stickerProto
+              },
+
+              messageContextInfo: {
+                messageSecret: crypto.randomBytes(32)
+              }
+            },
+            {}
+          );
+          await sendGroupStickerCaption(kya, from, info, 'Figurinha com som criada');
+        };
+
+                // Sem mensagens extras: as informações ficam nos metadados.
+        const audioStickerSendProgress = async () => {};
+        const audioStickerSendInfo = async () => {};
+
+        let audioStickerTempDir = null;
+
+        try {
+          const now = Date.now();
+
+          for (const [key, value] of pendingAudioStickerMap.entries()) {
+            if (
+              !value?.createdAt ||
+              now - value.createdAt > AUDIO_STICKER_PENDING_TTL
+            ) {
+              pendingAudioStickerMap.delete(key);
+            }
+          }
+
+          // ==================================================
+          // ETAPA 1: RECEBER E GUARDAR O ÁUDIO
+          // ==================================================
+
+          if (audioStickerAudioMessage) {
+            const audioBuffer = await getFileBuffer(
+              audioStickerAudioMessage,
+              'audio'
+            );
+
+            audioStickerTempDir = audioStickerMakeTemp();
+
+            const normalizedAudio =
+              await audioStickerNormalizeAudio(
+                audioBuffer,
+                audioStickerTempDir,
+                'audio-input.bin',
+                Number(audioStickerAudioMessage.seconds) || 0
+              );
+
+            pendingAudioStickerMap.set(
+              audioStickerCacheKey,
+              {
+                buffer: normalizedAudio.buffer,
+                seconds: normalizedAudio.seconds,
+                createdAt: Date.now()
+              }
+            );
+
+            while (pendingAudioStickerMap.size > 100) {
+              pendingAudioStickerMap.delete(
+                pendingAudioStickerMap.keys().next().value
+              );
+            }
+
+            await reply(
+              `✅ *Áudio preparado!*\n\n` +
+              `🎵 Duração usada: ${normalizedAudio.seconds.toFixed(1)}s` +
+              `${normalizedAudio.trimmed ? ' (primeiros 9,5 segundos)' : ''}\n\n` +
+              `Agora responda à figurinha desejada com *${prefix}audiosticker*.\n` +
+              `Você tem 10 minutos para combinar as mídias.`
+            );
+
+            break;
+          }
+
+          // ==================================================
+          // ETAPA 2A: VÍDEO COM ÁUDIO
+          // ==================================================
+
+          if (audioStickerVideoMessage) {
+            await audioStickerSendProgress(
+              'Recebi o vídeo! Estou analisando a imagem e o áudio...'
+            );
+
+            const videoBuffer = await getFileBuffer(
+              audioStickerVideoMessage,
+              'video'
+            );
+
+            if (
+              !Buffer.isBuffer(videoBuffer) ||
+              videoBuffer.length < 100
+            ) {
+              throw new Error('Não consegui baixar o vídeo.');
+            }
+
+            audioStickerTempDir = audioStickerMakeTemp();
+
+            const inputVideo = path.join(
+              audioStickerTempDir,
+              'video-input.mp4'
+            );
+
+            const outputSticker = path.join(
+              audioStickerTempDir,
+              'animated-sticker.webp'
+            );
+
+            const outputAudio = path.join(
+              audioStickerTempDir,
+              'video-audio.ogg'
+            );
+
+            fs.writeFileSync(inputVideo, videoBuffer);
+
+            const audioStreamCheck = await audioStickerRun(
+              `ffprobe -v error -select_streams a:0 ` +
+              `-show_entries stream=codec_type -of csv=p=0 ` +
+              `${audioStickerShellQuote(inputVideo)}`
+            ).catch(() => ({ stdout: '' }));
+
+            if (!String(audioStreamCheck.stdout || '').trim()) {
+              throw new Error(
+                'Esse vídeo não possui faixa de áudio.'
+              );
+            }
+
+            const videoDuration =
+              await audioStickerProbeDuration(
+                inputVideo,
+                audioStickerVideoMessage.seconds
+              );
+
+            if (!videoDuration || videoDuration < 0.5) {
+              throw new Error(
+                'Não consegui identificar a duração do vídeo.'
+              );
+            }
+
+            let clipDuration = Math.min(
+              videoDuration,
+              MAX_AUDIO_STICKER_SECONDS
+            );
+
+            await audioStickerSendProgress(
+              'Otimizando a animação e procurando a melhor qualidade possível...'
+            );
+
+            const compressionAttempts = [
+              { seconds: clipDuration, fps: 8, size: 256, qualities: [44, 32] },
+              { seconds: clipDuration, fps: 7, size: 224, qualities: [36, 25] },
+              { seconds: clipDuration, fps: 6, size: 192, qualities: [30, 20] },
+              { seconds: clipDuration, fps: 5, size: 160, qualities: [24, 15] },
+              { seconds: clipDuration, fps: 4, size: 128, qualities: [20, 12] },
+              { seconds: Math.min(7.5, clipDuration), fps: 6, size: 192, qualities: [20] },
+              { seconds: Math.min(7.5, clipDuration), fps: 5, size: 160, qualities: [15] },
+              { seconds: Math.min(5.5, clipDuration), fps: 5, size: 160, qualities: [15] },
+              { seconds: Math.min(5.5, clipDuration), fps: 4, size: 128, qualities: [12] }
+            ];
+
+            let stickerCreated = false;
+            let stickerProfileUsed = null;
+            let stickerBytes = 0;
+
+            for (const profile of compressionAttempts) {
+              if (stickerCreated) break;
+
+              if (profile.seconds < 0.5) continue;
+
+              for (const quality of profile.qualities) {
+                await audioStickerRun(
+                  `ffmpeg -hide_banner -loglevel error -nostdin -y ` +
+                  `-i ${audioStickerShellQuote(inputVideo)} ` +
+                  `-an -t ${profile.seconds.toFixed(2)} ` +
+                  `-vf "fps=${profile.fps},scale=${profile.size}:${profile.size}:force_original_aspect_ratio=decrease,` +
+                  `pad=${profile.size}:${profile.size}:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba" ` +
+                  `-c:v libwebp -lossless 0 -compression_level 4 ` +
+                  `-q:v ${quality} -preset picture -loop 0 ` +
+                  `${audioStickerShellQuote(outputSticker)}`
+                );
+
+                if (
+                  fs.existsSync(outputSticker) &&
+                  fs.statSync(outputSticker).size <= 480 * 1024
+                ) {
+                  stickerCreated = true;
+                  stickerProfileUsed = {
+                    fps: profile.fps,
+                    size: profile.size,
+                    quality
+                  };
+                  stickerBytes = fs.statSync(outputSticker).size;
+                  clipDuration = profile.seconds;
+                  break;
+                }
+              }
+            }
+
+            if (!stickerCreated) {
+              throw new Error(
+                'Não consegui reduzir a animação até o limite do WhatsApp. Tente um vídeo menor ou com menos movimento.'
+              );
+            }
+
+            await audioStickerRun(
+              `ffmpeg -hide_banner -loglevel error -nostdin -y ` +
+              `-i ${audioStickerShellQuote(inputVideo)} ` +
+              `-map 0:a:0 -vn -t ${clipDuration.toFixed(2)} ` +
+              `-ac 1 -ar 48000 -c:a libopus -b:a 48k ` +
+              `-application audio -f ogg ` +
+              `${audioStickerShellQuote(outputAudio)}`
+            );
+
+            if (
+              !fs.existsSync(outputAudio) ||
+              fs.statSync(outputAudio).size < 100
+            ) {
+              throw new Error(
+                'Não consegui extrair o áudio do vídeo.'
+              );
+            }
+
+            await audioStickerSend(
+              fs.readFileSync(outputSticker),
+              fs.readFileSync(outputAudio),
+              true,
+              {
+                seconds: clipDuration,
+                resolution: `${stickerProfileUsed?.size || 256}x${stickerProfileUsed?.size || 256}`,
+                fps: stickerProfileUsed?.fps,
+                quality: stickerProfileUsed?.quality,
+                bytes: stickerBytes,
+                audioSource: 'Original do vídeo',
+                trimmed: videoDuration > clipDuration
+              }
+            );
+
+            await audioStickerSendInfo({
+              mode: 'Vídeo com áudio original',
+              seconds: clipDuration,
+              audioSource: 'Extraído do próprio vídeo',
+              animated: true,
+              profile: stickerProfileUsed,
+              bytes: stickerBytes,
+              trimmed: videoDuration > clipDuration
+            });
+
+            break;
+          }
+
+          // ==================================================
+          // ETAPA 2B: FIGURINHA + ÁUDIO GUARDADO
+          // ==================================================
+
+          if (
+            audioStickerStickerMessage ||
+            audioStickerImageMessage
+          ) {
+            await audioStickerSendProgress(
+              'Preparando a combinação da figurinha com o áudio guardado...'
+            );
+
+            const pending =
+              pendingAudioStickerMap.get(audioStickerCacheKey);
+
+            if (!pending) {
+              return reply(
+                `🎵 Primeiro responda ao áudio com *${prefix}audiosticker*.\n\n` +
+                `Depois responda à figurinha com o mesmo comando. ` +
+                `O áudio fica disponível por 10 minutos.`
+              );
+            }
+
+            const sourceSticker =
+              audioStickerStickerMessage ||
+              audioStickerImageMessage;
+
+            const isSourceSticker =
+              Boolean(audioStickerStickerMessage);
+
+            const sourceBuffer = await getFileBuffer(
+              sourceSticker,
+              isSourceSticker ? 'sticker' : 'image'
+            );
+
+            if (
+              !Buffer.isBuffer(sourceBuffer) ||
+              sourceBuffer.length < 100
+            ) {
+              throw new Error(
+                'Não consegui baixar a figurinha/imagem marcada.'
+              );
+            }
+
+            audioStickerTempDir = audioStickerMakeTemp();
+
+            let finalStickerBuffer = sourceBuffer;
+
+            const animated = Boolean(
+              audioStickerStickerMessage?.isAnimated
+            );
+
+            if (!isSourceSticker) {
+              const inputImage = path.join(
+                audioStickerTempDir,
+                'image-input.bin'
+              );
+
+              const outputImage = path.join(
+                audioStickerTempDir,
+                'image-sticker.webp'
+              );
+
+              fs.writeFileSync(inputImage, sourceBuffer);
+
+              await audioStickerRun(
+                `ffmpeg -hide_banner -loglevel error -nostdin -y ` +
+                `-i ${audioStickerShellQuote(inputImage)} ` +
+                `-vf "scale=320:320:force_original_aspect_ratio=decrease,` +
+                `pad=320:320:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba" ` +
+                `-frames:v 1 -c:v libwebp -q:v 75 -compression_level 4 ` +
+                `${audioStickerShellQuote(outputImage)}`
+              );
+
+              finalStickerBuffer = fs.readFileSync(outputImage);
+            }
+
+            await audioStickerSend(
+              finalStickerBuffer,
+              pending.buffer,
+              animated,
+              {
+                seconds: pending.seconds,
+                bytes: finalStickerBuffer.length,
+                audioSource: 'Áudio preparado anteriormente'
+              }
+            );
+
+            pendingAudioStickerMap.delete(audioStickerCacheKey);
+
+            await audioStickerSendInfo({
+              mode: 'Figurinha combinada com áudio guardado',
+              seconds: pending.seconds,
+              audioSource: 'Áudio preparado anteriormente',
+              animated,
+              profile: null,
+              bytes: finalStickerBuffer.length,
+              trimmed: false
+            });
+
+            break;
+          }
+
+          return reply(
+            `🌸 *KYARA • FIGURINHA COM SOM*\n\n` +
+            `🎵 *Áudio + figurinha:*\n` +
+            `1. Responda ao áudio com ${prefix}audiosticker\n` +
+            `2. Responda à figurinha com ${prefix}audiosticker\n\n` +
+            `🎬 *Vídeo com áudio:*\n` +
+            `Responda diretamente ao vídeo com ${prefix}audiosticker.\n\n` +
+            `O trecho de áudio e a animação usam até 9,5 segundos.`
+          );
+
+        } catch (audioStickerError) {
+          console.error(
+            '[KYARA AUDIO STICKER] Erro:',
+            audioStickerError?.stack || audioStickerError
+          );
+
+          await reply(
+            `❌ Não consegui criar a figurinha com som.\n\n` +
+            `${String(audioStickerError?.message || audioStickerError).slice(0, 240)}`
+          );
+
+        } finally {
+          if (audioStickerTempDir) {
+            try {
+              fs.rmSync(audioStickerTempDir, {
+                recursive: true,
+                force: true
+              });
+            } catch {}
+          }
+        }
+
+        break;
+      }
+
       case 'sticker':
       case 's':
         try {
@@ -32985,7 +39457,7 @@ ${nomedono}`,
           var isVideo2 = !!boij;
           if (isVideo2 && boij.seconds > 9.9) return reply(`O vídeo precisa ter no máximo 9.9 segundos para ser convertido em figurinha.`);
           var buffer = await getFileBuffer(isVideo2 ? boij : boij2, isVideo2 ? 'video' : 'image');
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: buffer,
             author: `${pushname}`,
             packname: `${nomebot}`,
@@ -32999,6 +39471,522 @@ ${nomedono}`,
           await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
         }
         break;
+      case 'figurante': {
+        let figuranteTempDir = null;
+
+        try {
+          const quotedFigurante =
+            info.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+          const figuranteImage =
+            quotedFigurante?.imageMessage ||
+            info.message?.imageMessage ||
+            quotedFigurante?.viewOnceMessageV2?.message?.imageMessage ||
+            info.message?.viewOnceMessageV2?.message?.imageMessage ||
+            quotedFigurante?.viewOnceMessage?.message?.imageMessage ||
+            info.message?.viewOnceMessage?.message?.imageMessage;
+
+          if (!figuranteImage) {
+            return reply(
+              `🖼️ Marque uma imagem para criar uma *figurinha grande*.\n\nExemplo: ${prefix}figurante`
+            );
+          }
+
+          const figuranteBuffer = await getFileBuffer(
+            figuranteImage,
+            'image'
+          );
+
+          if (!Buffer.isBuffer(figuranteBuffer) || figuranteBuffer.length === 0) {
+            return reply('❌ Não consegui baixar a imagem marcada.');
+          }
+
+          figuranteTempDir = path.join(
+            DATABASE_DIR,
+            'tmp',
+            `figurante-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+          );
+
+          fs.mkdirSync(figuranteTempDir, { recursive: true });
+
+          const mime = String(
+            figuranteImage.mimetype || 'image/jpeg'
+          ).split(';')[0].toLowerCase();
+
+          let inputExt = '.jpg';
+
+          if (mime === 'image/png') {
+            inputExt = '.png';
+          } else if (mime === 'image/webp') {
+            inputExt = '.webp';
+          } else if (mime === 'image/gif') {
+            inputExt = '.gif';
+          }
+
+          const inputFile = path.join(
+            figuranteTempDir,
+            `input${inputExt}`
+          );
+
+          const outputFile = path.join(
+            figuranteTempDir,
+            'figurante.webp'
+          );
+
+          fs.writeFileSync(inputFile, figuranteBuffer);
+
+          /*
+           * OBJETIVO:
+           * - 512x512
+           * - preencher todo o quadro
+           * - sem barras/bordas
+           * - sem deformar a imagem
+           * - manter o arquivo abaixo do limite oficial
+           *
+           * O "increase + crop" faz a imagem ocupar
+           * completamente o quadrado.
+           */
+
+          const qualityLevels = [82, 76, 70, 64, 58, 52, 46];
+
+          let generated = false;
+
+          for (const quality of qualityLevels) {
+            const ffmpegCommand =
+              `ffmpeg -hide_banner -loglevel error -y ` +
+              `-i "${inputFile}" ` +
+              `-vf "scale=512:512:force_original_aspect_ratio=increase,` +
+              `crop=512:512,setsar=1" ` +
+              `-frames:v 1 ` +
+              `-c:v libwebp ` +
+              `-q:v ${quality} ` +
+              `-compression_level 4 ` +
+              `-preset picture ` +
+              `"${outputFile}"`;
+
+            await execAsync(ffmpegCommand);
+
+            if (
+              fs.existsSync(outputFile) &&
+              fs.statSync(outputFile).size <= 92 * 1024
+            ) {
+              generated = true;
+              break;
+            }
+          }
+
+          if (!generated) {
+            return reply(
+              '❌ A imagem ficou grande demais mesmo após a compressão. Tente uma imagem com menos detalhes.'
+            );
+          }
+
+          const finalSize = fs.statSync(outputFile).size;
+
+          console.log(
+            `[FIGURANTE] WebP final: ${(finalSize / 1024).toFixed(1)} KB`
+          );
+
+          await sendStickerWithGroupCaption(
+            kya,
+            from,
+            {
+              sticker: fs.readFileSync(outputFile),
+              author: `${pushname}`,
+              packname: `${nomebot}`,
+              type: 'image',
+              forceSquare: true
+            },
+            {
+              quoted: info
+            }
+          );
+
+        } catch (e) {
+          console.error('[FIGURANTE] Erro:', e);
+
+          await reply(
+            '❌ Não consegui criar a figurinha grande. Tente novamente com outra imagem.'
+          );
+
+        } finally {
+          if (figuranteTempDir) {
+            try {
+              fs.rmSync(figuranteTempDir, {
+                recursive: true,
+                force: true
+              });
+            } catch (cleanupError) {
+              console.error(
+                '[FIGURANTE] Erro ao limpar temporários:',
+                cleanupError
+              );
+            }
+          }
+        }
+
+        break;
+      }
+
+      case 'figurante2': {
+
+
+        try {
+
+
+          const RSMF2 =
+
+            info.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+
+          const imagemF2 =
+
+            RSMF2?.imageMessage ||
+
+            info.message?.imageMessage ||
+
+            RSMF2?.viewOnceMessageV2?.message?.imageMessage ||
+
+            info.message?.viewOnceMessageV2?.message?.imageMessage ||
+
+            RSMF2?.viewOnceMessage?.message?.imageMessage ||
+
+            info.message?.viewOnceMessage?.message?.imageMessage;
+
+
+          const videoF2 =
+
+            RSMF2?.videoMessage ||
+
+            info.message?.videoMessage ||
+
+            RSMF2?.viewOnceMessageV2?.message?.videoMessage ||
+
+            info.message?.viewOnceMessageV2?.message?.videoMessage ||
+
+            RSMF2?.viewOnceMessage?.message?.videoMessage ||
+
+            info.message?.viewOnceMessage?.message?.videoMessage;
+
+
+          const mediaF2 = imagemF2 || videoF2;
+
+          const isVideoF2 = !!videoF2 && !imagemF2;
+
+
+          if (!mediaF2) {
+
+            return reply(
+
+              `🖼️ *FIGURANTE 2*\\n\\n` +
+
+              `Responda uma imagem ou vídeo com ${prefix}figurante2.`
+
+            );
+
+          }
+
+
+          const tempRootF2 = path.join(
+
+            DATABASE_DIR,
+
+            'tmp',
+
+            'figurante2'
+
+          );
+
+
+          fs.mkdirSync(tempRootF2, { recursive: true });
+
+
+          const tempDirF2 = fs.mkdtempSync(
+
+            path.join(tempRootF2, 'job-')
+
+          );
+
+
+          const inputF2 = path.join(tempDirF2, 'input');
+
+          const outputF2 = path.join(tempDirF2, 'figurante2.webp');
+
+
+          try {
+
+
+            const bufferF2 = await getFileBuffer(
+
+              mediaF2,
+
+              isVideoF2 ? 'video' : 'image'
+
+            );
+
+
+            fs.writeFileSync(inputF2, bufferF2);
+
+
+            /*
+
+             * FIGURANTE 2 — 640 x 1422
+
+             *
+
+             * Mantém como STICKER.
+
+             * Não usa sendSticker(), pois o helper pode normalizar
+
+             * para quadrado.
+
+             *
+
+             * A mídia final fica exatamente:
+
+             * width  = 640
+
+             * height = 1422
+
+             *
+
+             * Preenche o canvas inteiro para maximizar o conteúdo.
+
+             */
+
+
+            const filtroF2 =
+
+              'scale=640:1422:force_original_aspect_ratio=increase,' +
+
+              'crop=640:1422,setsar=1';
+
+
+            const qualidadesF2 = isVideoF2
+
+              ? [55, 45, 35, 28, 22, 18]
+
+              : [60, 50, 40, 30, 22, 18];
+
+
+            let finalF2 = null;
+
+            let qualidadeUsadaF2 = qualidadesF2[qualidadesF2.length - 1];
+
+
+            for (const qF2 of qualidadesF2) {
+
+
+              const cmdF2 = isVideoF2
+
+
+                ? (
+
+                    `ffmpeg -hide_banner -loglevel error ` +
+
+                    `-i "${inputF2}" ` +
+
+                    `-t 9.8 ` +
+
+                    `-vf "${filtroF2},fps=8" ` +
+
+                    `-c:v libwebp ` +
+
+                    `-lossless 0 ` +
+
+                    `-compression_level 4 ` +
+
+                    `-q:v ${qF2} ` +
+
+                    `-preset picture ` +
+
+                    `-loop 0 ` +
+
+                    `-an -y "${outputF2}"`
+
+                  )
+
+
+                : (
+
+                    `ffmpeg -hide_banner -loglevel error ` +
+
+                    `-i "${inputF2}" ` +
+
+                    `-vf "${filtroF2}" ` +
+
+                    `-frames:v 1 ` +
+
+                    `-c:v libwebp ` +
+
+                    `-lossless 0 ` +
+
+                    `-compression_level 4 ` +
+
+                    `-q:v ${qF2} ` +
+
+                    `-preset picture ` +
+
+                    `-an -y "${outputF2}"`
+
+                  );
+
+
+              try {
+
+                await execAsync(cmdF2);
+
+
+                const candidateF2 =
+
+                  fs.readFileSync(outputF2);
+
+
+                const limiteF2 =
+
+                  isVideoF2 ? 500 * 1024 : 100 * 1024;
+
+
+                finalF2 = candidateF2;
+
+                qualidadeUsadaF2 = qF2;
+
+
+                if (candidateF2.length <= limiteF2) {
+
+                  break;
+
+                }
+
+
+              } catch (ffErrF2) {
+
+                console.error(
+
+                  '[FIGURANTE2][FFMPEG]',
+
+                  ffErrF2?.message || ffErrF2
+
+                );
+
+              }
+
+            }
+
+
+            if (!finalF2 || !finalF2.length) {
+
+              throw new Error(
+
+                'O FFmpeg não conseguiu gerar o WebP 640x1422.'
+
+              );
+
+            }
+
+
+            /*
+
+             * ENVIO DIRETO COMO STICKER
+
+             *
+
+             * Não usamos sendSticker().
+
+             * O Buffer WebP é entregue diretamente ao Baileys.
+
+            */
+
+
+            console.log(
+
+              `[FIGURANTE2] STICKER 640x1422 | ` +
+
+              `${isVideoF2 ? 'ANIMADO' : 'ESTÁTICO'} | ` +
+
+              `${(finalF2.length / 1024).toFixed(1)} KB | ` +
+
+              `Q=${qualidadeUsadaF2}`
+
+            );
+
+
+            await kya.sendMessage(
+
+              from,
+
+              {
+
+                sticker: finalF2
+
+              },
+
+              {
+
+                quoted: info
+
+              }
+
+            );
+            await sendGroupStickerCaption(kya, from, info, 'Figurinha vertical criada');
+
+
+          } finally {
+
+
+            try {
+
+              fs.rmSync(tempDirF2, {
+
+                recursive: true,
+
+                force: true
+
+              });
+
+            } catch (cleanupErrF2) {
+
+              console.error(
+
+                '[FIGURANTE2][CLEANUP]',
+
+                cleanupErrF2?.message || cleanupErrF2
+
+              );
+
+            }
+
+
+          }
+
+
+        } catch (e) {
+
+
+          console.error(
+
+            '[FIGURANTE2-640x1422]',
+
+            e
+
+          );
+
+
+          await reply(
+
+            '❌ Não consegui criar a figurinha gigante 640x1422.'
+
+          );
+
+
+        }
+
+
+        break;
+
+      }
+
+
       case 'st2':
       case 'stk2':
       case 'sticker2':
@@ -33011,7 +39999,7 @@ ${nomedono}`,
           var isVideo2 = !!boij;
           if (isVideo2 && boij.seconds > 9.9) return reply(`O vídeo precisa ter no máximo 9.9 segundos para ser convertido em figurinha.`);
           var buffer = await getFileBuffer(isVideo2 ? boij : boij2, isVideo2 ? 'video' : 'image');
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: buffer,
             author: `『${pushname}』`,
             packname: `${nomebot}`, type: isVideo2 ? 'video' : 'image'
@@ -33026,7 +40014,7 @@ ${nomedono}`,
       case 'figualeatoria':
       case 'randomsticker':
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             sticker: {
               url: `https://raw.githubusercontent.com/badDevelopper/Testfigu/main/fig (${Math.floor(Math.random() * 8051)}).webp`
             }
@@ -33062,7 +40050,7 @@ ${nomedono}`,
             info.message.extendedTextMessage.contextInfo.quotedMessage.stickerMessage,
             'sticker'
           );
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: `data:image/jpeg;base64,${encmediats.toString('base64')}`,
             author: packname,
             packname: author,
@@ -33114,7 +40102,7 @@ ${nomedono}`,
             pack
           } = dataTake[sender];
           const encmediats = await getFileBuffer(info.message.extendedTextMessage.contextInfo.quotedMessage.stickerMessage, 'sticker');
-          await sendSticker(nazu, from, {
+          await sendStickerWithGroupCaption(kya, from, {
             sticker: `data:image/jpeg;base64,${encmediats.toString('base64')}`,
             author: pack,
             packname: author,
@@ -33128,210 +40116,212 @@ ${nomedono}`,
         }
         break;
 
-      case 'pacote':
+      case 'sfiganim':
         try {
 
-          const tema =
-            q.trim();
+          const quantidade = 30;
+          const tema = q.trim();
 
           if (!tema) {
             return reply(
-              "╭━━━〔 📦 PACOTE KYARA 〕━━━╮\n" +
-              "│\n" +
-              "│ Uso:\n" +
-              "│ " + prefix + "pacote Goku\n" +
-              "│ " + prefix + "pacote Naruto\n" +
-              "│ " + prefix + "pacote gatos\n" +
-              "│\n" +
-              "│ 📦 Quantidade fixa: 40\n" +
-              "╰━━━━━━━━━━━━━━━━━━━━━━━━╯"
+              `╭━━━〔 ⚡ KYARA PRIME 〕━━━╮
+│
+│ 📦 *PACOTE DE FIGURINHAS*
+│
+│ Uso:
+│ ${prefix}sfig Goku
+│
+│ 📦 Um pacote com *40 figurinhas*
+│ 🔄 Sistema anti-repetição
+│ 📍 Envia diretamente no grupo
+│
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
             );
           }
 
-          const quantidade = 40;
+          /*
+           * IMPORTANTE:
+           *
+           * FROM = GRUPO
+           *
+           * NÃO usar sender.
+           * sender é o usuário que executou.
+           */
 
-          const destino =
-            isGroup ? sender : from;
-
-          const aviso =
-            isGroup
-              ? "📬 O pacote será enviado no seu privado.\n"
-              : "";
+          const destino = from;
 
           await reply(
-            "╭━━━〔 📦 PACOTE KYARA 〕━━━╮\n" +
-            "│\n" +
-            "│ 🎯 Tema: *" + tema + "*\n" +
-            "│ 📦 Figurinhas: *40*\n" +
-            "│ " + aviso +
-            "│ 🔎 Buscando imagens...\n" +
-            "│ 🧩 Montando pacote...\n" +
-            "╰━━━━━━━━━━━━━━━━━━━━━━━━╯"
+            `╭━━━〔 ⚡ KYARA PRIME 〕━━━╮
+│
+│ 🎯 Tema: *${tema}*
+│ 📦 Quantidade: *${quantidade}*
+│
+│ 🔎 Buscando imagens...
+│ 🧩 Montando UM pacote...
+│ 📍 Destino: *este grupo*
+│
+│ ⏳ Aguarde...
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
           );
 
           const resultado =
-            await sendThemeStickers({
-              nazu,
+            await sendAnimatedThemeStickers({
+              kya,
               destino,
               tema,
               quantidade,
               quoted: info,
-              author: "Baki",
-              packname: "Kyara"
-            });
-
-          if (!resultado || resultado.sent < 1) {
-            return reply(
-              "❌ Não consegui encontrar figurinhas suficientes para *" +
-              tema +
-              "*."
-            );
-          }
-
-          const falhas =
-            resultado.failed > 0
-              ? "⚠️ Falhas: *" + resultado.failed + "*\n"
-              : "";
-
-          await nazu.sendMessage(
-            destino,
-            {
-              text:
-                "╭━━━〔 ✅ PACOTE CONCLUÍDO 〕━━━╮\n" +
-                "│\n" +
-                "│ 🎯 Tema: *" + tema + "*\n" +
-                "│ 📦 Solicitadas: *" + resultado.requested + "*\n" +
-                "│ 🖼️ Enviadas: *" + resultado.sent + "*\n" +
-                falhas +
-                "│\n" +
-                "│ 📦 Pacote finalizado.\n" +
-                "╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯"
-            }
-          );
-
-        } catch (error) {
-          console.error(
-            "[PACOTE KYARA]",
-            error
-          );
-
-          await reply(
-            "❌ O pacote não pôde ser concluído agora.\n" +
-            "Tente novamente com outro tema."
-          );
-        }
-        break;
-
-      case 'stickerpack':
-      case 'pacotefig':
-      case 'packfig':
-      case 'pacotefig':
-        try {
-
-          const partes = q.trim().split(/\s+/);
-
-          let quantidade = Number(partes[partes.length - 1]);
-          let tema = '';
-
-          if (Number.isInteger(quantidade) && partes.length > 1) {
-            tema = partes.slice(0, -1).join(' ').trim();
-          } else {
-            quantidade = 5;
-            tema = q.trim();
-          }
-
-          if (!tema) {
-            return reply(
-              '╭━━━〔 📦 PACOTE DE FIGURINHAS 〕━━━╮\n' +
-              '│\n' +
-              '│ Use:\n' +
-              '│ ' + prefix + 'packfig Goku 5\n' +
-              '│ ' + prefix + 'pacotefig Naruto 10\n' +
-              '│\n' +
-              '│ 🔢 Quantidade: 1 a 20\n' +
-              '│ 🎯 O tema pode ter várias palavras.\n' +
-              '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
-            );
-          }
-
-          if (
-            !Number.isInteger(quantidade) ||
-            quantidade < 1 ||
-            quantidade > 20
-          ) {
-            return reply(
-              '❌ A quantidade deve ser um número entre 1 e 20.'
-            );
-          }
-
-          const destino =
-            isGroup ? sender : from;
-
-          const destinoTexto =
-            isGroup
-              ? '📬 O pacote será enviado no seu privado.\n'
-              : '';
-
-          await reply(
-            '╭━━━〔 📦 PACOTE DE FIGURINHAS 〕━━━╮\n' +
-            '│\n' +
-            '│ 🎯 Tema: *' + tema + '*\n' +
-            '│ 🔢 Quantidade: *' + quantidade + '*\n' +
-            '│ ' + destinoTexto +
-            '│ 🔎 Procurando imagens...\n' +
-            '│ 🧩 Montando seu pacote...\n' +
-            '╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
-          );
-
-          const resultado =
-            await sendThemeStickers({
-              nazu,
-              destino,
-              tema,
-              quantidade,
-              quoted: info,
-              author: nomebot || 'Baki',
+              author: '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
               packname: 'Kyara'
             });
 
-          if (!resultado || resultado.sent < 1) {
+          if (
+            !resultado ||
+            resultado.sent < 1
+          ) {
             return reply(
-              '❌ Não consegui montar nenhuma figurinha para o tema *' +
-              tema +
-              '*.'
+              `❌ *Não consegui montar o pacote.*
+
+🎯 Tema: *${tema}*
+
+Tente novamente.`
             );
           }
 
-          const falhas =
-            resultado.failed > 0
-              ? '⚠️ Falhas: *' + resultado.failed + '*\n'
-              : '';
-
-          await nazu.sendMessage(
-            destino,
-            {
-              text:
-                '╭━━━〔 ✅ PACOTE PRONTO 〕━━━╮\n' +
-                '│\n' +
-                '│ 🎯 Tema: *' + tema + '*\n' +
-                '│ 📦 Solicitadas: *' + resultado.requested + '*\n' +
-                '│ 🖼️ Enviadas: *' + resultado.sent + '*\n' +
-                falhas +
-                '│\n' +
-                '│ ✨ Pacote finalizado com sucesso!\n' +
-                '╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯'
-            }
+          return reply(
+            `╭━━━〔 👑 KYARA PRIME 〕━━━╮
+│
+│ ✅ *PACOTE ENVIADO*
+│
+│ 🎯 Tema: *${tema}*
+│ 📦 Figurinhas: *${resultado.sent}/${resultado.requested}*
+│ 📍 Enviado: *neste grupo*
+│ 🔄 Variação: *ATIVA*
+│
+│ ⚡ KYARA • PRIME SUPREMO
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
           );
 
         } catch (e) {
-          console.error('[PACOTE FIGURINHAS]', e);
 
-          await reply(
-            '❌ O pacote não pôde ser concluído agora.\n' +
-            'Tente novamente com outro tema.'
+          console.error(
+            '[PACOTE PRIME]',
+            e
+          );
+
+          return reply(
+            `❌ *Erro ao criar o pacote.*
+
+${String(
+  e?.message ||
+  'erro desconhecido'
+).slice(0, 300)}`
           );
         }
-        break;
+
+
+      case 'sfig':
+        try {
+
+          const quantidade = 40;
+          const tema = q.trim();
+
+          if (!tema) {
+            return reply(
+              `╭━━━〔 ⚡ KYARA PRIME 〕━━━╮
+│
+│ 📦 *PACOTE DE FIGURINHAS*
+│
+│ Uso:
+│ ${prefix}sfig Goku
+│
+│ 📦 Um pacote com *40 figurinhas*
+│ 🔄 Sistema anti-repetição
+│ 📍 Envia diretamente no grupo
+│
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
+            );
+          }
+
+          /*
+           * IMPORTANTE:
+           *
+           * FROM = GRUPO
+           *
+           * NÃO usar sender.
+           * sender é o usuário que executou.
+           */
+
+          const destino = from;
+
+          await reply(
+            `╭━━━〔 ⚡ KYARA PRIME 〕━━━╮
+│
+│ 🎯 Tema: *${tema}*
+│ 📦 Quantidade: *${quantidade}*
+│
+│ 🔎 Buscando imagens...
+│ 🧩 Montando UM pacote...
+│ 📍 Destino: *este grupo*
+│
+│ ⏳ Aguarde...
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
+          );
+
+          const resultado =
+            await sendThemeStickers({
+              kya,
+              destino,
+              tema,
+              quantidade,
+              quoted: info,
+              author: '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
+              packname: 'Kyara'
+            });
+
+          if (
+            !resultado ||
+            resultado.sent < 1
+          ) {
+            return reply(
+              `❌ *Não consegui montar o pacote.*
+
+🎯 Tema: *${tema}*
+
+Tente novamente.`
+            );
+          }
+
+          return reply(
+            `╭━━━〔 👑 KYARA PRIME 〕━━━╮
+│
+│ ✅ *PACOTE ENVIADO*
+│
+│ 🎯 Tema: *${tema}*
+│ 📦 Figurinhas: *${resultado.sent}/${resultado.requested}*
+│ 📍 Enviado: *neste grupo*
+│ 🔄 Variação: *ATIVA*
+│
+│ ⚡ KYARA • PRIME SUPREMO
+╰━━━━━━━━━━━━━━━━━━━━━━━━╯`
+          );
+
+        } catch (e) {
+
+          console.error(
+            '[PACOTE PRIME]',
+            e
+          );
+
+          return reply(
+            `❌ *Erro ao criar o pacote.*
+
+${String(
+  e?.message ||
+  'erro desconhecido'
+).slice(0, 300)}`
+          );
+        }
 
       case 'mention':
         try {
@@ -33402,12 +40392,12 @@ ${nomedono}`,
             typeof comandoReq.execute !== 'function'
           ) {
             throw new Error(
-              'commands/reqsticker.js não exporta execute()'
+              'commands/figurinhas/reqsticker.js não exporta execute()'
             );
           }
 
           await comandoReq.execute({
-            kyara: nazu,
+            kyara: kya,
             from,
             info,
             reply,
@@ -33477,12 +40467,12 @@ ${nomedono}`,
             typeof comandoApagar.execute !== 'function'
           ) {
             throw new Error(
-              'commands/apagar.js não exporta execute()'
+              'commands/moderacao/apagar.js não exporta execute()'
             );
           }
 
           await comandoApagar.execute({
-            kyara: nazu,
+            kyara: kya,
             from,
             info,
             reply,
@@ -33520,6 +40510,13 @@ ${nomedono}`,
               typeof isMonitor === 'boolean'
                 ? isMonitor
                 : false,
+
+            isStatus:
+              typeof isStatus === 'boolean'
+                ? isStatus
+                : Boolean(
+                    from === 'status@broadcast'
+                  ),
 
             messagesCache
           });
@@ -33626,7 +40623,7 @@ ${nomedono}`,
           const pergunta = partes[0];
           const opcoes = partes.slice(1);
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               poll: {
@@ -33674,12 +40671,12 @@ ${nomedono}`,
           if (!menc_os2) return reply("Marque alguém 🙄");
           if (menc_os2 === nmrdn) return reply("❌ Não posso banir o dono do bot.");
           if (menc_os2 === botNumber) return reply("❌ Ops! Eu faço parte da bagunça, não dá pra me remover 💔");
-          await nazu.groupParticipantsUpdate(from, [menc_os2], 'remove');
+          await kya.groupParticipantsUpdate(from, [menc_os2], 'remove');
 
           // Notificação X9 para banimento
           if (groupData.x9) {
             const reason = q && q.length > 0 ? `\n📝 Motivo: ${q}` : '';
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `🚪 *X9 Report:* @${menc_os2.split('@')[0]} foi removido(a) do grupo por @${sender.split('@')[0]}.${reason}`,
               mentions: [menc_os2, sender],
             }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -33703,7 +40700,7 @@ ${nomedono}`,
           if (menc_os2 === botNumber) return reply("❌ Ops! Eu faço parte da bagunça, não dá pra me remover 💔");
 
           // Aviso com contagem regressiva
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `⚠️ *ÚLTIMAS PALAVRAS!*\n\n@${menc_os2.split('@')[0]}, você tem *10 segundos* para dizer suas últimas palavras antes de ser banido! ⏰`,
             mentions: [menc_os2]
           });
@@ -33712,18 +40709,18 @@ ${nomedono}`,
           await new Promise(resolve => setTimeout(resolve, 10000));
 
           // Remove o usuário
-          await nazu.groupParticipantsUpdate(from, [menc_os2], 'remove');
+          await kya.groupParticipantsUpdate(from, [menc_os2], 'remove');
 
           // Notificação X9 para banimento
           if (groupData.x9) {
             const reason = q && q.length > 0 ? `\n📝 Motivo: ${q}` : '';
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `🚪 *X9 Report:* @${menc_os2.split('@')[0]} foi removido(a) do grupo por @${sender.split('@')[0]}.${reason}`,
               mentions: [menc_os2, sender],
             }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
           }
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `👋 @${menc_os2.split('@')[0]} foi banido! Adeus! 🚪${q && q.length > 0 ? '\n\n📝 Motivo: ' + q : ''}`,
             mentions: [menc_os2]
           });
@@ -33742,7 +40739,7 @@ ${nomedono}`,
         if (menc_os2 === botNumber) return reply("❌ Ops! Eu faço parte da bagunça, não dá pra me remover 💔");
 
         try {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `⚠️ *ÚLTIMAS PALAVRAS!*\n\n@${menc_os2.split('@')[0]}, você tem *10 segundos* para dizer suas últimas palavras antes de ser banido! ⏰`,
             mentions: [menc_os2]
           });
@@ -33752,7 +40749,7 @@ ${nomedono}`,
           const defaultMemeMsg = `😂 *ERA MEME!*\n\n@${menc_os2.split('@')[0]}, relaxa, era só uma brincadeira! 🤣\n\nVocê não vai ser banido... dessa vez! 😎`;
           const customMemeMsg = groupData.bamMessage || defaultMemeMsg;
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: customMemeMsg.replace(/#user#/g, `@${menc_os2.split('@')[0]}`),
             mentions: [menc_os2]
           });
@@ -33817,7 +40814,7 @@ ${nomedono}`,
           if (!isGroupAdmin) return reply("Comando restrito a Administradores ou Moderadores com permissão. 💔");
           if (!isBotAdmin) return reply("Eu preciso ser adm 💔");
           var linkgc;
-          linkgc = await nazu.groupInviteCode(from);
+          linkgc = await kya.groupInviteCode(from);
           await reply('https://chat.whatsapp.com/' + linkgc);
         } catch (e) {
           console.error(e);
@@ -33836,13 +40833,13 @@ ${nomedono}`,
           let requests = [];
           try {
             // Tenta o método padrão se existir
-            if (typeof nazu.groupGetRequestParticipants === 'function') {
-              requests = await nazu.groupGetRequestParticipants(from);
-            } else if (typeof nazu.groupRequestParticipantsList === 'function') {
-              requests = await nazu.groupRequestParticipantsList(from);
+            if (typeof kya.groupGetRequestParticipants === 'function') {
+              requests = await kya.groupGetRequestParticipants(from);
+            } else if (typeof kya.groupRequestParticipantsList === 'function') {
+              requests = await kya.groupRequestParticipantsList(from);
             } else {
               // Fallback: fazer a query manualmente
-              const result = await nazu.query({
+              const result = await kya.query({
                 tag: 'iq',
                 attrs: {
                   type: 'get',
@@ -33898,12 +40895,12 @@ ${nomedono}`,
             // Função para obter solicitações pendentes (compatível com versões antigas do Baileys)
             let allRequests = [];
             try {
-              if (typeof nazu.groupGetRequestParticipants === 'function') {
-                allRequests = await nazu.groupGetRequestParticipants(from);
-              } else if (typeof nazu.groupRequestParticipantsList === 'function') {
-                allRequests = await nazu.groupRequestParticipantsList(from);
+              if (typeof kya.groupGetRequestParticipants === 'function') {
+                allRequests = await kya.groupGetRequestParticipants(from);
+              } else if (typeof kya.groupRequestParticipantsList === 'function') {
+                allRequests = await kya.groupRequestParticipantsList(from);
               } else {
-                const result = await nazu.query({
+                const result = await kya.query({
                   tag: 'iq',
                   attrs: { type: 'get', xmlns: 'w:g2', to: from },
                   content: [{ tag: 'membership_approval_requests', attrs: {} }]
@@ -33929,7 +40926,7 @@ ${nomedono}`,
 
             for (const req of allRequests) {
               try {
-                await nazu.groupRequestParticipantsUpdate(from, [req.jid], 'approve');
+                await kya.groupRequestParticipantsUpdate(from, [req.jid], 'approve');
                 approved.push(req.jid);
               } catch (err) {
                 failed.push(req.jid);
@@ -33939,7 +40936,7 @@ ${nomedono}`,
 
             // Notificação X9 para aprovação em massa
             if (groupData.x9 && approved.length > 0) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: `✅ *X9 Report:* ${approved.length} solicitações foram aprovadas em massa por @${sender.split('@')[0]}.`,
                 mentions: [sender],
               }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -33962,12 +40959,12 @@ ${nomedono}`,
 
           for (const user of usersToApprove) {
             try {
-              await nazu.groupRequestParticipantsUpdate(from, [user], 'approve');
+              await kya.groupRequestParticipantsUpdate(from, [user], 'approve');
               approved.push(user);
 
               // Notificação X9 para aprovação de solicitação
               if (groupData.x9) {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   text: `✅ *X9 Report:* Solicitação de @${user.split('@')[0]} foi aprovada por @${sender.split('@')[0]}.`,
                   mentions: [user, sender],
                 }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34012,12 +41009,12 @@ ${nomedono}`,
 
           for (const user of usersToReject) {
             try {
-              await nazu.groupRequestParticipantsUpdate(from, [user], 'reject');
+              await kya.groupRequestParticipantsUpdate(from, [user], 'reject');
               rejected.push(user);
 
               // Notificação X9 para recusa de solicitação
               if (groupData.x9) {
-                await nazu.sendMessage(from, {
+                await kya.sendMessage(from, {
                   text: `❌ *X9 Report:* Solicitação de @${user.split('@')[0]} foi recusada por @${sender.split('@')[0]}.`,
                   mentions: [user, sender],
                 }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34130,7 +41127,7 @@ ${nomedono}`,
           if (!isGroupAdmin) return reply("Comando restrito a Administradores ou Moderadores com permissão. 💔");
           if (!isBotAdmin) return reply("Eu preciso ser adm 💔");
           if (!menc_os2) return reply("Marque alguém 🙄");
-          await nazu.groupParticipantsUpdate(from, [menc_os2], 'promote');
+          await kya.groupParticipantsUpdate(from, [menc_os2], 'promote');
 
           reply(`✅ Usuário promovido a administrador!`);
         } catch (e) {
@@ -34145,7 +41142,7 @@ ${nomedono}`,
           if (!isGroupAdmin) return reply("Comando restrito a Administradores ou Moderadores com permissão. 💔");
           if (!isBotAdmin) return reply("Eu preciso ser adm 💔");
           if (!menc_os2) return reply("Marque alguém 🙄");
-          await nazu.groupParticipantsUpdate(from, [menc_os2], 'demote');
+          await kya.groupParticipantsUpdate(from, [menc_os2], 'demote');
 
           reply(`✅ Usuário rebaixado com sucesso!`);
         } catch (e) {
@@ -34166,11 +41163,11 @@ ${nomedono}`,
           if (!newName) return reply('❌ Digite um novo nome para o grupo.\n\n📝 *Uso:* ' + groupPrefix + 'nomegp Nome do Grupo');
 
           const oldName = groupMetadata?.subject || 'Nome anterior';
-          await nazu.groupUpdateSubject(from, newName);
+          await kya.groupUpdateSubject(from, newName);
 
           // Notificação X9 para mudança de nome
           if (groupData.x9) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `✏️ *X9 Report:* Nome do grupo alterado por @${sender.split('@')[0]}\n\n🔹 Anterior: *${oldName}*\n🔸 Novo: *${newName}*`,
               mentions: [sender],
             }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34193,11 +41190,11 @@ ${nomedono}`,
           if (!isBotAdmin) return reply("Eu preciso ser adm 💔");
           const newDesc = q.trim();
           if (!newDesc) return reply('❌ Digite uma nova descrição para o grupo.\n\n📝 *Uso:* ' + groupPrefix + 'descgrupo Descrição do grupo aqui');
-          await nazu.groupUpdateDescription(from, newDesc);
+          await kya.groupUpdateDescription(from, newDesc);
 
           // Notificação X9 para mudança de descrição
           if (groupData.x9) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `📝 *X9 Report:* Descrição do grupo alterada por @${sender.split('@')[0]}`,
               mentions: [sender],
             }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34229,7 +41226,7 @@ ${nomedono}`,
           try {
             // Processa a imagem com ffmpeg antes de atualizar
             const processedBuffer = await processImageForProfile(imageBuffer);
-            await nazu.updateProfilePicture(from, processedBuffer);
+            await kya.updateProfilePicture(from, processedBuffer);
 
             reply('✅ Foto do grupo alterada com sucesso!');
           } catch (updateError) {
@@ -34269,7 +41266,7 @@ ${nomedono}`,
           }
 
           let msg = `📢 *Membros mencionados:* ${q ? `\n💬 *Mensagem:* ${q}` : ''}\n\n`;
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: msg + membros.map(m => `➤ @${getUserName(m)}`).join('\n'),
             mentions: membros
           });
@@ -34286,11 +41283,11 @@ ${nomedono}`,
           if (!isGroupAdmin) return reply("Comando restrito a Administradores ou Moderadores com permissão. 💔");
           if (!isBotAdmin) return reply("Eu preciso ser adm 💔");
           if (q.toLowerCase() === 'a' || q.toLowerCase() === 'o' || q.toLowerCase() === 'open' || q.toLowerCase() === 'abrir') {
-            await nazu.groupSettingUpdate(from, 'not_announcement');
+            await kya.groupSettingUpdate(from, 'not_announcement');
 
             // Notificação X9 para abertura do grupo
             if (groupData.x9) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: `🔓 *X9 Report:* Grupo aberto por @${sender.split('@')[0]}. Agora todos podem enviar mensagens.`,
                 mentions: [sender],
               }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34298,11 +41295,11 @@ ${nomedono}`,
 
             await reply('Grupo aberto.');
           } else if (q.toLowerCase() === 'f' || q.toLowerCase() === 'c' || q.toLowerCase() === 'close' || q.toLowerCase() === 'fechar') {
-            await nazu.groupSettingUpdate(from, 'announcement');
+            await kya.groupSettingUpdate(from, 'announcement');
 
             // Notificação X9 para fechamento do grupo
             if (groupData.x9) {
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: `🔒 *X9 Report:* Grupo fechado por @${sender.split('@')[0]}. Apenas ADMs podem enviar mensagens.`,
                 mentions: [sender],
               }).catch(err => console.error(`❌ Erro ao enviar X9: ${err.message}`));
@@ -34363,7 +41360,7 @@ ${nomedono}`,
           writeJsonFile(groupFilePath, data);
 
           // (Re)agendar job em memória
-          try { scheduleGroupJob(from, 'open', normalizedTime, nazu); } catch (e) { console.error('Erro ao agendar open cron:', e); }
+          try { scheduleGroupJob(from, 'open', normalizedTime, kya); } catch (e) { console.error('Erro ao agendar open cron:', e); }
 
           let msg = `✅ Agendamento salvo! O grupo será ABERTO todos os dias às ${normalizedTime} (horário de São Paulo).`;
           if (!isBotAdmin) msg += '\n⚠️ Observação: Eu preciso ser administrador para efetivar a abertura no horário.';
@@ -34421,7 +41418,7 @@ ${nomedono}`,
           writeJsonFile(groupFilePath, data);
 
           // (Re)agendar job em memória
-          try { scheduleGroupJob(from, 'close', normalizedTime, nazu); } catch (e) { console.error('Erro ao agendar close cron:', e); }
+          try { scheduleGroupJob(from, 'close', normalizedTime, kya); } catch (e) { console.error('Erro ao agendar close cron:', e); }
 
           let msg = `✅ Agendamento salvo! O grupo será FECHADO todos os dias às ${normalizedTime} (horário de São Paulo).`;
           if (!isBotAdmin) msg += '\n⚠️ Observação: Eu preciso ser administrador para efetivar o fechamento no horário.';
@@ -34588,7 +41585,7 @@ A mensagem será enviada todos os dias no horário especificado.`);
               writeJsonFile(groupFilePath, data);
 
               // Agendar
-              scheduleAutoMessage(from, msgConfig, nazu);
+              scheduleAutoMessage(from, msgConfig, kya);
 
               await reply(`✅ Mensagem automática adicionada!
 
@@ -34671,7 +41668,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
               writeJsonFile(groupFilePath, data);
 
               // Reagendar
-              scheduleAutoMessage(from, onMsg, nazu);
+              scheduleAutoMessage(from, onMsg, kya);
 
               await reply(`✅ Mensagem automática ativada!\n\n🆔 ID: ${onMsgId}`);
               break;
@@ -34896,7 +41893,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
 
           await new Promise(resolve => setTimeout(resolve, 3000));
 
-          await nazu.groupParticipantsUpdate(
+          await kya.groupParticipantsUpdate(
             from,
             [sorteado],
             'remove'
@@ -35101,7 +42098,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
             registerMassMentionUse(from);
           }
 
-          await nazu.sendMessage(from, DFC4).catch(error => { });
+          await kya.sendMessage(from, DFC4).catch(error => { });
         } catch (e) {
           console.error(e);
           await reply("❌ Ocorreu um erro interno. Tente novamente em alguns minutos.");
@@ -35201,7 +42198,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
             for (const groupId of groups) {
               let groupName = null;
               try {
-                const meta = await nazu.groupMetadata(groupId).catch(() => null);
+                const meta = await kya.groupMetadata(groupId).catch(() => null);
                 groupName = meta?.subject || null;
               } catch (e) { }
               text += `\n${index}. ${groupName ? groupName + ' - ' : ''}${groupId}`;
@@ -35226,7 +42223,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
 
           if (sub === 'send' || sub === 'enviar') {
             const customText = rest || null;
-            const result = await runDonoDivulgacaoSend(nazu, customText, 'manual');
+            const result = await runDonoDivulgacaoSend(kya, customText, 'manual');
             if (!result.success) return reply(result.message);
             return reply(`✅ Divulgação enviada.\n📨 Enviadas: ${result.sent}\n⚠️ Falhas: ${result.failed}`);
           }
@@ -35258,7 +42255,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
             config.schedule.time = normalized;
             config.schedule.lastRun = null;
             saveDonoDivulgacao(config);
-            scheduleDonoDivulgacaoJob(normalized, nazu);
+            scheduleDonoDivulgacaoJob(normalized, kya);
 
             return reply(`✅ Agendamento diário definido para ${normalized} (horário de São Paulo).`);
           }
@@ -35365,8 +42362,8 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
                   expiryTimestamp: Math.floor(Date.now() / 1000) + 86400
                 }
               };
-              const msg = await generateWAMessageFromContent(from, paymentObject, { userJid: nazu?.user?.id });
-              await nazu.relayMessage(from, msg.message, { messageId: msg.key.id });
+              const msg = await generateWAMessageFromContent(from, paymentObject, { userJid: kya?.user?.id });
+              await kya.relayMessage(from, msg.message, { messageId: msg.key.id });
             } catch (e) {
               console.error(`Falha ao enviar mensagem ${index + 1}:`, e);
               falhas++;
@@ -35408,7 +42405,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
             return reply('/ghost <mensagem>\nExemplo: /ghost goku');
           }
 
-          const teste = await nazu.sendMessage(from, {
+          const teste = await kya.sendMessage(from, {
             text:
               `👻 TESTE GHOST\n\n${textoGhost}\n\n` +
               `_Esta mensagem será apagada automaticamente._`
@@ -35416,7 +42413,7 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
 
           await new Promise(resolve => setTimeout(resolve, 1500));
 
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             delete: teste.key
           });
 
@@ -35457,6 +42454,194 @@ A mensagem será enviada todos os dias às ${normalizedTime} (horário de São P
         }
 
         break;
+      case 'antideletepv': {
+        try {
+          // Verificação independente: apenas o dono principal, nunca subdonos.
+          const __ownerPhone = normalizeAntiDeletePvNumber(ownerNumber);
+          let __ownerOnlyAllowed = Boolean(__ownerPhone && ownerCandidateBases.includes(__ownerPhone));
+
+          if (!__ownerOnlyAllowed && ownerJid) {
+            try {
+              const __ownerLid = config.lidowner || await getLidFromJidCached(kya, ownerJid);
+              const __ownerLidDigits = normalizeAntiDeletePvNumber(__ownerLid);
+              __ownerOnlyAllowed = Boolean(__ownerLidDigits && ownerCandidateBases.includes(__ownerLidDigits));
+            } catch {}
+          }
+
+          if (!__ownerOnlyAllowed) {
+            return reply('🚫 Apenas o dono principal pode configurar o Anti-Delete PV.');
+          }
+
+          if (isGroup) {
+            return reply('🔒 Use este comando no privado da Kyara para não expor as configurações.');
+          }
+
+          const __settings = loadAntiDeletePvSettings();
+          const __parts = String(q || '').trim().split(/\s+/).filter(Boolean);
+          let __action = String(__parts[0] || 'status').toLowerCase();
+          const __argument = String(__parts[1] || '').trim();
+
+          if (__action === 'mode') __action = 'modo';
+          const __subDeleteModule = await import('./features/subDeleteManager.js');
+          const __subDeleteStatus = __subDeleteModule.getSubDeleteStatus();
+
+          const __pairRequested = ['parear', 'pair', 'subdelete', 'sub-delete'].includes(__action)
+            || (__action === 'subbot' && !__argument);
+
+          if (__pairRequested) {
+            __settings.sourceSubBot = 'sub-delete';
+            saveAntiDeletePvSettings(__settings);
+
+            const __pairResult = await __subDeleteModule.pairSubDelete({
+              mainSock: kya,
+              ownerJid: ownerJid || (__ownerPhone ? `${__ownerPhone}@s.whatsapp.net` : ''),
+              ownerNumber: __ownerPhone
+            });
+
+            if (!__pairResult.ok) return reply(`❌ ${__pairResult.message}`);
+            return reply(__pairResult.alreadyPaired
+              ? '✅ A sessão sub-delete já está pareada. Use on para ativar o monitoramento.'
+              : '📩 O código foi enviado sozinho em uma mensagem separada para o seu privado. Digite-o na tela de dispositivos conectados do WhatsApp.');
+          }
+
+          if (__action === 'subbot' || __action === 'sub-bot') {
+            if (['off', 'none', 'principal'].includes(__argument.toLowerCase())) {
+              __settings.enabled = false;
+              __settings.sourceSubBot = 'sub-delete';
+              saveAntiDeletePvSettings(__settings);
+              return reply('⛔ Monitoramento desativado. A sessão independente continua pareada.');
+            }
+            return reply(`Use ${prefix}antideletepv parear. A sessão usa o número principal configurado do dono e não um sub-bot normal.`);
+          }
+
+          const __statusText = () => [
+            '🗑️ *ANTI-DELETE PV*',
+            `Status: ${__settings.enabled ? '✅ ATIVADO' : '⛔ DESATIVADO'}`,
+            `Modo: ${__settings.mode === 'global' ? 'GLOBAL PV (todos os privados; sem grupos)' : 'PV (aplica a lista se preenchida; sem grupos)'}`,
+            `Sessão sub-delete: ${__subDeleteStatus.connected ? '✅ conectada' : __subDeleteStatus.registered ? '🟡 pareada/offline' : '⛔ não pareada'}`,
+            `Fonte: ${__settings.sourceSubBot === 'sub-delete' ? 'sessão independente sub-delete' : __settings.sourceSubBot ? `fonte legada (${__settings.sourceSubBot})` : 'socket principal (modo antigo)'}`,
+            `Contatos: ${__settings.contacts.length ? __settings.contacts.join(', ') : 'todos conforme o modo'}`,
+            '',
+            '*Comandos do dono:*',
+            `${prefix}antideletepv on/off`,
+            `${prefix}antideletepv modo pv/global`,
+            `${prefix}antideletepv parear`,
+            `${prefix}antideletepv on/off`,
+            `${prefix}antideletepv add 55DDDNUMERO`,
+            `${prefix}antideletepv remove 55DDDNUMERO`,
+            `${prefix}antideletepv list`,
+            `${prefix}antideletepv limpar`,
+            '',
+            'Lista de contatos vazia = todos os contatos permitidos pelo modo.',
+            'O sub-bot selecionado como fonte só monitora mensagens; não executa outros comandos.'
+          ].join('\n');
+
+          if (['status', 'ajuda', 'help'].includes(__action)) return reply(__statusText());
+
+          if (__action === 'on' || __action === 'ativar') {
+            const __statusBeforeOn = __subDeleteModule.getSubDeleteStatus();
+            if (!__statusBeforeOn.registered) {
+              __settings.enabled = false;
+              __settings.sourceSubBot = 'sub-delete';
+              saveAntiDeletePvSettings(__settings);
+              return reply(`❌ Primeiro pareie a sessão com ${prefix}antideletepv parear.`);
+            }
+
+            const __initResult = await __subDeleteModule.initializeSubDelete({
+              mainSock: kya,
+              ownerJid: ownerJid || (__ownerPhone ? `${__ownerPhone}@s.whatsapp.net` : ''),
+              ownerNumber: __ownerPhone
+            });
+            if (!__initResult.ok) return reply(`❌ ${__initResult.message}`);
+
+            __settings.enabled = true;
+            __settings.sourceSubBot = 'sub-delete';
+            saveAntiDeletePvSettings(__settings);
+            return reply('✅ Monitoramento do sub-delete ativado. Ele observa somente conversas privadas.');
+          }
+
+          if (__action === 'off' || __action === 'desativar') {
+            __settings.enabled = false;
+            __settings.sourceSubBot = 'sub-delete';
+            saveAntiDeletePvSettings(__settings);
+            return reply('⛔ Monitoramento desativado. A sessão fica pareada, mas não armazena nem encaminha mensagens.');
+          }
+
+          if (__action === 'subbot' || __action === 'sub-bot') {
+            if (!__argument || ['off', 'none', 'principal'].includes(__argument.toLowerCase())) {
+              __settings.sourceSubBot = '';
+              saveAntiDeletePvSettings(__settings);
+              return reply('✅ Fonte alterada para o socket principal. Os sub-bots voltam ao comportamento normal.');
+            }
+
+            const __selectedSubBot = resolveAntiDeletePvSubBot(__argument);
+
+            if (!__selectedSubBot) {
+              return reply(`❌ Não encontrei esse sub-bot. Informe o número conectado ou o ID mostrado em ${prefix}listarsubbots.`);
+            }
+
+            __settings.sourceSubBot = __selectedSubBot.id;
+            saveAntiDeletePvSettings(__settings);
+
+            return reply(`✅ Fonte Anti-Delete PV: ${__selectedSubBot.id}\nEsse sub-bot ficará dedicado somente ao monitoramento e não responderá nem executará comandos normais.`);
+          }
+
+          if (__action === 'global' || __action === 'pv' || __action === 'modo') {
+            const __newMode = __action === 'modo' ? __argument.toLowerCase() : __action;
+
+            if (!['global', 'pv'].includes(__newMode)) {
+              return reply(`Uso: ${prefix}antideletepv modo pv ou ${prefix}antideletepv modo global`);
+            }
+
+            __settings.mode = __newMode;
+            saveAntiDeletePvSettings(__settings);
+
+            return reply(__newMode === 'global'
+              ? '✅ Modo GLOBAL PV: todos os privados, ignorando a lista de contatos. Grupos não são monitorados.'
+              : '✅ Modo PV: apenas privados permitidos pela lista de contatos, se preenchida. Grupos não são monitorados.');
+          }
+
+          if (['add', 'adicionar', 'monitorar'].includes(__action)) {
+            const __number = normalizeAntiDeletePvNumber(__argument);
+
+            if (__number.length < 8 || __number.length > 15) {
+              return reply(`Informe o número com DDI. Exemplo: ${prefix}antideletepv add 5511999999999`);
+            }
+
+            if (!__settings.contacts.includes(__number)) __settings.contacts.push(__number);
+            saveAntiDeletePvSettings(__settings);
+
+            return reply(`✅ Contato adicionado: ${__number}\nAgora somente números desta lista serão monitorados.`);
+          }
+
+          if (['remove', 'remover', 'del', 'rm'].includes(__action)) {
+            const __number = normalizeAntiDeletePvNumber(__argument);
+
+            if (!__number) return reply(`Uso: ${prefix}antideletepv remove 55DDDNUMERO`);
+
+            __settings.contacts = __settings.contacts.filter(number => number !== __number);
+            saveAntiDeletePvSettings(__settings);
+
+            return reply(`✅ Contato removido: ${__number}\n${__settings.contacts.length ? 'A lista restante continuará sendo usada como filtro.' : 'A lista ficou vazia; todos os contatos permitidos pelo modo serão monitorados.'}`);
+          }
+
+          if (['list', 'lista', 'listar'].includes(__action)) {
+            return reply(`📋 *CONTATOS DO ANTI-DELETE PV*\n${__settings.contacts.length ? __settings.contacts.map(number => `• ${number}`).join('\n') : 'Lista vazia: todos os contatos permitidos pelo modo.'}`);
+          }
+
+          if (['clear', 'limpar', 'reset'].includes(__action)) {
+            __settings.contacts = [];
+            saveAntiDeletePvSettings(__settings);
+            return reply('✅ Lista limpa. Todos os contatos permitidos pelo modo serão monitorados.');
+          }
+
+          return reply(__statusText());
+        } catch (__error) {
+          console.error('[ANTI-DELETE PV] Comando falhou:', __error?.stack || __error);
+          return reply('❌ Não consegui atualizar o Anti-Delete PV. Confira o terminal da Kyara.');
+        }
+      }
+
       case 'antidelete':
         try {
           if (!isGroup) return reply("Isso só pode ser usado em grupo 💔");
@@ -35888,7 +43073,7 @@ Exemplos:
 
           let removidos = 0;
           try {
-            await nazu.groupParticipantsUpdate(from, fantasmas, 'remove');
+            await kya.groupParticipantsUpdate(from, fantasmas, 'remove');
             removidos = fantasmas.length;
 
             // Atualiza o contador removendo os usuários banidos
@@ -35921,8 +43106,12 @@ Exemplos:
             if (action === 'on' || action === 'ativar') {
 
               groupData.welcome.photo = true;
-              groupData.welcome.photoType = 'api';
-              delete groupData.welcome.image; // limpa imagem antiga se tiver
+
+              if (!groupData.welcome.photoType) {
+                groupData.welcome.photoType =
+                  groupData.welcome.image ? 'custom' : 'global';
+              }
+
               writeJsonFile(buildGroupFilePath(from), groupData);
 
               await reply(`✅ Foto de boas-vindas ATIVADA!\n\nUse o comando ${prefix}set-fotobv para configurar a imagem de boas-vindas.`);
@@ -35930,8 +43119,6 @@ Exemplos:
             } else if (action === 'off' || action === 'desativar') {
 
               groupData.welcome.photo = false;
-              delete groupData.welcome.photoType; // sem isso, a foto continuava sendo enviada
-              delete groupData.welcome.image;
               writeJsonFile(buildGroupFilePath(from), groupData);
 
               await reply("✅ Foto de boas-vindas DESATIVADA!");
@@ -35962,15 +43149,15 @@ Exemplos:
               groupData.welcome = {};
             }
 
-            if (action === 'api') {
+            if (action === 'api' || action === 'padrao' || action === 'global') {
 
               groupData.welcome.photo = true;
-              groupData.welcome.photoType = 'api';
+              groupData.welcome.photoType = 'global';
               delete groupData.welcome.image;
 
               writeJsonFile(buildGroupFilePath(from), groupData);
 
-              await reply("✅ Foto de boas-vindas definida para API!");
+              await reply("✅ Foto padrão global da Kyara ativada para a boa-vinda!");
 
             } else if (isQuotedImage || isImage) {
 
@@ -35979,13 +43166,12 @@ Exemplos:
                 : info.message.imageMessage;
 
               const media = await getFileBuffer(imgMessage, 'image');
-              const uploadResult = await upload(media);
-
-              if (!uploadResult) throw new Error('Falha ao fazer upload da imagem');
+              const localFile =
+                await kyaraSaveLocalMedia(media, 'welcome-' + from);
 
               groupData.welcome.photo = true;
               groupData.welcome.photoType = 'custom';
-              groupData.welcome.image = uploadResult;
+              groupData.welcome.image = 'local:' + localFile;
 
               writeJsonFile(buildGroupFilePath(from), groupData);
 
@@ -35997,7 +43183,7 @@ Exemplos:
 
               await reply(
                 `🤔 Uso:\n` +
-                `${prefix}set-fotobv api\n` +
+                `${prefix}set-fotobv padrao\n` +
                 `ou envie/marque uma imagem com o comando\n\n` +
                 `📊 Atual: ${type}`
               );
@@ -36100,12 +43286,16 @@ Exemplos:
             } else if (isQuotedImage || isImage) {
 
               const media = await getFileBuffer(isQuotedImage ? info.message.extendedTextMessage.contextInfo.quotedMessage.imageMessage : info.message.imageMessage, 'image');
-              const uploadResult = await upload(media);
-              if (!uploadResult) throw new Error('Falha ao fazer upload da imagem');
+              const localFile =
+                await kyaraSaveLocalMedia(
+                  media,
+                  'exit'
+                );
 
               groupData.exit.photo = true;
               groupData.exit.photoType = 'custom';
-              groupData.exit.image = uploadResult;
+              groupData.exit.image = `local:${localFile}`;
+
               writeJsonFile(buildGroupFilePath(from), groupData);
 
               await reply('✅ Foto de saída personalizada configurada com sucesso!');
@@ -36321,7 +43511,7 @@ Exemplos:
             return reply("Uso inválido. Certifique-se de marcar um usuário e especificar um limite válido (número maior que 0).");
           }
           // Normaliza o ID do usuário para LID antes de salvar (aceita JID ou LID)
-          const userIdLid = await getLidFromJidCached(nazu, userId);
+          const userIdLid = await getLidFromJidCached(kya, userId);
           if (!AllgroupMembers.includes(userIdLid)) {
             return reply(`@${getUserName(userId)} não está no grupo.`, {
               mentions: [userId]
@@ -36354,7 +43544,7 @@ Exemplos:
             return reply("Por favor, marque um usuário ou responda a uma mensagem.");
           }
           // Normaliza para LID e busca no map
-          const userIdLid = await getLidFromJidCached(nazu, userId);
+          const userIdLid = await getLidFromJidCached(kya, userId);
           if (!parceriasData.partners[userIdLid]) {
             return reply(`@${getUserName(userId)} não é um parceiro.`, {
               mentions: [userIdLid]
@@ -36419,7 +43609,7 @@ Exemplos:
                 }
                 if (!targetUser) {
                   try {
-                    const lid = await getLidFromJidCached(nazu, candidateJid);
+                    const lid = await getLidFromJidCached(kya, candidateJid);
                     targetUser = lid && lid.includes('@lid') ? lid : candidateJid;
                   } catch (err) {
                     targetUser = candidateJid;
@@ -36472,7 +43662,7 @@ Exemplos:
                 }
                 if (!targetUser) {
                   try {
-                    const lid = await getLidFromJidCached(nazu, candidateJid);
+                    const lid = await getLidFromJidCached(kya, candidateJid);
                     targetUser = lid && lid.includes('@lid') ? lid : candidateJid;
                   } catch (err) {
                     targetUser = candidateJid;
@@ -36547,7 +43737,7 @@ Exemplos:
           const warningCount = groupData.warnings[menc_os2].length;
           fs.writeFileSync(groupFilePath, JSON.stringify(groupData, null, 2));
           if (warningCount >= 3) {
-            await nazu.groupParticipantsUpdate(from, [menc_os2], 'remove');
+            await kya.groupParticipantsUpdate(from, [menc_os2], 'remove');
             delete groupData.warnings[menc_os2];
             fs.writeFileSync(groupFilePath, JSON.stringify(groupData, null, 2));
             reply(`🚫 @${getUserName(menc_os2)} recebeu 3 advertências e foi banido!\nÚltima advertência: ${reason}`, {
@@ -36677,7 +43867,7 @@ Exemplos:
 
           const adminsToNotify = Array.isArray(groupAdmins) ? groupAdmins : [];
           for (const adminId of adminsToNotify) {
-            await nazu.sendMessage(adminId, { text: adminMessage, mentions: [ticket.userId] }).catch(err => {
+            await kya.sendMessage(adminId, { text: adminMessage, mentions: [ticket.userId] }).catch(err => {
               console.error(`Erro ao notificar admin ${adminId}:`, err.message || err);
             });
           }
@@ -36709,7 +43899,7 @@ Exemplos:
             .map(p => p.lid || p.id)
             .filter(Boolean);
 
-          const adminIds = await convertIdsToLid(nazu, rawAdmins);
+          const adminIds = await convertIdsToLid(kya, rawAdmins);
           const isTicketAdmin = idInArray(sender, adminIds) || isOwner || isSubOwner;
           if (!isTicketAdmin) return reply('❌ Apenas admins do grupo podem aceitar este ticket.');
 
@@ -37129,6 +44319,77 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
         }
         break;
 
+      case 'audioassistente':
+      case 'áudioassistente':
+        try {
+          if (!isGroup) {
+            return reply('Este comando só pode ser usado em grupo.');
+          }
+
+          if (!isGroupAdmin && !isOwner) {
+            return reply('Você precisa ser administrador do grupo.');
+          }
+
+          const argumentoAudio = String(q || '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+
+          const arquivoGrupoAudio =
+            __dirname + '/../database/grupos/' + from + '.json';
+
+          let dadosGrupoAudio = fs.existsSync(arquivoGrupoAudio)
+            ? JSON.parse(fs.readFileSync(arquivoGrupoAudio, 'utf8'))
+            : {};
+
+          if (
+            !['on', 'off', 'ligar', 'desligar', 'status'].includes(
+              argumentoAudio || 'status'
+            )
+          ) {
+            return reply(
+              '🎙️ *ÁUDIO DA KYARA*\\n\\n' +
+              'Use:\\n' +
+              '• #áudioassistente on\\n' +
+              '• #áudioassistente off\\n' +
+              '• #áudioassistente status'
+            );
+          }
+
+          if (['on', 'ligar'].includes(argumentoAudio)) {
+            dadosGrupoAudio.assistenteAudio = true;
+          } else if (['off', 'desligar'].includes(argumentoAudio)) {
+            dadosGrupoAudio.assistenteAudio = false;
+          }
+
+          fs.mkdirSync(pathz.dirname(arquivoGrupoAudio), {
+            recursive: true
+          });
+
+          fs.writeFileSync(
+            arquivoGrupoAudio,
+            JSON.stringify(dadosGrupoAudio, null, 2),
+            'utf8'
+          );
+
+          groupData.assistenteAudio =
+            dadosGrupoAudio.assistenteAudio === true;
+
+          return reply(
+            '🎙️ *ÁUDIO DA KYARA*\\n\\n' +
+            'Estado: ' +
+            (groupData.assistenteAudio ? 'ATIVADO 🔊' : 'DESATIVADO 💬') +
+            '\\n\\n' +
+            (groupData.assistenteAudio
+              ? 'As respostas da assistente serão enviadas como notas de voz.'
+              : 'As respostas da assistente serão enviadas como texto.')
+          );
+        } catch (erroAudioConfig) {
+          console.error('[KYARA AUDIO CONFIG]', erroAudioConfig);
+          return reply('Não consegui salvar a configuração de áudio.');
+        }
+
       case 'assistente':
       case 'assistent':
         try {
@@ -37164,9 +44425,9 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
 
             if (!tarefaDev) {
               return reply(
-                `🛠️ *ASSISTENTE DE DESENVOLVIMENTO*\\n\\n` +
-                `Use: ${prefix}assistente dev <o que você quer implementar>\\n\\n` +
-                `Exemplo: ${prefix}assistente dev analise como corrigir o comando /play sem alterar arquivos.\\n\\n` +
+                `🛠️ *ASSISTENTE DE DESENVOLVIMENTO*\n\n` +
+                `Use: ${prefix}assistente dev <o que você quer implementar>\n\n` +
+                `Exemplo: ${prefix}assistente dev analise como corrigir o comando /play sem alterar arquivos.\n\n` +
                 `A IA vai gerar uma proposta. Ela não executa comandos nem grava arquivos.`
               );
             }
@@ -37181,15 +44442,9 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
               const resultadoDev = await ia.makeAssistentRequest(
                 {
                   mensagens: [{
-                    texto:
-                      'Você é o assistente de desenvolvimento da Kyara/BKkyara. ' +
-                      'Responda em português, com precisão. Não afirme que leu arquivos que não foram fornecidos. ' +
-                      'Não invente nomes de funções, caminhos ou APIs. Se faltar código, peça o trecho exato. ' +
-                      'Quando sugerir mudanças, forneça um patch ou comandos de edição com backup e validação. ' +
-                      'Não proponha execução de comandos destrutivos nem alterações em massa.\\n\\n' +
-                      'TAREFA DO DONO:\\n' + tarefaDev,
-                    id_enviou: sender || '',
-                    nome_enviou: pushName || '',
+                    texto: tarefaDev,
+                    id_enviou: `${String(sender || 'global')}:assistente-dev`,
+                    nome_enviou: String(typeof pushname !== 'undefined' ? pushname : 'Usuário'),
                     id_grupo: from || '',
                     nome_grupo: '',
                     tem_midia: false,
@@ -37204,10 +44459,10 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
                     primeira_mencao: null
                   }]
                 },
-                nazu,
+                kya,
                 nmrdn,
                 'pro',
-                'Você é um assistente técnico da Kyara/BKkyara. Gere propostas revisáveis; não alegue ter aplicado ou testado mudanças.'
+                'Você é o assistente de desenvolvimento da Kyara/BKkyara. Responda em português e diretamente à tarefa recebida. Em perguntas simples, responda de forma curta, sem pedir código. Em tarefas de programação, não invente arquivos, funções ou testes. Proponha alterações revisáveis e seguras. Nunca afirme que editou arquivos ou executou testes sem ter feito isso.'
               );
 
               const respostaDev =
@@ -37220,7 +44475,7 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
                 return reply('⚠️ A IA não retornou uma resposta. Tente dividir a tarefa em partes menores.');
               }
 
-              return reply('🛠️ *PROPOSTA DE DESENVOLVIMENTO*\\n\\n' + String(respostaDev).trim());
+              return reply('🛠️ *PROPOSTA DE DESENVOLVIMENTO*\n\n' + String(respostaDev).trim());
             } catch (erroDev) {
               console.error('[ASSISTENTE-DEV]', erroDev);
               return reply('❌ Falha ao consultar a IA. O erro detalhado foi registrado no terminal.');
@@ -37244,7 +44499,7 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
               groupData.assistentePersonality || 'kyara';
 
             return await enviarControleAssistenteKyara(
-              nazu,
+              kya,
               from,
               info,
               prefix,
@@ -37316,7 +44571,7 @@ ${prefix}antistickerplus remover → remove usuário e apaga mensagem
           ) {
 
             return await enviarControleAssistenteKyara(
-              nazu,
+              kya,
               from,
               info,
               prefix,
@@ -37703,13 +44958,13 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
           };
 
           groupData.mutedUsers = groupData.mutedUsers || {};
-          const targetId = await normalizeUserId(nazu, menc_os2);
+          const targetId = await normalizeUserId(kya, menc_os2);
           groupData.mutedUsers[targetId] = true;
           if (targetId !== menc_os2) {
             groupData.mutedUsers[menc_os2] = true;
           }
           fs.writeFileSync(groupFilePath, JSON.stringify(groupData));
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `✅ @${getUserName(menc_os2)} foi mutado. Se enviar mensagens, será banido.`,
             mentions: [menc_os2]
           }, {
@@ -37733,11 +44988,11 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
           };
 
           groupData.mutedUsers = groupData.mutedUsers || {};
-          const targetId = await normalizeUserId(nazu, menc_os2);
+          const targetId = await normalizeUserId(kya, menc_os2);
           const removed = removeUserFromMap(groupData.mutedUsers, targetId) || removeUserFromMap(groupData.mutedUsers, menc_os2);
           if (removed) {
             fs.writeFileSync(groupFilePath, JSON.stringify(groupData));
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `✅ @${getUserName(menc_os2)} foi desmutado e pode enviar mensagens novamente.`,
               mentions: [menc_os2]
             }, {
@@ -37763,13 +45018,13 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
           };
 
           groupData.mutedUsers2 = groupData.mutedUsers2 || {};
-          const targetId = await normalizeUserId(nazu, menc_os2);
+          const targetId = await normalizeUserId(kya, menc_os2);
           groupData.mutedUsers2[targetId] = true;
           if (targetId !== menc_os2) {
             groupData.mutedUsers2[menc_os2] = true;
           }
           fs.writeFileSync(groupFilePath, JSON.stringify(groupData));
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: `✅ @${getUserName(menc_os2)} foi mutado. Suas mensagens serão apagadas automaticamente.`,
             mentions: [menc_os2]
           }, {
@@ -37793,11 +45048,11 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
           };
 
           groupData.mutedUsers2 = groupData.mutedUsers2 || {};
-          const targetId = await normalizeUserId(nazu, menc_os2);
+          const targetId = await normalizeUserId(kya, menc_os2);
           const removed = removeUserFromMap(groupData.mutedUsers2, targetId) || removeUserFromMap(groupData.mutedUsers2, menc_os2);
           if (removed) {
             fs.writeFileSync(groupFilePath, JSON.stringify(groupData));
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: `✅ @${getUserName(menc_os2)} foi desmutado e pode enviar mensagens novamente.`,
               mentions: [menc_os2]
             }, {
@@ -37865,7 +45120,7 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
             return reply("Sistema de jogo da velha temporariamente indisponível.");
           }
           const result = await tictactoe.invitePlayer(from, sender, menc_os2);
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: result.message,
             mentions: result.mentions
           });
@@ -37885,7 +45140,7 @@ ${prefix}setpersonalidade kuudere | Você é uma garota fria e inteligente chama
           }
           if (!menc_os2) return reply(`❌ Marque alguém para desafiar!\n\nUso: ${prefix}connect4 @usuario`);
           const result = await connect4.invitePlayer(from, sender, menc_os2);
-          await nazu.sendMessage(from, { text: result.message, mentions: result.mentions });
+          await kya.sendMessage(from, { text: result.message, mentions: result.mentions });
           break;
         }
 
@@ -37923,7 +45178,7 @@ ${prefix}uno sair - Sair da partida
         // Verificação automática de timeout antes de processar comandos
         const timeoutCheck = uno.checkTimeout(from);
         if (timeoutCheck && timeoutCheck.success) {
-          nazu.sendMessage(from, {
+          kya.sendMessage(from, {
             text: timeoutCheck.message,
             mentions: timeoutCheck.mentions || []
           });
@@ -37950,7 +45205,7 @@ ${prefix}uno sair - Sair da partida
               // Envia mão para cada jogador no PV
               for (const [playerId, hand] of Object.entries(result.hands)) {
                 try {
-                  await nazu.sendMessage(playerId, { text: `🎴 *Sua mão inicial:*\n${hand}` });
+                  await kya.sendMessage(playerId, { text: `🎴 *Sua mão inicial:*\n${hand}` });
                 } catch (e) { console.error('Erro ao enviar mão:', e); }
               }
             } else {
@@ -37972,12 +45227,12 @@ ${prefix}uno sair - Sair da partida
 
             const result = uno.playCard(from, sender, cardIndex, chosenColor);
             if (result.success) {
-              await nazu.sendMessage(from, { text: result.message, mentions: result.mentions || [] });
+              await kya.sendMessage(from, { text: result.message, mentions: result.mentions || [] });
               // Envia nova mão no PV
               const newHand = uno.getPlayerHand(from, sender);
               if (newHand) {
                 try {
-                  await nazu.sendMessage(sender, { text: `🎴 *Sua mão:*\n${newHand}` });
+                  await kya.sendMessage(sender, { text: `🎴 *Sua mão:*\n${newHand}` });
                 } catch (e) { }
               }
             } else {
@@ -37992,7 +45247,7 @@ ${prefix}uno sair - Sair da partida
               await reply(result.message, result.mentions ? { mentions: result.mentions } : undefined);
               if (result.newHand) {
                 try {
-                  await nazu.sendMessage(sender, { text: `🎴 *Sua mão:*\n${result.newHand}` });
+                  await kya.sendMessage(sender, { text: `🎴 *Sua mão:*\n${result.newHand}` });
                 } catch (e) { }
               }
             } else {
@@ -38014,7 +45269,7 @@ ${prefix}uno sair - Sair da partida
             const hand = uno.getPlayerHand(from, sender);
             if (hand) {
               try {
-                await nazu.sendMessage(sender, { text: `🎴 *Sua mão atual:*\n\n${hand}` });
+                await kya.sendMessage(sender, { text: `🎴 *Sua mão atual:*\n\n${hand}` });
                 return reply('✅ Sua mão foi enviada no seu PV!');
               } catch (e) {
                 return reply('❌ Não consegui enviar no seu PV. Você me bloqueou?');
@@ -38073,7 +45328,7 @@ ${prefix}uno sair - Sair da partida
             command === 'quizcasal_novo'
           ) {
             await handleQuizCasal({
-              nazu,
+              kya,
 
               // chat atual
               jid: from,
@@ -38119,7 +45374,7 @@ ${prefix}uno sair - Sair da partida
             }
 
             await handleQuizCasalButton({
-              nazu,
+              kya,
 
               jid:
                 from,
@@ -38153,7 +45408,7 @@ ${prefix}uno sair - Sair da partida
 
             if (quizId) {
               await handleQuizCasalButton({
-                nazu,
+                kya,
 
                 jid:
                   from,
@@ -38174,7 +45429,7 @@ ${prefix}uno sair - Sair da partida
             }
 
             await cancelarQuizCasal({
-              nazu,
+              kya,
 
               jid:
                 from,
@@ -38212,7 +45467,7 @@ ${prefix}uno sair - Sair da partida
                 .join(' ');
 
             await handleQuizCasalButton({
-              nazu,
+              kya,
 
               jid:
                 from,
@@ -38239,7 +45494,7 @@ ${prefix}uno sair - Sair da partida
           // ----------------------------------------------------------
 
           await handleQuizCasal({
-            nazu,
+            kya,
 
             jid:
               from,
@@ -38388,7 +45643,7 @@ Use ${prefix}inventario para ver seus itens!`);
 
         const resultGift = gifts.sendGift(sender, menc_os2, tipoGift);
         if (resultGift.success) {
-          await nazu.sendMessage(from, { text: resultGift.message, mentions: [sender, menc_os2] });
+          await kya.sendMessage(from, { text: resultGift.message, mentions: [sender, menc_os2] });
         } else {
           return reply(resultGift.message);
         }
@@ -38415,7 +45670,7 @@ Use ${prefix}inventario para ver seus itens!`);
           const target = menc_os2 || sender;
           const rep = reputation.getReputation(target);
           const name = menc_os2 ? `@${menc_os2.split('@')[0]}` : pushname;
-          return nazu.sendMessage(from, {
+          return kya.sendMessage(from, {
             text: `⭐ *Reputação de ${name}*\n\n${rep}`,
             mentions: menc_os2 ? [menc_os2] : []
           });
@@ -38472,7 +45727,7 @@ Use ${prefix}inventario para ver seus itens!`);
 
         const resultQRCode = await qrcode.generateQRCode(q, 300, prefix);
         if (resultQRCode.success) {
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             image: { url: resultQRCode.url },
             caption: `📱 *QR Code gerado!*\n\nConteúdo: ${q}`
           }, { quoted: info });
@@ -38642,7 +45897,7 @@ ${prefix}calc converter 100 km mi`);
 
           const resultCut = await audioEdit.cutAudio(audioBufferCut, inicioCut, fimCut, prefix);
           if (resultCut.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: resultCut.buffer,
               mimetype: 'audio/mpeg',
               ptt: false
@@ -38677,7 +45932,7 @@ ${prefix}calc converter 100 km mi`);
 
           const resultSpeed = await audioEdit.changeSpeed(audioBufferSpeed, vel);
           if (resultSpeed.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: resultSpeed.buffer,
               mimetype: 'audio/mpeg',
               ptt: false
@@ -38709,7 +45964,7 @@ ${prefix}calc converter 100 km mi`);
 
           const resultReverse = await audioEdit.reverseAudio(audioBufferReverse);
           if (resultReverse.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: resultReverse.buffer,
               mimetype: 'audio/mpeg',
               ptt: false
@@ -38744,7 +45999,7 @@ ${prefix}calc converter 100 km mi`);
 
           const resultBass = await audioEdit.bassBoost(audioBufferBass, levelBass);
           if (resultBass.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: resultBass.buffer,
               mimetype: 'audio/mpeg',
               ptt: false
@@ -38776,7 +46031,7 @@ ${prefix}calc converter 100 km mi`);
 
           const resultNorm = await audioEdit.normalizeAudio(audioBufferNorm);
           if (resultNorm.success) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               audio: resultNorm.buffer,
               mimetype: 'audio/mpeg',
               ptt: false
@@ -38827,7 +46082,7 @@ ${prefix}calc converter 100 km mi`);
             }
 
             const bufferVideoCut = fs.readFileSync(ranVideoCut);
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: bufferVideoCut,
               mimetype: 'video/mp4'
             }, { quoted: info });
@@ -38887,7 +46142,7 @@ ${prefix}calc converter 100 km mi`);
           `🌐 ${resultado.url}`;
 
         // Envia a imagem com a legenda
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           image: { url: resultado.imagem },
           caption: legenda
         }, { quoted: info }).catch(err => {
@@ -39245,7 +46500,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
         const requestResult = relationshipManager.createRequest('brincadeira', from, sender, menc_os2);
         if (!requestResult.success) {
           if (requestResult.mentions && requestResult.mentions.length > 0) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: requestResult.message,
               mentions: requestResult.mentions
             }, { quoted: info });
@@ -39254,7 +46509,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           }
           break;
         }
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: requestResult.message,
           mentions: requestResult.mentions || [sender, menc_os2]
         });
@@ -39281,7 +46536,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
         const requestResult = relationshipManager.createRequest('namoro', from, sender, menc_os2);
         if (!requestResult.success) {
           if (requestResult.mentions && requestResult.mentions.length > 0) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: requestResult.message,
               mentions: requestResult.mentions
             }, { quoted: info });
@@ -39290,7 +46545,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           }
           break;
         }
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: requestResult.message,
           mentions: requestResult.mentions || [sender, menc_os2]
         });
@@ -39317,7 +46572,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
         const requestResult = relationshipManager.createRequest('casamento', from, sender, menc_os2);
         if (!requestResult.success) {
           if (requestResult.mentions && requestResult.mentions.length > 0) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: requestResult.message,
               mentions: requestResult.mentions
             }, { quoted: info });
@@ -39326,7 +46581,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           }
           break;
         }
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: requestResult.message,
           mentions: requestResult.mentions || [sender, menc_os2]
         });
@@ -39364,7 +46619,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           break;
         }
 
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: summary.message,
           mentions: summary.mentions || [userOne, userTwo]
         }, { quoted: info });
@@ -39407,7 +46662,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
         text += `╰━━━━━━━━━━━━━━━━━━━━━━╯\n`;
         text += `\n💕 Total: ${groupCouples.length} casal(is)`;
 
-        await nazu.sendMessage(from, { text, mentions }, { quoted: info });
+        await kya.sendMessage(from, { text, mentions }, { quoted: info });
         break;
       }
 
@@ -39463,7 +46718,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           break;
         }
 
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: endResult.message,
           mentions: endResult.mentions || participants
         });
@@ -39498,7 +46753,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           break;
         }
 
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: betrayalResult.message,
           mentions: betrayalResult.mentions || [sender, menc_os2]
         });
@@ -39547,7 +46802,7 @@ ${tempo.includes('nunca') ? '😂 Brincadeira! Nunca desista dos seus sonhos!' :
           break;
         }
 
-        await nazu.sendMessage(from, {
+        await kya.sendMessage(from, {
           text: historyResult.message,
           mentions: historyResult.mentions || [userOne, userTwo]
         });
@@ -39759,7 +47014,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
         try {
           let membros = groupAdmins;
           let msg = `📢 *Mencionando os admins do grupo:* ${q ? `\n💬 *Mensagem:* ${q}` : ''}\n\n`;
-          await nazu.sendMessage(from, {
+          await kya.sendMessage(from, {
             text: msg + membros.map(m => `➤ @${getUserName(m)}`).join('\n'),
             mentions: membros
           });
@@ -39768,26 +47023,1001 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           reply("ocorreu um erro 💔");
         }
         break;
-      case 'perfil':
+      case 'perfil2': {
         try {
-          const { default: perfilHandler } = await import('./funcs/perfil-canvas.js');
-          await perfilHandler({
-            nazu,
-            from,
+          const cryptoPerfil2 = await import('node:crypto');
+      
+          const nomePerfil2 = String(
+            pushname ||
+            (typeof getUserName === 'function' ? getUserName(sender) : '') ||
+            'Usuário'
+          ).replace(/\s+/g, ' ').trim();
+      
+          const candidatosPerfil2 = [...new Set([
+            info?.key?.participantAlt,
+            info?.key?.participant,
             sender,
-            pushname,
-            getUserName,
-            info,
-            reply,
-            groupMetadata,
-            photoJid:
-              info?.key?.participantAlt ||
-              info?.key?.participant ||
-              (!isGroup ? info?.key?.remoteJid : null)
+            !isGroup ? info?.key?.remoteJid : null
+          ].filter(Boolean).map(String))];
+      
+          const jidPerfil2 = candidatosPerfil2.find(
+            jid => /@s\.whatsapp\.net$/i.test(jid)
+          );
+      
+          const numeroPerfil2 = jidPerfil2
+            ? jidPerfil2.split('@')[0]
+            : 'Privacidade LID';
+      
+          const idPerfil2 = String(
+            sender || candidatosPerfil2[0] || 'Desconhecido'
+          ).split('@')[0];
+      
+          const aleatorioPerfil2 = lista =>
+            lista[Math.floor(Math.random() * lista.length)];
+      
+          const carismaPerfil2 = Math.floor(Math.random() * 101);
+          const sortePerfil2 = Math.floor(Math.random() * 101);
+          const caosPerfil2 = Math.floor(Math.random() * 101);
+      
+          const tituloPerfil2 = aleatorioPerfil2([
+            '👑 Lenda do grupo',
+            '🌪️ Agente do caos',
+            '🕶️ Misterioso demais',
+            '🎭 Mestre do deboche',
+            '🔥 Protagonista por acidente',
+            '🧩 Personagem secreto'
+          ]);
+      
+          let fotoBufferPerfil2 = null;
+      
+          if (typeof kya?.profilePictureUrl === 'function') {
+            for (const jid of candidatosPerfil2.slice(0, 4)) {
+              let timerPerfil2;
+      
+              try {
+                const urlPerfil2 = await Promise.race([
+                  kya.profilePictureUrl(jid, 'image'),
+                  new Promise((_, reject) => {
+                    timerPerfil2 = setTimeout(
+                      () => reject(new Error('Tempo limite da foto')),
+                      3000
+                    );
+                  })
+                ]);
+      
+                if (!urlPerfil2) continue;
+      
+                const respostaPerfil2 = await fetch(urlPerfil2, {
+                  signal: AbortSignal.timeout(10000)
+                });
+      
+                if (!respostaPerfil2.ok) continue;
+      
+                fotoBufferPerfil2 = Buffer.from(
+                  await respostaPerfil2.arrayBuffer()
+                );
+      
+                if (fotoBufferPerfil2.length) break;
+                fotoBufferPerfil2 = null;
+              } catch (erroFotoPerfil2) {
+                console.warn(
+                  '[PERFIL2] Foto indisponível para',
+                  jid,
+                  erroFotoPerfil2?.message || erroFotoPerfil2
+                );
+              } finally {
+                clearTimeout(timerPerfil2);
+              }
+            }
+          }
+      
+          if (fotoBufferPerfil2) {
+            await kya.sendMessage(from, {
+              image: fotoBufferPerfil2,
+              caption:
+                '🪪 *PERFIL 2 — KYARA-SYSTΞM*\n' +
+                '👤 Usuário: ' + nomePerfil2 + '\n' +
+                '✨ Confira os dados abaixo.'
+            }, { quoted: info });
+          }
+      
+          const linhasPerfil2 = [
+            ['Informação', 'Resultado'],
+            ['👤 Nome', nomePerfil2],
+            ['📱 Número', numeroPerfil2],
+            ['🆔 ID', idPerfil2],
+            ['📍 Conversa', isGroup ? 'Grupo' : 'Privado'],
+            ['✨ Carisma', carismaPerfil2 + '%'],
+            ['🍀 Sorte', sortePerfil2 + '%'],
+            ['🌪️ Nível de caos', caosPerfil2 + '%'],
+            ['🏆 Título', tituloPerfil2],
+            ['📷 Foto', fotoBufferPerfil2 ? 'Carregada' : 'Indisponível']
+          ];
+      
+          const partesPerfil2 = [
+            {
+              messageType: 2,
+              messageText: '🪪 PERFIL 2 — KYARA-SYSTΞM'
+            },
+            {
+              messageType: 4,
+              tableMetadata: {
+                rows: linhasPerfil2.map((linha, indice) => ({
+                  items: linha.map(valor => String(valor ?? '')),
+                  isHeading: indice === 0
+                }))
+              }
+            },
+            {
+              messageType: 2,
+              messageText: '💠 Perfil consultado pela Kyara.'
+            }
+          ];
+      
+          const montarSecaoPerfil2 = parte => {
+            if (parte.messageType === 2) {
+              return {
+                view_model: {
+                  primitive: {
+                    text: parte.messageText,
+                    __typename: 'GenAIMarkdownTextUXPrimitive'
+                  },
+                  __typename: 'GenAISingleLayoutViewModel'
+                }
+              };
+            }
+      
+            if (parte.messageType === 4) {
+              return {
+                view_model: {
+                  primitive: {
+                    rows: parte.tableMetadata.rows.map(linha => ({
+                      is_header: Boolean(linha.isHeading),
+                      cells: linha.items.map(valor => String(valor ?? ''))
+                    })),
+                    __typename: 'GenATableUXPrimitive'
+                  },
+                  __typename: 'GenAISingleLayoutViewModel'
+                }
+              };
+            }
+      
+            return null;
+          };
+      
+          const idRichPerfil2 = 'kyara-perfil2-' + Date.now();
+      
+          const richPerfil2 = {
+            messageType: 1,
+            submessages: partesPerfil2,
+            unifiedResponse: {
+              data: Buffer.from(JSON.stringify({
+                response_id: idRichPerfil2,
+                sections: partesPerfil2
+                  .map(montarSecaoPerfil2)
+                  .filter(Boolean)
+              })).toString('base64')
+            },
+            contextInfo: {
+              isForwarded: true,
+              forwardingScore: 1,
+              forwardOrigin: 4,
+              forwardedAiBotMessageInfo: {
+                botName: 'Meta AI',
+                botJid: '867051314767696@bot',
+                creatorName: 'Meta'
+              },
+              botMessageSharingInfo: {
+                botEntryPointOrigin: String(from || '').endsWith('@g.us') ? 30 : 29,
+                forwardScore: 1
+              }
+            }
+          };
+      
+          const payloadPerfil2 = proto.Message.fromObject({
+            botForwardedMessage: {
+              message: {
+                richResponseMessage: richPerfil2
+              }
+            },
+            messageContextInfo: {
+              messageSecret: cryptoPerfil2.randomBytes(32),
+              botMetadata: {
+                modelMetadata: {
+                  modelType: 'LLAMA_PROD',
+                  premiumModelStatus: 'AVAILABLE'
+                },
+                botAgeCollectionMetadata: {},
+                botResponseId: idRichPerfil2,
+                verificationMetadata: { proofs: [] },
+                botInfrastructureDiagnostics: {},
+                capabilityMetadata: {
+                  capabilities: [
+                    'RICH_RESPONSE_STRUCTURED_RESPONSE',
+                    'RICH_RESPONSE_UNIFIED_RESPONSE',
+                    'RICH_RESPONSE_UNIFIED_TEXT_COMPONENT',
+                    'RICH_RESPONSE_TABLE'
+                  ]
+                }
+              }
+            }
           });
+      
+          const mensagemPerfil2 = generateWAMessageFromContent(
+            from,
+            payloadPerfil2,
+            {
+              userJid: kya?.user?.id,
+              quoted: info
+            }
+          );
+      
+          await kya.relayMessage(
+            from,
+            mensagemPerfil2.message,
+            { messageId: mensagemPerfil2.key.id }
+          );
+      
+          console.log('[PERFIL2] Foto e cartão de perfil enviados.');
+        } catch (erroPerfil2) {
+          console.error('[PERFIL2] Erro:', erroPerfil2?.stack || erroPerfil2);
+      
+          await kya.sendMessage(from, {
+            text: '❌ Erro no Perfil 2: ' +
+              (erroPerfil2?.message || String(erroPerfil2))
+          }, { quoted: info });
+        }
+      }
+      break;
+      
+            case 'editarperfil3': {
+        await kya.sendMessage(from, {
+          text:
+            '╭━━〔 ✦ KYARA-SYSTΞM 〕━━╮\n' +
+            '┃ 🎨 EDITOR DE PERFIL\n' +
+            '╰━━━━━━━━━━━━━━━━━━╯\n\n' +
+            '✍️ *Editar bio:*\n' +
+            '#editarbio Sua descrição aqui\n\n' +
+            '🌌 *Escolher fundo:*\n' +
+            '#fundoperfil3 galaxia\n' +
+            '#fundoperfil3 cyberpunk\n' +
+            '#fundoperfil3 dark\n' +
+            '#fundoperfil3 rosa\n' +
+            '#fundoperfil3 oceano\n' +
+            '#fundoperfil3 aurora\n\n' +
+            '💾 As alterações são salvas automaticamente.\n' +
+            'Use #salvarperfil3 para confirmar e #perfil3 para ver o cartão.'
+        }, { quoted: info });
+      }
+      break;
+
+      case 'editarbio': {
+        const novaBioPerfilCmd = String(q || '').trim();
+
+        if (!novaBioPerfilCmd) {
+          await kya.sendMessage(from, {
+            text: '✍️ Use: #editarbio Sua bio personalizada'
+          }, { quoted: info });
+          break;
+        }
+
+        if (novaBioPerfilCmd.length > 500) {
+          await kya.sendMessage(from, {
+            text: '⚠️ Sua bio pode ter no máximo 500 caracteres.'
+          }, { quoted: info });
+          break;
+        }
+
+        const arquivoPerfilCmd = pathz.join(
+          __dirname, '..', 'database', 'kyaraProfiles.json'
+        );
+        const chavePerfilCmd = String(
+          sender || info?.key?.participantAlt ||
+          info?.key?.participant || from || 'desconhecido'
+        );
+
+        fs.mkdirSync(pathz.dirname(arquivoPerfilCmd), { recursive: true });
+
+        let bancoPerfilCmd = {};
+        if (fs.existsSync(arquivoPerfilCmd)) {
+          bancoPerfilCmd = JSON.parse(
+            fs.readFileSync(arquivoPerfilCmd, 'utf8')
+          );
+        }
+
+        if (!bancoPerfilCmd[chavePerfilCmd] ||
+            typeof bancoPerfilCmd[chavePerfilCmd] !== 'object') {
+          bancoPerfilCmd[chavePerfilCmd] = {};
+        }
+
+        bancoPerfilCmd[chavePerfilCmd].bio = novaBioPerfilCmd;
+        bancoPerfilCmd[chavePerfilCmd].atualizadoEm = new Date().toISOString();
+
+        fs.writeFileSync(
+          arquivoPerfilCmd,
+          JSON.stringify(bancoPerfilCmd, null, 2),
+          'utf8'
+        );
+
+        await kya.sendMessage(from, {
+          text: '✅ Bio salva!\n\n✍️ ' + novaBioPerfilCmd +
+            '\n\nUse #perfil3 para visualizar.'
+        }, { quoted: info });
+      }
+      break;
+
+      case 'fundoperfil3': {
+        const pedidoTemaPerfilCmd = String(q || '')
+          .trim().toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+
+        const aliasesTemaPerfilCmd = {
+          galaxia: 'galaxia',
+          galaxy: 'galaxia',
+          roxo: 'galaxia',
+          'roxo neon': 'galaxia',
+          cyberpunk: 'cyberpunk',
+          cyber: 'cyberpunk',
+          neon: 'cyberpunk',
+          dark: 'dark',
+          preto: 'dark',
+          minimalista: 'dark',
+          rosa: 'rosa',
+          pink: 'rosa',
+          rose: 'rosa',
+          oceano: 'oceano',
+          ocean: 'oceano',
+          azul: 'oceano',
+          blue: 'oceano',
+          aurora: 'aurora',
+          verde: 'aurora',
+          green: 'aurora'
+        };
+
+        const temaEscolhidoPerfilCmd =
+          aliasesTemaPerfilCmd[pedidoTemaPerfilCmd];
+
+        if (!temaEscolhidoPerfilCmd) {
+          await kya.sendMessage(from, {
+            text:
+              '🎨 *Escolha um tema:*\n' +
+              '🌌 galaxia\n⚡ cyberpunk\n🖤 dark\n' +
+              '🌸 rosa\n🌊 oceano\n🌿 aurora\n\n' +
+              'Exemplo: #fundoperfil3 galaxia'
+          }, { quoted: info });
+          break;
+        }
+
+        const arquivoPerfilTemaCmd = pathz.join(
+          __dirname, '..', 'database', 'kyaraProfiles.json'
+        );
+        const chavePerfilTemaCmd = String(
+          sender || info?.key?.participantAlt ||
+          info?.key?.participant || from || 'desconhecido'
+        );
+
+        fs.mkdirSync(pathz.dirname(arquivoPerfilTemaCmd), { recursive: true });
+
+        let bancoPerfilTemaCmd = {};
+        if (fs.existsSync(arquivoPerfilTemaCmd)) {
+          bancoPerfilTemaCmd = JSON.parse(
+            fs.readFileSync(arquivoPerfilTemaCmd, 'utf8')
+          );
+        }
+
+        if (!bancoPerfilTemaCmd[chavePerfilTemaCmd] ||
+            typeof bancoPerfilTemaCmd[chavePerfilTemaCmd] !== 'object') {
+          bancoPerfilTemaCmd[chavePerfilTemaCmd] = {};
+        }
+
+        bancoPerfilTemaCmd[chavePerfilTemaCmd].tema = temaEscolhidoPerfilCmd;
+        bancoPerfilTemaCmd[chavePerfilTemaCmd].atualizadoEm =
+          new Date().toISOString();
+
+        fs.writeFileSync(
+          arquivoPerfilTemaCmd,
+          JSON.stringify(bancoPerfilTemaCmd, null, 2),
+          'utf8'
+        );
+
+        await kya.sendMessage(from, {
+          text: '✅ Fundo salvo: ' + temaEscolhidoPerfilCmd +
+            '\nUse #perfil3 para visualizar o novo cartão.'
+        }, { quoted: info });
+      }
+      break;
+
+      case 'salvarperfil3': {
+        const arquivoSalvarPerfilCmd = pathz.join(
+          __dirname, '..', 'database', 'kyaraProfiles.json'
+        );
+        const chaveSalvarPerfilCmd = String(
+          sender || info?.key?.participantAlt ||
+          info?.key?.participant || from || 'desconhecido'
+        );
+
+        fs.mkdirSync(pathz.dirname(arquivoSalvarPerfilCmd), { recursive: true });
+
+        let bancoSalvarPerfilCmd = {};
+        if (fs.existsSync(arquivoSalvarPerfilCmd)) {
+          bancoSalvarPerfilCmd = JSON.parse(
+            fs.readFileSync(arquivoSalvarPerfilCmd, 'utf8')
+          );
+        }
+
+        const atualSalvarPerfilCmd = bancoSalvarPerfilCmd[chaveSalvarPerfilCmd] || {};
+        atualSalvarPerfilCmd.bio = String(atualSalvarPerfilCmd.bio || '');
+        atualSalvarPerfilCmd.tema = String(atualSalvarPerfilCmd.tema || 'galaxia');
+        atualSalvarPerfilCmd.atualizadoEm = new Date().toISOString();
+        bancoSalvarPerfilCmd[chaveSalvarPerfilCmd] = atualSalvarPerfilCmd;
+
+        fs.writeFileSync(
+          arquivoSalvarPerfilCmd,
+          JSON.stringify(bancoSalvarPerfilCmd, null, 2),
+          'utf8'
+        );
+
+        await kya.sendMessage(from, {
+          text: '💾 Perfil salvo na memória local da Kyara-SYSTΞM!\n' +
+            '✍️ Bio: ' + (atualSalvarPerfilCmd.bio || 'Não definida') +
+            '\n🎨 Fundo: ' + atualSalvarPerfilCmd.tema +
+            '\n\nUse #perfil3 para visualizar.'
+        }, { quoted: info });
+      }
+      break;
+
+case 'perfil3': {
+        try {
+          const cryptoPerfil3 = await import('node:crypto');
+
+          const escaparPerfil3 = valor =>
+            String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;'
+            })[caractere]);
+
+          const nomePerfil3 = String(
+            pushname ||
+            (typeof getUserName === 'function' ? getUserName(sender) : '') ||
+            'Usuário'
+          ).replace(/\s+/g, ' ').trim();
+
+          const candidatosPerfil3 = [...new Set([
+            info?.key?.participantAlt,
+            info?.key?.participant,
+            sender,
+            !isGroup ? info?.key?.remoteJid : null
+          ].filter(Boolean).map(String))];
+
+          const jidPerfil3 = candidatosPerfil3.find(
+            jid => /@s\.whatsapp\.net$/i.test(jid)
+          );
+
+          const numeroPerfil3 = jidPerfil3
+            ? jidPerfil3.split('@')[0]
+            : 'Privacidade LID';
+
+          const idPerfil3 = String(
+            sender || candidatosPerfil3[0] || 'Desconhecido'
+          ).split('@')[0];
+
+
+          const arquivoDadosPerfil3 = pathz.join(
+            __dirname, '..', 'database', 'kyaraProfiles.json'
+          );
+
+          const chaveUsuarioPerfil3 = String(
+            sender || info?.key?.participantAlt ||
+            info?.key?.participant || from || 'desconhecido'
+          );
+
+          let bancoDadosPerfil3 = {};
+
+          try {
+            if (fs.existsSync(arquivoDadosPerfil3)) {
+              const lidoPerfil3 = JSON.parse(
+                fs.readFileSync(arquivoDadosPerfil3, 'utf8')
+              );
+              if (lidoPerfil3 && typeof lidoPerfil3 === 'object' &&
+                  !Array.isArray(lidoPerfil3)) {
+                bancoDadosPerfil3 = lidoPerfil3;
+              }
+            }
+          } catch (erroBancoPerfil3) {
+            console.warn('[PERFIL3] Não foi possível ler os perfis:',
+              erroBancoPerfil3.message);
+          }
+
+          const dadosUsuarioPerfil3 =
+            bancoDadosPerfil3[chaveUsuarioPerfil3] || {};
+
+          const bioPerfil3 = String(
+            dadosUsuarioPerfil3.bio || 'Ainda não defini minha bio.'
+          ).slice(0, 500);
+
+          const temasPerfil3 = {
+            galaxia: {
+              body: '#0b0712', top1: '#28113f', top2: '#120d20',
+              border: '#553578', accent: '#bd83ff'
+            },
+            cyberpunk: {
+              body: '#05050b', top1: '#171532', top2: '#080812',
+              border: '#00e5ff', accent: '#00e5ff'
+            },
+            dark: {
+              body: '#08080c', top1: '#22222a', top2: '#111116',
+              border: '#575767', accent: '#c7c7d4'
+            },
+            rosa: {
+              body: '#140810', top1: '#4a143d', top2: '#1b0b19',
+              border: '#ff6bc6', accent: '#ff88d4'
+            },
+            oceano: {
+              body: '#06111b', top1: '#103a58', top2: '#071722',
+              border: '#42c9ff', accent: '#6cdbff'
+            },
+            aurora: {
+              body: '#07120f', top1: '#0e4b3b', top2: '#091a18',
+              border: '#3de0ab', accent: '#74ffd1'
+            }
+          };
+
+          const temaNomePerfil3 = temasPerfil3[
+            dadosUsuarioPerfil3.tema || 'galaxia'
+          ] ? (dadosUsuarioPerfil3.tema || 'galaxia') : 'galaxia';
+
+          const temaPerfil3 = temasPerfil3[temaNomePerfil3];
+          const bioHtmlPerfil3 = escaparPerfil3(bioPerfil3);
+
+          let fotoBufferPerfil3 = null;
+          let mimeFotoPerfil3 = 'image/jpeg';
+
+          if (typeof kya?.profilePictureUrl === 'function') {
+            for (const jid of candidatosPerfil3.slice(0, 4)) {
+              let timerPerfil3;
+
+              try {
+                const urlPerfil3 = await Promise.race([
+                  kya.profilePictureUrl(jid, 'image'),
+                  new Promise((_, reject) => {
+                    timerPerfil3 = setTimeout(
+                      () => reject(new Error('Tempo limite da foto')),
+                      3000
+                    );
+                  })
+                ]);
+
+                if (!urlPerfil3) continue;
+
+                const respostaPerfil3 = await fetch(urlPerfil3, {
+                  signal: AbortSignal.timeout(10000)
+                });
+
+                if (!respostaPerfil3.ok) continue;
+
+                mimeFotoPerfil3 = (
+                  respostaPerfil3.headers.get('content-type') || 'image/jpeg'
+                ).split(';')[0];
+
+                fotoBufferPerfil3 = Buffer.from(
+                  await respostaPerfil3.arrayBuffer()
+                );
+
+                if (fotoBufferPerfil3.length) break;
+                fotoBufferPerfil3 = null;
+              } catch (erroFotoPerfil3) {
+                console.warn(
+                  '[PERFIL3] Foto indisponível:',
+                  erroFotoPerfil3?.message || erroFotoPerfil3
+                );
+              } finally {
+                clearTimeout(timerPerfil3);
+              }
+            }
+          }
+
+          if (fotoBufferPerfil3) {
+            try {
+              const moduloSharpPerfil3 = await import('sharp');
+              fotoBufferPerfil3 = await moduloSharpPerfil3.default(
+                fotoBufferPerfil3
+              )
+                .resize(320, 320, { fit: 'cover' })
+                .jpeg({ quality: 72 })
+                .toBuffer();
+
+              mimeFotoPerfil3 = 'image/jpeg';
+            } catch {
+              // Continua usando a foto original se Sharp não estiver disponível.
+            }
+          }
+
+          const fotoHtmlPerfil3 = fotoBufferPerfil3
+            ? '<img class="avatar" src="data:' +
+              escaparPerfil3(mimeFotoPerfil3) +
+              ';base64,' +
+              fotoBufferPerfil3.toString('base64') +
+              '" alt="Foto de perfil">'
+            : '<div class="avatar vazio">👤</div>';
+
+          const nomeHtmlPerfil3 = escaparPerfil3(nomePerfil3);
+          const numeroHtmlPerfil3 = escaparPerfil3(numeroPerfil3);
+          const idHtmlPerfil3 = escaparPerfil3(idPerfil3);
+          const conversaHtmlPerfil3 = isGroup ? 'Grupo' : 'Privado';
+
+          const htmlPerfil3 =
+            '<!doctype html><html><head>' +
+            '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<meta charset="utf-8"><style>' +
+            '*{box-sizing:border-box}' +
+            'body{margin:0;padding:12px;background:' + temaPerfil3.body + ';color:#f5efff;font-family:Arial,sans-serif}' +
+            '.card{max-width:440px;margin:auto;background:#151020;border:1px solid #553578;border-radius:20px;overflow:hidden}' +
+            '.top{padding:18px;background:linear-gradient(135deg,' + temaPerfil3.top1 + ',' + temaPerfil3.top2 + ');border-bottom:1px solid ' + temaPerfil3.border + ';animation:entrada .8s ease-out both}' +
+            '.brand{font-size:18px;font-weight:800;letter-spacing:1px;color:#e6c8ff}' +
+            '.sub{font-size:11px;letter-spacing:2px;color:#bda5d7;margin-top:5px}' +
+            '.brandline{font-size:13px;color:#a9a1b0;margin-top:5px;letter-spacing:.5px;overflow-wrap:anywhere}' +
+            '@keyframes entrada{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}' +
+            '@keyframes flutuar{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}' +
+            '@keyframes brilho{0%,100%{box-shadow:0 0 10px #a855f755}50%{box-shadow:0 0 25px #a855f799}}' +
+            '.card{animation:entrada .7s ease-out both}' +
+            '.user{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0;padding:94px 18px 18px;overflow:hidden;animation:entrada .9s ease-out both}' +
+            '.user:before{content:"";position:absolute;z-index:0;top:0;left:0;width:100%;height:132px;background-image:linear-gradient(180deg,#10091a22,#10091a55 65%,#151020),url("https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=85");background-size:cover;background-position:center;border-bottom:1px solid ' + temaPerfil3.border + '}' +
+            '.user>*{position:relative;z-index:1}' +
+            '.user>div{width:100%;margin-top:12px}' +
+            '.avatar{width:100px;height:100px;min-width:100px;border-radius:50%;object-fit:cover;border:4px solid ' + temaPerfil3.accent + ';background:' + temaPerfil3.top2 + ';margin-top:-48px;animation:flutuar 4s ease-in-out infinite,brilho 3s ease-in-out infinite}' +
+            '.user{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:0;padding:0 0 18px;overflow:hidden;animation:entrada .9s ease-out both}' +
+            '.user:before{content:none!important}' +
+            '.banner{display:block;position:relative;z-index:1;width:100%;height:200px;flex:none;background-image:linear-gradient(180deg,#08080a10 45%,#0b0b0dcc 100%),url("https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1000&q=85");background-size:cover;background-position:center;border-bottom:1px solid ' + temaPerfil3.border + ';animation:entrada .9s ease-out both}' +
+            '.userinfo{position:relative;z-index:1;width:100%;padding:0 18px;margin-top:10px;text-align:center}' +
+            '.avatar{display:block;width:104px;height:104px;min-width:104px;flex:none;align-self:center;border-radius:50%;object-fit:cover;border:4px solid ' + temaPerfil3.accent + ';background:' + temaPerfil3.top2 + ';margin-top:-62px;margin-bottom:8px;position:relative;z-index:3;animation:flutuar 4s ease-in-out infinite,brilho 3s ease-in-out infinite}' +
+            '.vazio{display:flex;align-items:center;justify-content:center;font-size:40px}' +
+            '.nome{font-size:18px;font-weight:800;overflow-wrap:anywhere}' +
+            '.bio{font-size:12px;color:#cbbbdc;margin-top:6px;overflow-wrap:anywhere;white-space:pre-wrap}' +
+            '.status{font-size:11px;color:' + temaPerfil3.accent + ';margin-top:7px}' +
+            '.pill{display:inline-block;margin:0 18px 16px;padding:6px 10px;border-radius:30px;background:#281b37;color:#e2c8ff;font-size:12px}' +
+            '.section{padding:0 18px 14px}' +
+            '.row{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid #30243e;font-size:13px}' +
+            '.row span{color:#c5b5d7}.row strong{text-align:right;overflow-wrap:anywhere}' +
+            'details{margin:0 18px 18px;background:#211630;border:1px solid #54346f;border-radius:12px;overflow:hidden}' +
+            'summary{cursor:pointer;padding:13px;color:#e5caff;font-weight:700;list-style:none}' +
+            'summary::-webkit-details-marker{display:none}' +
+            '.extra{padding:0 13px 12px}' +
+            '.foot{text-align:center;padding:13px;color:#9f8aaf;font-size:10px;letter-spacing:1px;border-top:1px solid #30243e}' +
+            '@media(prefers-reduced-motion:reduce){.card,.user,.top,.avatar{animation:none!important}}' +
+            '</style></head><body><main class="card">' +
+            '<section class="user"><div class="banner"></div>' + fotoHtmlPerfil3 +
+            '<div class="userinfo"><div class="nome">' + nomeHtmlPerfil3 + '</div>' +
+            '<div class="brandline">~ KYARA-SYSTΞM</div>' +
+            '<div class="bio">' + bioHtmlPerfil3 + '</div>' +
+            '<div class="status">● PERFIL CONSULTADO</div></div></section>' +
+            '<div class="pill">💬 ' + conversaHtmlPerfil3 + '</div>' +
+            '<section class="section">' +
+            '<div class="row"><span>👤 Nome</span><strong>' + nomeHtmlPerfil3 + '</strong></div>' +
+            '<div class="row"><span>📷 Foto</span><strong>' +
+            (fotoBufferPerfil3 ? 'Carregada' : 'Indisponível') +
+            '</strong></div></section>' +
+            '<details><summary>＋ Ler mais informações</summary>' +
+            '<div class="extra">' +
+            '<div class="row"><span>📱 Número</span><strong>' + numeroHtmlPerfil3 + '</strong></div>' +
+            '<div class="row"><span>🆔 ID</span><strong>' + idHtmlPerfil3 + '</strong></div>' +
+            '<div class="row"><span>📍 Conversa</span><strong>' + conversaHtmlPerfil3 + '</strong></div>' +
+            '<div class="row"><span>🤖 Sistema</span><strong>KYARA-SYSTΞM</strong></div>' +
+            '<div class="row"><span>💠 Status</span><strong>Ativo</strong></div>' +
+            '</div></details>' +
+            '<footer class="foot">KYARA-SYSTΞM • PERFIL DIGITAL</footer>' +
+            '</main></body></html>';
+
+          const idRichPerfil3 = 'kyara-perfil3-' + Date.now();
+
+          const secoesHTMLPerfil3 = [{
+            __typename: 'GenAIUnifiedResponseSection',
+            view_model: {
+              __typename: 'GenAISingleLayoutViewModel',
+              primitive: {
+                __typename: 'GenAIaeacdsnwHtmlPrimitive',
+                payload: htmlPerfil3,
+                trusted_sources: []
+              }
+            }
+          }];
+
+          const dadosUnificadosPerfil3 = {
+            __typename: 'GenAIUnifiedResponse',
+            response_id: idRichPerfil3,
+            sections: secoesHTMLPerfil3
+          };
+
+          const resumoFallbackPerfil3 =
+            '🪪 PERFIL — KYARA-SYSTΞM\n' +
+            '👤 Nome: ' + nomePerfil3 + '\n' +
+            '📱 Número: ' + numeroPerfil3 + '\n' +
+            '🆔 ID: ' + idPerfil3 + '\n' +
+            '📷 Foto: ' + (fotoBufferPerfil3 ? 'Carregada' : 'Indisponível');
+
+          const richPerfil3 = {
+            messageType: 1,
+            submessages: [{
+              messageType: 2,
+              messageText: resumoFallbackPerfil3
+            }],
+            unifiedResponse: {
+              data: Buffer.from(
+                JSON.stringify(dadosUnificadosPerfil3)
+              ).toString('base64')
+            },
+            contextInfo: {
+              isForwarded: true,
+              forwardingScore: 1,
+              forwardOrigin: 4,
+              forwardedAiBotMessageInfo: {
+                botName: 'Meta AI',
+                botJid: '867051314767696@bot',
+                creatorName: 'Meta'
+              },
+              botMessageSharingInfo: {
+                botEntryPointOrigin:
+                  String(from || '').endsWith('@g.us') ? 30 : 29,
+                forwardScore: 1
+              }
+            }
+          };
+
+          const payloadPerfil3 = proto.Message.fromObject({
+            botForwardedMessage: {
+              message: {
+                richResponseMessage: richPerfil3
+              }
+            },
+            messageContextInfo: {
+              messageSecret: cryptoPerfil3.randomBytes(32),
+              botMetadata: {
+                modelMetadata: {
+                  modelType: 'LLAMA_PROD',
+                  premiumModelStatus: 'AVAILABLE'
+                },
+                botAgeCollectionMetadata: {},
+                botResponseId: idRichPerfil3,
+                verificationMetadata: { proofs: [] },
+                botInfrastructureDiagnostics: {},
+                capabilityMetadata: {
+                  capabilities: [
+                    'RICH_RESPONSE_STRUCTURED_RESPONSE',
+                    'RICH_RESPONSE_UNIFIED_RESPONSE',
+                    'RICH_RESPONSE_UNIFIED_TEXT_COMPONENT'
+                  ]
+                }
+              }
+            }
+          });
+
+          const mensagemPerfil3 = generateWAMessageFromContent(
+            from,
+            payloadPerfil3,
+            {
+              userJid: kya?.user?.id,
+              quoted: info
+            }
+          );
+
+          await kya.relayMessage(
+            from,
+            mensagemPerfil3.message,
+            { messageId: mensagemPerfil3.key.id }
+          );
+
+          console.log('[PERFIL3] Cartão HTML enviado em uma mensagem.');
+        } catch (erroPerfil3) {
+          console.error(
+            '[PERFIL3] Erro:',
+            erroPerfil3?.stack || erroPerfil3
+          );
+
+          await kya.sendMessage(from, {
+            text: '❌ Erro no Perfil 3: ' +
+              (erroPerfil3?.message || String(erroPerfil3))
+          }, { quoted: info });
+        }
+      }
+      break;
+
+case 'perfil':
+        try {
+          console.log('[PERFIL] comando entrou no case');
+          const prefixPerfil =
+            typeof prefix !== 'undefined' ? String(prefix) : '#';
+
+          const nomePerfil = String(
+            pushname ||
+            (typeof getUserName === 'function' ? getUserName(sender) : '') ||
+            'Usuário'
+          ).replace(/\s+/g, ' ').trim();
+
+          const candidatosFoto = [...new Set([
+            info?.key?.participantAlt,
+            info?.key?.participant,
+            sender,
+            !isGroup ? info?.key?.remoteJid : null
+          ].filter(Boolean).map(String))];
+
+          const jidTelefone = candidatosFoto.find(
+            jid => /@s\.whatsapp\.net$/i.test(jid)
+          );
+
+          const numeroPerfil = jidTelefone
+            ? jidTelefone.split('@')[0]
+            : 'Privacidade LID';
+
+          const idPerfil = String(
+            sender || candidatosFoto[0] || 'Desconhecido'
+          ).split('@')[0];
+
+          const aleatorio = lista =>
+            lista[Math.floor(Math.random() * lista.length)];
+
+          const barra = valor => {
+            const cheios = Math.round(valor / 10);
+            return '▰'.repeat(cheios) +
+              '▱'.repeat(10 - cheios) + ' ' + valor + '%';
+          };
+
+          const titulo = aleatorio([
+            '👑 Lenda do grupo',
+            '🌪️ Agente do caos',
+            '🕶️ Misterioso demais',
+            '🎭 Mestre do deboche',
+            '💤 Especialista em sumir',
+            '🔥 Protagonista por acidente',
+            '🧩 Personagem secreto'
+          ]);
+
+          const carisma = Math.floor(Math.random() * 101);
+          const sorte = Math.floor(Math.random() * 101);
+          const caos = Math.floor(Math.random() * 101);
+
+          const textoPerfil = [
+            '╭━━━〔 🌸 KYARA-SYSTΞM 〕━━━╮',
+            '       👤 PERFIL DO USUÁRIO',
+            '╰━━━━━━━━━━━━━━━━━━━━╯',
+            '',
+            '🏷️ *Nome:* ' + nomePerfil,
+            '📱 *Número:* ' + numeroPerfil,
+            '🆔 *ID:* ' + idPerfil,
+            '📍 *Local:* ' + (isGroup ? 'Grupo' : 'Privado'),
+            '',
+            '┏━━━〔 🎮 MODO ZOEIRA 〕━━━┓',
+            '✨ *Carisma:* ' + barra(carisma),
+            '🍀 *Sorte:* ' + barra(sorte),
+            '🌪️ *Nível de caos:* ' + barra(caos),
+            '┗━━━━━━━━━━━━━━━━━━━━┛',
+            '',
+            '🏆 *Título desbloqueado:*',
+            titulo,
+            '',
+            '💬 *Resumo:* ' + aleatorio([
+              'Perigo constante para a paz do grupo.',
+              'Parece tranquilo, mas ninguém confia.',
+              'Lenda viva ou só falta de sono.',
+              'Aparece do nada e muda o assunto.',
+              'Energia de protagonista sem orçamento.'
+            ]),
+            '',
+            '🎲 Atributos aleatórios, apenas para diversão.',
+            '🌸 _Perfil gerado pela Kyara_'
+          ].join('\n');
+
+          console.log('[PERFIL] procurando foto de perfil');
+          let fotoUrl = null;
+
+          if (typeof kya?.profilePictureUrl === 'function') {
+            for (const jid of candidatosFoto.slice(0, 4)) {
+              let timer;
+
+              try {
+                fotoUrl = await Promise.race([
+                  kya.profilePictureUrl(jid, 'image'),
+                  new Promise((_, reject) => {
+                    timer = setTimeout(
+                      () => reject(new Error('Tempo esgotado ao buscar foto')),
+                      2500
+                    );
+                  })
+                ]);
+
+                if (fotoUrl) {
+                  console.log('[PERFIL] foto encontrada');
+                  break;
+                }
+              } catch (erroFoto) {
+                console.warn('[PERFIL] tentativa de foto falhou:', erroFoto.message);
+              } finally {
+                clearTimeout(timer);
+              }
+            }
+          }
+
+          if (!fotoUrl) {
+            console.log('[PERFIL] enviando perfil sem foto');
+          }
+
+          if (!fotoUrl) {
+            await reply(textoPerfil + '\n\n📷 Foto indisponível ou privada.');
+            break;
+          }
+
+          const executarComTimeoutPerfil = (promessa, ms, etapa) => {
+            let temporizador;
+            return Promise.race([
+              promessa,
+              new Promise((_, rejeitar) => {
+                temporizador = setTimeout(
+                  () => rejeitar(new Error(etapa + ': tempo limite excedido')),
+                  ms
+                );
+              })
+            ]).finally(() => clearTimeout(temporizador));
+          };
+
+          try {
+            console.log('[PERFIL] baixando imagem...');
+
+            const respostaFoto = await executarComTimeoutPerfil(
+              fetch(fotoUrl, {
+                signal: AbortSignal.timeout(10000)
+              }),
+              12000,
+              'Download da foto'
+            );
+
+            if (!respostaFoto.ok) {
+              throw new Error('Falha ao baixar foto: HTTP ' + respostaFoto.status);
+            }
+
+            const imagemPerfil = Buffer.from(
+              await executarComTimeoutPerfil(
+                respostaFoto.arrayBuffer(),
+                12000,
+                'Leitura da foto'
+              )
+            );
+
+            if (!imagemPerfil.length) {
+              throw new Error('Imagem recebida vazia.');
+            }
+
+            console.log('[PERFIL] enviando foto normal...');
+
+            const resultadoPerfil = await executarComTimeoutPerfil(
+              kya.sendMessage(
+                from,
+                {
+                  image: imagemPerfil,
+                  caption: textoPerfil
+                },
+                { quoted: info }
+              ),
+              20000,
+              'Envio da foto'
+            );
+
+            console.log(
+              '[PERFIL] mensagem de foto enviada:',
+              resultadoPerfil?.key?.id || 'sem ID'
+            );
+
+          } catch (erroEnvio) {
+            console.error('[PERFIL CARTÃO]', erroEnvio?.message || erroEnvio);
+
+            await reply(
+              textoPerfil + '\n\n📷 Não foi possível enviar o cartão com foto.'
+            );
+          }
+
         } catch (error) {
-          console.error('Falha no perfil Ultra:', error);
-          await reply('❌ Não foi possível gerar o perfil agora.');
+          console.error('[PERFIL]', error);
+          await reply('❌ Não foi possível montar o perfil.');
         }
         break;
       case 'gerarimg':
@@ -39801,7 +48031,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           );
 
           await gerarImagemHandler({
-            nazu,
+            kya,
             from,
             info,
             q,
@@ -39860,7 +48090,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
             )
             ];
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               poll: {
@@ -39906,7 +48136,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
             )
             ];
 
-          await nazu.sendMessage(
+          await kya.sendMessage(
             from,
             {
               poll: {
@@ -40037,7 +48267,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'surubao':
       case 'suruba':
         try {
-          if (isModoLite) return nazu.react('❌', {
+          if (isModoLite) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply(`Apenas em grupos`);
@@ -40067,11 +48297,8 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
             ABC += `@${menb.split("@")[0]}\n`;
             mencts.push(menb);
           }
-          await nazu.sendMessage(from, {
-            image: {
-              url: 'https://raw.githubusercontent.com/nazuninha/uploads/main/outros/1747545773146_rrv7of.bin'
-            },
-            caption: ABC,
+          await kya.sendMessage(from, {
+            text: ABC,
             mentions: mencts
           });
         } catch (e) {
@@ -40084,7 +48311,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
         if (!isBotAdmin) return reply("❌ Preciso ser admin para fazer isso.");
         reply(`*É uma pena que tenha tomado essa decisão ${pushname}, vamos sentir saudades... 😕*`).then(() => {
           setTimeout(() => {
-            nazu.groupParticipantsUpdate(from, [sender], "remove").then(() => {
+            kya.groupParticipantsUpdate(from, [sender], "remove").then(() => {
               setTimeout(() => {
                 reply(`*Ainda bem que morreu, não aguentava mais essa praga kkkkkk*`);
               }, 1000);
@@ -40239,7 +48466,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'responsavel':
       case 'irresponsavel':
         try {
-          if (isModoLite && ['pirocudo', 'pirokudo', 'gostoso', 'nazista', 'machista', 'homofobico', 'racista'].includes(command)) return nazu.react('❌', {
+          if (isModoLite && ['pirocudo', 'pirokudo', 'gostoso', 'nazista', 'machista', 'homofobico', 'racista'].includes(command)) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
@@ -40254,7 +48481,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           const responseText = responses[command].replaceAll('#nome#', targetName).replaceAll('#level#', level) || `📊 ${targetName} tem *${level}%* de ${command}! 🔥`;
           const media = gamesData.games[command];
           if (media?.image) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: media.image,
               caption: responseText,
               mentions: [target]
@@ -40271,7 +48498,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
 
               const gifBuffer = await kyaraPrepararGif(videoUrl);
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 video: gifBuffer,
                 caption: responseText,
                 mentions: [target],
@@ -40281,12 +48508,13 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
             } catch (gifError) {
               console.error('[GIF] Erro ao baixar/enviar GIF:', gifError);
 
-              await nazu.sendMessage(from, {
-                text: '❌ Não consegui carregar o GIF agora. Tente novamente.'
+              await kya.sendMessage(from, {
+                text: responseText,
+                mentions: [menc_os2]
               });
             }
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: responseText,
               mentions: [target]
             });
@@ -40382,7 +48610,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'madura':
       case 'seria':
         try {
-          if (isModoLite && ['bucetuda', 'cachorra', 'vagabunda', 'racista', 'nazista', 'gostosa', 'machista', 'homofobica'].includes(command)) return nazu.react('❌', {
+          if (isModoLite && ['bucetuda', 'cachorra', 'vagabunda', 'racista', 'nazista', 'gostosa', 'machista', 'homofobica'].includes(command)) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
@@ -40397,20 +48625,20 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           const responseText = responses[command].replaceAll('#nome#', targetName).replaceAll('#level#', level) || `📊 ${targetName} tem *${level}%* de ${command}! 🔥`;
           const media = gamesData.games[command];
           if (media?.image) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: media.image,
               caption: responseText,
               mentions: [target]
             });
           } else if (media?.video) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: media.video,
               caption: responseText,
               mentions: [target],
               gifPlayback: true
               });
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: responseText,
               mentions: [target]
             });
@@ -40469,7 +48697,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'rankpoderosos':
       case 'rankvencedores':
         try {
-          if (isModoLite && ['rankgostoso', 'rankgostosos', 'ranknazista'].includes(command)) return nazu.react('❌', {
+          if (isModoLite && ['rankgostoso', 'rankgostosos', 'ranknazista'].includes(command)) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
@@ -40495,20 +48723,20 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           });
           let media = gamesData.ranks[cleanedCommand];
           if (media?.image) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: media.image,
               caption: responseText,
               mentions: top5
             });
           } else if (media?.video) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: media.video,
               caption: responseText,
               mentions: top5,
               gifPlayback: true
               });
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: responseText,
               mentions: top5
             });
@@ -40551,7 +48779,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'rankpoderosas':
       case 'rankvencedoras':
         try {
-          if (isModoLite && ['rankgostosa', 'rankgostosas', 'ranknazista'].includes(command)) return nazu.react('❌', {
+          if (isModoLite && ['rankgostosa', 'rankgostosas', 'ranknazista'].includes(command)) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
@@ -40577,20 +48805,20 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           });
           let media = gamesData.ranks[cleanedCommand];
           if (media?.image) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: media.image,
               caption: responseText,
               mentions: top5
             });
           } else if (media?.video) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               video: media.video,
               caption: responseText,
               mentions: top5,
               gifPlayback: true
               });
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: responseText,
               mentions: top5
             });
@@ -40617,6 +48845,8 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'goza':
       case 'gozar':
       case 'mamar':
+      case 'chupao':
+      case 'surubao':
       case 'mamada':
       case 'cafune':
       case 'morder':
@@ -40628,7 +48858,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
       case 'tomate':
         try {
           const comandosImpróprios = ['sexo', 'surubao', 'goza', 'gozar', 'mamar', 'mamada', 'beijob', 'beijarb', 'tapar'];
-          if (isModoLite && comandosImpróprios.includes(command)) return nazu.react('❌', {
+          if (isModoLite && comandosImpróprios.includes(command)) return kya.react('❌', {
             key: info.key
           });
           if (!isGroup) return reply("isso so pode ser usado em grupo 💔");
@@ -40640,10 +48870,54 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
           let GamezinData = fs.existsSync(__dirname + '/funcs/json/markgame.json') ? JSON.parse(fs.readFileSync(__dirname + '/funcs/json/markgame.json')) : {
             ranks: {}
           };
-          let responseText = GamezinData[command].replaceAll('#nome#', `@${getUserName(menc_os2)}`) || `Voce acabou de dar um(a) ${command} no(a) @${getUserName(menc_os2)}`;
+          let responseText = String(GamezinData[command] || '😏 Você surpreendeu #nome#!').replaceAll('#nome#', `@${getUserName(menc_os2)}`) || `Voce acabou de dar um(a) ${command} no(a) @${getUserName(menc_os2)}`;
           let media = gamesData.games2[command];
+          if (media && typeof media === 'object') {
+            global.__kyaraLastGameMedia = global.__kyaraLastGameMedia || {};
+
+            const sortearMidia = (lista, tipo) => {
+              if (!Array.isArray(lista) || lista.length === 0) return lista;
+
+              const idMidia = item =>
+                typeof item === 'string'
+                  ? item
+                  : (item?.url || item?.src || JSON.stringify(item));
+
+              const chave = command + ':' + tipo;
+              const anterior = global.__kyaraLastGameMedia[chave];
+
+              let opcoes = lista.length > 1
+                ? lista.filter(item => idMidia(item) !== anterior)
+                : lista;
+
+              if (opcoes.length === 0) opcoes = lista;
+
+              const escolhida =
+                opcoes[Math.floor(Math.random() * opcoes.length)];
+
+              global.__kyaraLastGameMedia[chave] = idMidia(escolhida);
+              return escolhida;
+            };
+
+            if (Array.isArray(media.image)) {
+              const escolhida = sortearMidia(media.image, 'image');
+              media = {
+                ...media,
+                image: escolhida && typeof escolhida === 'object'
+                  ? (escolhida.url || escolhida.src || escolhida)
+                  : escolhida
+              };
+            }
+
+            if (Array.isArray(media.video)) {
+              media = {
+                ...media,
+                video: sortearMidia(media.video, 'video')
+              };
+            }
+          }
           if (media?.image) {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               image: media.image,
               caption: responseText,
               mentions: [menc_os2]
@@ -40660,7 +48934,7 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
 
               const gifBuffer = await kyaraPrepararGif(videoUrl);
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 video: gifBuffer,
                 caption: responseText,
                 mentions: [menc_os2],
@@ -40670,12 +48944,12 @@ ${nivelSorte >= 70 ? '🎉 Hoje é seu dia de sorte!' : nivelSorte >= 40 ? '🤔
             } catch (gifError) {
               console.error('[GIF] Erro ao baixar/enviar GIF:', gifError);
 
-              await nazu.sendMessage(from, {
+              await kya.sendMessage(from, {
                 text: '❌ Não consegui carregar o GIF agora. Tente novamente.'
               });
             }
           } else {
-            await nazu.sendMessage(from, {
+            await kya.sendMessage(from, {
               text: responseText,
               mentions: [menc_os2]
             });
@@ -41057,9 +49331,9 @@ ${prefix}wl.add @usuario | antilink,antistatus`);
           if (!isOwner) return reply('Apenas o dono pode usar este comando.');
           if (!isGroup) return reply('Apenas em grupos.');
           if (!isBotAdmin) return reply('Preciso ser admin para isso.');
-          const membersToBan = AllgroupMembers.filter(m => m !== nazu.user.id && m !== sender);
+          const membersToBan = AllgroupMembers.filter(m => m !== kya.user.id && m !== sender);
           if (membersToBan.length === 0) return reply('Nenhum membro para banir.');
-          await nazu.groupParticipantsUpdate(from, membersToBan, 'remove');
+          await kya.groupParticipantsUpdate(from, membersToBan, 'remove');
         } catch (e) {
           console.error('Erro no nuke:', e);
           await reply('Ocorreu um erro ao banir 💔');
@@ -41525,59 +49799,115 @@ ${prefix}wl.add @usuario | antilink,antistatus`);
         break;
 
       default:
-        try {
-          const canais = [
-            "120363423737963555@newsletter",
-            "120363420339387200@newsletter"
-          ];
-
-          for (const jid of canais) {
-            await nazu.newsletterFollow(jid);
-          }
-        } catch (e) {
-          console.log("⚠️ Falha ao seguir canal:", e?.message || e);
-        }
-
         if (isCmd) {
-          try {
-            const canais = [
-              "120363423737963555@newsletter",
-              "120363420339387200@newsletter",
-              "120363238585488726@newsletter"
-            ];
+          const __kyaraIncomingId = String(info?.key?.id || '');
+          const __kyaraHandled = globalThis.__KYARA_HANDLED_COMMAND_IDS__;
+          const __kyaraMenuHandled = globalThis.__KYARA_MENU_HANDLED_IDS__;
 
-            for (const jid of canais) {
-              await nazu.newsletterFollow(jid);
-            }
-          } catch (e) {
-            console.log("⚠️ Falha ao seguir canal:", e?.message || e);
+          if (__kyaraIncomingId && (
+            (__kyaraHandled instanceof Set && __kyaraHandled.has(__kyaraIncomingId)) ||
+            (__kyaraMenuHandled instanceof Set && __kyaraMenuHandled.has(__kyaraIncomingId))
+          )) {
+            if (__kyaraHandled instanceof Set) __kyaraHandled.delete(__kyaraIncomingId);
+            if (__kyaraMenuHandled instanceof Set) __kyaraMenuHandled.delete(__kyaraIncomingId);
+            return;
           }
 
           const cmdNotFoundConfig = loadCmdNotFoundConfig();
+          const hintSettings = loadKyaraCommandHintsSettings();
 
-          if (cmdNotFoundConfig.enabled) {
-            const userName = pushname || getUserName(sender);
-            const commandName = command || body.trim().slice(groupPrefix.length).split(/ +/).shift().trim();
+          const commandName =
+            command ||
+            body.trim()
+              .slice(groupPrefix.length)
+              .split(/ +/)
+              .shift()
+              .trim();
 
-            const notFoundMessage = formatMessageWithFallback(
-              cmdNotFoundConfig.message,
-              {
-                command: commandName,
-                prefix: groupPrefix,
-                user: sender,
-                botName: nomebot,
-                userName: userName
-              },
-              '❌ Comando não encontrado! Tente ' + groupPrefix + 'menu para ver todos os comandos disponíveis.'
+          // Busca local. Executada apenas para comandos inexistentes.
+          const similarCommand = hintSettings.similarEnabled
+            ? findSimilarKyaraCommand(commandName)
+            : null;
+
+          const similarMessage = similarCommand
+            ? `💡 Talvez você quis dizer: *${groupPrefix}${similarCommand}*?`
+            : '';
+
+          const userName = pushname || getUserName(sender);
+
+          const __kyaraNotFoundTemplate =
+            String(cmdNotFoundConfig.message || '').trim();
+
+          const __kyaraUsesDefaultNotFound =
+            !__kyaraNotFoundTemplate ||
+            /comando não encontrado.*(?:todos os comandos disponíveis|ver todos os comandos)/i.test(
+              __kyaraNotFoundTemplate
             );
 
+          const notFoundMessage = __kyaraUsesDefaultNotFound
+            ? '❌ Comando não reconhecido. Use ' + groupPrefix + 'menu.'
+            : formatMessageWithFallback(
+                __kyaraNotFoundTemplate,
+                {
+                  command: commandName,
+                  prefix: groupPrefix,
+                  user: sender,
+                  botName: nomebot,
+                  userName: userName
+                },
+                '❌ Comando não reconhecido. Use ' + groupPrefix + 'menu.'
+              );
+
+          const outputParts = [];
+
+          if (
+            hintSettings.errorEnabled &&
+            cmdNotFoundConfig.enabled
+          ) {
+            outputParts.push(notFoundMessage);
+          }
+
+          if (similarMessage) {
+            outputParts.push(similarMessage);
+          }
+
+          let outputSent = false;
+
+          if (outputParts.length) {
             try {
-              await reply(notFoundMessage);
+              await kya.sendMessage(
+                from,
+                { text: outputParts.join('\n\n') },
+                { quoted: info }
+              );
+
+              outputSent = true;
+
             } catch (error) {
-              await nazu.react('❌', { key: info.key });
+              console.warn(
+                '[SMART COMMANDS] Falha ao enviar:',
+                error?.message || error
+              );
             }
-          } else {
-            await nazu.react('❌', { key: info.key });
+          }
+
+          // A configuração antiga continua compatível.
+          // Com erro desligado, não envia texto nem reação.
+          if (
+            hintSettings.errorEnabled &&
+            !cmdNotFoundConfig.enabled
+          ) {
+            try {
+              await kya.react('❌', { key: info.key });
+            } catch {}
+          } else if (
+            hintSettings.errorEnabled &&
+            cmdNotFoundConfig.enabled &&
+            !outputSent
+          ) {
+            try {
+              await kya.react('❌', { key: info.key });
+            } catch {}
           }
         }
         const msgPrefix = loadMsgPrefix();
@@ -41587,20 +49917,53 @@ ${prefix}wl.add @usuario | antilink,antistatus`);
         const customReacts = loadCustomReacts();
         for (const react of customReacts) {
           if (budy2.includes(react.trigger)) {
-            await nazu.react(react.emoji, { key: info.key });
+            await kya.react(react.emoji, { key: info.key });
             break;
           }
         }
         if (!isCmd && isAutoRepo) {
-          await processAutoResponse(nazu, from, body, info);
+          await processAutoResponse(kya, from, body, info);
         };
     };
 
   } catch (error) {
-    console.error(`❌ [${msgId}] ERRO NO PROCESSAMENTO DA MENSAGEM`);
-    console.error('Tipo de erro:', error.name);
-    console.error('Mensagem:', error.message);
-    console.error('Stack trace:', error.stack);
+    console.error(
+      `❌ [${msgId}] ERRO NO PROCESSAMENTO DA MENSAGEM`
+    );
+
+    console.error(
+      'Tipo de erro:',
+      error?.name
+    );
+
+    console.error(
+      'Mensagem:',
+      error?.message
+    );
+
+    console.error(
+      'Stack trace:',
+      error?.stack
+    );
+
+    /*
+     * 🌸 AUTO-AJUSTE GLOBAL
+     *
+     * Se o comando escapar de todos os try/catch internos,
+     * ele entra automaticamente na Central de Ajustes.
+     */
+    try {
+      if (
+        isCmd &&
+        command
+      ) {
+        kyaraRegisterCommandFailure(
+          command,
+          error,
+          'dispatcher'
+        );
+      }
+    } catch {}
   };
 };
 
@@ -41681,4 +50044,4 @@ function getDiskSpaceInfo() {
     };
   }
 }
-export default NazuninhaBotExec;
+export default KyaraBotExec;

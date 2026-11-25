@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-28T00:50:51.990Z",
+  "groupName": "GRUPO ANNE C.🎀✨",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "23962310467741@lid",
+      "msg": 4,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Empre",
+      "firstSeen": "2026-09-28T00:50:52.377Z",
+      "lastActivity": "2026-09-28T00:51:56.269Z"
+    },
+    {
+      "id": "45828039278696@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Aline_",
+      "firstSeen": "2026-09-28T00:52:14.353Z",
+      "lastActivity": "2026-09-28T00:52:53.086Z"
+    }
+  ]
+}

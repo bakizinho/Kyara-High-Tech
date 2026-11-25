@@ -1,3 +1,180 @@
+
+/* ============================================================
+   🌊 KYARA • ÁUDIO GLOBAL COM ONDAS
+   ============================================================ */
+
+async function kyaraPrepareVoiceAudio(content) {
+  if (!content || typeof content !== 'object' || !content.audio) {
+    return content;
+  }
+
+  try {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const child = await import('node:child_process');
+    const util = await import('node:util');
+
+    const execFileAsync = util.promisify(child.execFile);
+
+    let source = content.audio;
+
+    /* Buffer / Uint8Array */
+    if (source instanceof Uint8Array && !Buffer.isBuffer(source)) {
+      source = Buffer.from(source);
+    }
+
+    /* URL */
+    if (
+      source &&
+      typeof source === 'object' &&
+      typeof source.url === 'string'
+    ) {
+      const response = await fetch(source.url);
+
+      if (!response.ok) {
+        throw new Error(`Falha ao baixar áudio: ${response.status}`);
+      }
+
+      source = Buffer.from(await response.arrayBuffer());
+    }
+
+    if (!Buffer.isBuffer(source)) {
+      return {
+        ...content,
+        ptt: true
+      };
+    }
+
+    const tmp = path.join(
+      os.tmpdir(),
+      `kyara-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+
+    const input = `${tmp}.input`;
+    const output = `${tmp}.ogg`;
+
+    try {
+      await fs.writeFile(input, source);
+
+      await execFileAsync(
+        'ffmpeg',
+        [
+          '-y',
+          '-hide_banner',
+          '-loglevel', 'error',
+          '-i', input,
+          '-vn',
+          '-c:a', 'libopus',
+          '-b:a', '48k',
+          '-vbr', 'on',
+          '-application', 'voip',
+          output
+        ],
+        { timeout: 60000 }
+      );
+
+      const opus = await fs.readFile(output);
+
+      /* ==========================================
+         🌊 WAVEFORM DO WHATSAPP
+         ========================================== */
+
+      const pcm = await new Promise((resolve, reject) => {
+        const proc = child.spawn(
+          'ffmpeg',
+          [
+            '-hide_banner',
+            '-loglevel', 'error',
+            '-i', output,
+            '-vn',
+            '-f', 's16le',
+            '-ac', '1',
+            '-ar', '8000',
+            'pipe:1'
+          ]
+        );
+
+        const chunks = [];
+
+        proc.stdout.on('data', chunk => {
+          chunks.push(chunk);
+        });
+
+        proc.on('error', reject);
+
+        proc.on('close', code => {
+          if (code === 0) {
+            resolve(Buffer.concat(chunks));
+          } else {
+            reject(
+              new Error(`FFmpeg waveform terminou com código ${code}`)
+            );
+          }
+        });
+      });
+
+      const samples = Math.floor(pcm.length / 2);
+      const bars = 64;
+      const waveform = [];
+
+      for (let i = 0; i < bars; i++) {
+        const start = Math.floor(i * samples / bars);
+        const end = Math.max(
+          start + 1,
+          Math.floor((i + 1) * samples / bars)
+        );
+
+        let peak = 0;
+
+        for (let j = start; j < end && j < samples; j++) {
+          const value =
+            Math.abs(pcm.readInt16LE(j * 2)) / 32768;
+
+          if (value > peak) {
+            peak = value;
+          }
+        }
+
+        waveform.push(
+          Math.max(
+            3,
+            Math.min(
+              100,
+              Math.round(4 + peak * 96)
+            )
+          )
+        );
+      }
+
+      return {
+        ...content,
+        audio: opus,
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: true,
+        waveform: Buffer.from(waveform)
+      };
+
+    } finally {
+      await fs.rm(input, { force: true }).catch(() => {});
+      await fs.rm(output, { force: true }).catch(() => {});
+    }
+
+  } catch (error) {
+    console.warn(
+      '[KYARA VOICE] Falha ao criar waveform:',
+      error?.message || error
+    );
+
+    return {
+      ...content,
+      ptt: true
+    };
+  }
+}
+
+/* ============================================================ */
+
 /* KYARA_GLOBAL_CONSOLE_FILTER_V3 */
 
 if (!globalThis.__KYARA_GLOBAL_CONSOLE_FILTER_V3__) {
@@ -118,7 +295,7 @@ import {
 
 
 import * as kyaraTerminal from './kyara-terminal.js';
-import { isActiveGroupRestriction } from "./utils/database.js";
+import { isActiveGroupRestriction, applyMenuFont, loadMenuDesign } from "./utils/database.js";
 
 const kyaraTerminalEvent =
   kyaraTerminal.event ||
@@ -176,10 +353,11 @@ import {
     markSocketOpen,
     markSocketClosed,
     getActiveSocket,
+    hasActiveSocket,
     waitForActiveSocket
 } from './utils/activeSocket.js';
 import { boot, core, wa, data, bot, sync, ok, warn } from './utils/logger.js';
-import { useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, makeWASocket, fetchLatestBaileysVersion, isJidBroadcast, isJidNewsletter, isJidStatusBroadcast } from 'baileys';
+import { useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, makeWASocket, fetchLatestBaileysVersion, fetchLatestWaWebVersion, isJidBroadcast, isJidNewsletter, isJidStatusBroadcast } from 'baileys';
 import { Boom } from '@hapi/boom';
 import NodeCache from 'node-cache';
 import readline from 'readline';
@@ -201,8 +379,10 @@ import { initCaptchaIndex, loadCaptchaJson, saveCaptchaJson } from './utils/capt
 import CaptchaIndex from './utils/captchaIndex.js';
 import { extractId, routeOwnerFlow, isOwnerFlowId } from './core/nativeFlow/owner-flow-router.js';
 import { sendOwnerMain } from './core/nativeFlow/owner-flow.js';
+import { sendFlow, singleSelect, row } from './core/nativeFlow/native-flow.js';
 import { installGlobalButtons } from './core/nativeFlow/autoButtons.js';
-import { getCurrentPrefix, normalizeOutgoingContent, normalizeOutgoingRelayMessage } from './core/runtime/kyara-runtime.js';
+import { getRuntimeConfig, getCurrentPrefix, saveRuntimeConfig, normalizeOutgoingContent, normalizeOutgoingRelayMessage } from './core/runtime/kyara-runtime.js';
+import { aplicarKyaraMark } from '../../arquivos/js/metaai.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -547,8 +727,22 @@ let kyaraGlobalChannelJid = null;
 let kyaraGlobalChannelName = KYARA_CHANNEL_NAME;
 let kyaraGlobalChannelLookupPromise = null;
 
-globalThis.__KYARA_CHANNEL_ENABLED__ =
-    config?.kyaraChannel?.enabled !== false;
+// O Ver canal é permanente e independente da marca metaai.js.
+if (config && typeof config === 'object') {
+    config.kyaraChannel = {
+        ...(config.kyaraChannel || {}),
+        enabled: true,
+        name: 'BOT-KYARA',
+        invite: '0029VbCs39EIyPtbsseKIP3r',
+        url: 'https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r'
+    };
+}
+
+globalThis.__KYARA_CHANNEL_ENABLED__ = true;
+globalThis.ENABLE_KYARA_SYSTEM_MARK = config?.verificadoMensagens === true;
+
+// Controle persistente utilizado por arquivos/js/metaai.js.
+globalThis.ENABLE_KYARA_MARK = config?.kyaraMarkEnabled === true;
 
 async function resolveKyaraGlobalChannel(KyaraSock) {
     if (kyaraGlobalChannelJid) {
@@ -734,51 +928,44 @@ function buildKyaraChannelContext(
     };
 }
 
+
 async function applyKyaraGlobalChannelToContent(
     KyaraSock,
     jid,
     content
 ) {
-    if (
-        kyaraChannelShouldSkip(
-            jid,
-            content
-        )
-    ) {
+    if (kyaraChannelShouldSkip(jid, content)) {
         return content;
     }
 
-    try {
+    // O envio não espera newsletterMetadata().
+    // A primeira mensagem sai normalmente; o canal será
+    // anexado às próximas depois que o JID for resolvido.
+    const channelInfo = kyaraGlobalChannelJid
+        ? {
+            jid: kyaraGlobalChannelJid,
+            name: kyaraGlobalChannelName
+          }
+        : null;
 
-        const channelInfo =
-            await resolveKyaraGlobalChannel(
-                KyaraSock
+    if (!channelInfo?.jid) {
+        void resolveKyaraGlobalChannel(KyaraSock).catch(error => {
+            console.warn(
+                '[KYARA CHANNEL] Consulta em segundo plano falhou:',
+                error?.message || error
             );
-
-        if (!channelInfo?.jid) {
-            return content;
-        }
-
-        return {
-            ...content,
-
-            contextInfo:
-                buildKyaraChannelContext(
-                    channelInfo,
-                    content.contextInfo
-                )
-        };
-
-    } catch (error) {
-
-        console.warn(
-            '[KYARA CHANNEL] ⚠️ Erro no contexto:',
-            error?.message ||
-            error
-        );
+        });
 
         return content;
     }
+
+    return {
+        ...content,
+        contextInfo: buildKyaraChannelContext(
+            channelInfo,
+            content.contextInfo
+        )
+    };
 }
 
 const KYARA_RELAY_LEAF_KEYS =
@@ -896,64 +1083,81 @@ function applyKyaraChannelToRelayNode(
     return node;
 }
 
+
 async function applyKyaraGlobalChannelToRelay(
     KyaraSock,
     jid,
     message
 ) {
     if (
-        !globalThis.__KYARA_CHANNEL_ENABLED__
-    ) {
-        return message;
-    }
-
-    if (
+        !globalThis.__KYARA_CHANNEL_ENABLED__ ||
         !jid ||
-        jid === 'status@broadcast'
-    ) {
-        return message;
-    }
-
-    if (
-        typeof isJidNewsletter === 'function' &&
-        isJidNewsletter(jid)
-    ) {
-        return message;
-    }
-
-    if (
+        jid === 'status@broadcast' ||
+        (
+            typeof isJidNewsletter === 'function' &&
+            isJidNewsletter(jid)
+        ) ||
         !message ||
         typeof message !== 'object'
     ) {
         return message;
     }
 
-    try {
-
-        const channelInfo =
-            await resolveKyaraGlobalChannel(
-                KyaraSock
-            );
-
-        if (!channelInfo?.jid) {
-            return message;
+    const containsNativeFlow = (node, depth = 0) => {
+        if (!node || typeof node !== 'object' || depth > 6) {
+            return false;
         }
 
-        return applyKyaraChannelToRelayNode(
-            message,
-            channelInfo
-        );
+        if (node.interactiveMessage?.nativeFlowMessage) {
+            return true;
+        }
 
-    } catch (error) {
+        for (const key of [
+            'viewOnceMessage',
+            'viewOnceMessageV2',
+            'viewOnceMessageV2Extension',
+            'ephemeralMessage',
+            'documentWithCaptionMessage'
+        ]) {
+            const nested = node[key]?.message;
 
-        console.warn(
-            '[KYARA CHANNEL] ⚠️ Erro no relay:',
-            error?.message ||
-            error
-        );
+            if (
+                nested &&
+                containsNativeFlow(nested, depth + 1)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    if (containsNativeFlow(message)) {
+        return message;
+    }
+
+    const channelInfo = kyaraGlobalChannelJid
+        ? {
+            jid: kyaraGlobalChannelJid,
+            name: kyaraGlobalChannelName
+          }
+        : null;
+
+    if (!channelInfo?.jid) {
+        void resolveKyaraGlobalChannel(KyaraSock).catch(error => {
+            console.warn(
+                '[KYARA CHANNEL] Consulta de relay falhou:',
+                error?.message || error
+            );
+        });
 
         return message;
     }
+
+    return applyKyaraChannelToRelayNode(
+        message,
+        channelInfo
+    );
 }
 
 const indexModule = (await import('./index.js')).default ?? (await import('./index.js'));
@@ -1086,7 +1290,7 @@ configureCommandExecutor({
                 fromMe: false,
                 id: 'TERMINAL-' + Date.now()
             },
-            pushName: nomedono || 'Baki',
+            pushName: nomedono || '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
             message: { conversation: String(text || "") },
             messageTimestamp: Math.floor(Date.now() / 1000)
         };
@@ -1157,7 +1361,9 @@ async function initializeOptimizedCaches(KyaraSock) {
 
     }
 }
-const connectionMethod = process.env.KYARA_CONNECTION_METHOD || 'auto';
+let connectionMethod = process.env.KYARA_CONNECTION_METHOD || 'auto';
+let authRecoveryPromptActive = false;
+let forceFreshAuthForNextConnect = process.env.KYARA_FORCE_NEW_AUTH === '1';
 
 /*
  * ============================================================
@@ -1275,7 +1481,8 @@ const uiFrameBottom = (
 const printKyaraAuthBanner = () => {
     if (
         KYARA_LAUNCHER_MODE &&
-        connectionMethod === 'auto'
+        connectionMethod === 'auto' &&
+        !authRecoveryPromptActive
     ) {
         return;
     }
@@ -1298,7 +1505,7 @@ const printKyaraAuthBanner = () => {
         uiColor(
             KYARA_UI.pink + KYARA_UI.bold,
             uiCenter(
-                '🌸  K Y A R A',
+                '🌸  K Y A R A - S Y S T Ξ M',
                 width
             )
         ) +
@@ -1577,7 +1784,25 @@ const chooseAuthenticationMethod = async () => {
         uiColor(KYARA_UI.purple, '│') +
         uiColor(
             KYARA_UI.cyan,
-            '  1  📱  CÓDIGO DE PAREAMENTO'.padEnd(48)
+            '  1  ▣   QR CODE'.padEnd(48)
+        ) +
+        uiColor(KYARA_UI.purple, '│')
+    );
+
+    console.log(
+        uiColor(KYARA_UI.purple, '│') +
+        uiColor(
+            KYARA_UI.dim,
+            '     escaneie pelo WhatsApp'.padEnd(48)
+        ) +
+        uiColor(KYARA_UI.purple, '│')
+    );
+
+    console.log(
+        uiColor(KYARA_UI.purple, '│') +
+        uiColor(
+            KYARA_UI.pink,
+            '  2  🔑  CÓDIGO DE PAREAMENTO'.padEnd(48)
         ) +
         uiColor(KYARA_UI.purple, '│')
     );
@@ -1587,24 +1812,6 @@ const chooseAuthenticationMethod = async () => {
         uiColor(
             KYARA_UI.dim,
             '     conexão rápida pelo número'.padEnd(48)
-        ) +
-        uiColor(KYARA_UI.purple, '│')
-    );
-
-    console.log(
-        uiColor(KYARA_UI.purple, '│') +
-        uiColor(
-            KYARA_UI.pink,
-            '  2  ▣   QR CODE'.padEnd(48)
-        ) +
-        uiColor(KYARA_UI.purple, '│')
-    );
-
-    console.log(
-        uiColor(KYARA_UI.purple, '│') +
-        uiColor(
-            KYARA_UI.dim,
-            '     escaneie diretamente pelo WhatsApp'.padEnd(48)
         ) +
         uiColor(KYARA_UI.purple, '│')
     );
@@ -1633,28 +1840,28 @@ const chooseAuthenticationMethod = async () => {
 
     console.log('');
 
-    const option =
-        String(
-            await ask(
-                '  ➜ Método: '
-            )
+    let option = '';
+
+    while (!['1', '2', '0'].includes(option)) {
+        option = String(
+            await ask('  ➜ Método (1, 2 ou 0): ')
         ).trim();
 
-    if (option === '2') {
-        return 'qr';
+        if (!['1', '2', '0'].includes(option)) {
+            console.log('⚠️ Opção inválida. Digite somente 1, 2 ou 0.');
+        }
     }
 
     if (option === '1') {
+        return 'qr';
+    }
+
+    if (option === '2') {
         return 'pairing';
     }
 
-    if (option === '0') {
-        console.log('👋 Kyara encerrado pelo usuário.');
-        process.exit(0);
-    }
-
-    console.log('⚠️ Opção inválida. Usando Código de pareamento.');
-    return 'pairing';
+    console.log('👋 KYARA-SYSTΞM encerrada pelo usuário.');
+    process.exit(0);
 };
 
 const ask = (question) => {
@@ -1667,6 +1874,92 @@ const ask = (question) => {
         resolve(answer.trim());
     }));
 };
+
+const askValidPairingPhoneNumber = async () => {
+    while (true) {
+        const entered = await ask(
+            '📱 Número com DDI e DDD (somente números): '
+        );
+
+        const phoneNumber = String(entered || '').replace(/\D/g, '');
+
+        if (/^\d{10,15}$/.test(phoneNumber)) {
+            return phoneNumber;
+        }
+
+        console.log(
+            '⚠️ Número inválido. Digite de 10 a 15 números, incluindo DDI e DDD.'
+        );
+    }
+};
+
+
+const waitForPairingReady = (sock, timeoutMs = 30000) =>
+    new Promise((resolve, reject) => {
+
+        let settled = false;
+        let timer = null;
+
+        const cleanup = () => {
+            if (timer) clearTimeout(timer);
+
+            if (typeof sock.ev.off === 'function') {
+                sock.ev.off('connection.update', onUpdate);
+            } else if (
+                typeof sock.ev.removeListener === 'function'
+            ) {
+                sock.ev.removeListener(
+                    'connection.update',
+                    onUpdate
+                );
+            }
+        };
+
+        const finish = error => {
+            if (settled) return;
+
+            settled = true;
+            cleanup();
+
+            if (error) reject(error);
+            else resolve();
+        };
+
+        const onUpdate = update => {
+
+            if (
+                update?.connection === 'connecting' ||
+                update?.connection === 'open' ||
+                Boolean(update?.qr)
+            ) {
+                finish();
+                return;
+            }
+
+            if (update?.connection === 'close') {
+                finish(
+                    update?.lastDisconnect?.error ||
+                    new Error(
+                        'O WhatsApp fechou a conexão antes do pareamento.'
+                    )
+                );
+            }
+        };
+
+        sock.ev.on('connection.update', onUpdate);
+
+        timer = setTimeout(() => {
+            finish(
+                new Error(
+                    'Tempo esgotado aguardando o WebSocket ficar pronto para pareamento.'
+                )
+            );
+        }, timeoutMs);
+
+        if (sock.ws?.isOpen === true) {
+            setTimeout(() => finish(), 250);
+        }
+    });
 
 
 async function clearAuthDir(dirToRemove = AUTH_DIR) {
@@ -1762,7 +2055,7 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
     : (globalJson.exit?.text || "╭━━━⊱ 👋 *ATÉ LOGO!* 👋 ⊱━━━╮\n│\n│ 👤 #numerodele#\n│\n│ 🚪 Saiu do grupo\n│ *#nomedogp#*\n│\n╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n💫 *Até a próxima!* 💫");
 
 
-  const chosenText = settings.textbv || defaultText;
+  const chosenText = settings.textbv || settings.text || defaultText;
   const text = formatMessageText(chosenText, replacements);
 
   const message = {
@@ -1772,13 +2065,13 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
 
   if (settings.photo === false) {
 
-  } else if (settings.photoType === 'api') {
+  } else if (settings.photoType === 'api' && (!isWelcome || globalJson.welcomecard?.usarCanvas === true)) {
 
-    let profilePicUrl = 'https://raw.githubusercontent.com/nazuninha/uploads/main/outros/1747053564257_bzswae.bin';
+    let profilePicUrl = null;
 
     if (participants.length === 1) {
       profilePicUrl = await KyaraSock.profilePictureUrl(participants[0], 'image')
-        .catch(() => profilePicUrl);
+        .catch(() => null);
     }
 
     const nome = participants.length === 1
@@ -1803,9 +2096,36 @@ async function createGroupMessage(KyaraSock, groupMetadata, participants, settin
       delete message.text;
     }
   } else if (settings.photoType === 'custom' && settings.image) {
-    message.image = { url: settings.image };
-    message.caption = text;
-    delete message.text;
+    const storedImage = String(settings.image);
+
+    if (storedImage.startsWith('local:')) {
+      try {
+        message.image = readFileSync(storedImage.slice(6));
+      } catch (error) {
+        console.error('[KYARA WELCOME] Foto local:', error.message);
+      }
+    } else {
+      message.image = { url: storedImage };
+    }
+
+    if (message.image) {
+      message.caption = text;
+      delete message.text;
+    }
+  } else if (isWelcome) {
+    try {
+      message.image = readFileSync(DATABASE_DIR + '/welcome-default.png');
+      message.caption = text;
+      delete message.text;
+    } catch (error) {
+      if (globalJson.welcomecard?.fundo) {
+        message.image = { url: globalJson.welcomecard.fundo };
+        message.caption = text;
+        delete message.text;
+      } else {
+        console.error('[KYARA WELCOME] Foto padrão global indisponível:', error.message);
+      }
+    }
   } else if (globalJson.welcomecard?.fundo) {
     message.image = { url: globalJson.welcomecard.fundo };
     message.caption = text;
@@ -2018,7 +2338,19 @@ if (groupSettings?.x9 && inf.author && !entradaPorLink) {
                      * for configurado, o sistema antigo continua sendo usado.
                      */
 
-                    if (welcomeSettings.animation !== false) {
+                    if (
+                        welcomeSettings.animation !== false &&
+                        !(
+                          welcomeSettings.photo !== false &&
+                          (
+                            welcomeSettings.photoType === 'api' ||
+                            (
+                              welcomeSettings.photoType === 'custom' &&
+                              welcomeSettings.image
+                            )
+                          )
+                        )
+                    ) {
                         const animation = await createWelcomeAnimation(
                             KyaraSock,
                             groupMetadata,
@@ -2741,9 +3073,56 @@ let reconnectAttempts = 0;
 let isReconnecting = false; 
 let reconnectTimer = null; 
 let forbidden403Attempts = 0; 
-const MAX_RECONNECT_ATTEMPTS = 10;
-const MAX_403_ATTEMPTS = 3; 
-const RECONNECT_DELAY_BASE = 5000; 
+const MAX_403_ATTEMPTS = 3;
+const RECONNECT_DELAY_BASE = 5000;
+
+// Guarda a sessão rejeitada. Não apaga credenciais nem outros dados do bot.
+async function archiveAuthBeforeRelink(authDir) {
+    const target = path.resolve(authDir);
+
+    if (target !== path.resolve(AUTH_DIR)) {
+        throw new Error('Caminho de autenticação inesperado; backup cancelado.');
+    }
+
+    let exists = false;
+
+    try {
+        const stat = await fs.stat(target);
+        if (!stat.isDirectory()) {
+            throw new Error('A autenticação não é uma pasta.');
+        }
+        exists = true;
+    } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+    }
+
+    if (exists) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const base = `${target}.backup-relink-${stamp}`;
+        let backup = base;
+        let n = 1;
+
+        while (true) {
+            try {
+                await fs.access(backup);
+                backup = `${base}-${n++}`;
+            } catch (error) {
+                if (error?.code === 'ENOENT') break;
+                throw error;
+            }
+        }
+
+        await fs.rename(target, backup);
+
+        console.log(
+            `📦 Sessão anterior preservada em: ${path.relative(process.cwd(), backup)}`
+        );
+    }
+
+    await fs.mkdir(target, { recursive: true });
+
+    console.log('🆕 Nova autenticação preparada. Nenhum backup foi apagado.');
+}
 
 let ownerMsgTimer = null;
 let subBotInitTimer = null;
@@ -2751,14 +3130,61 @@ let subBotInitTimer = null;
 let _cachedWAVersion = null;
 
 async function getWAVersion() {
-    if (_cachedWAVersion) return _cachedWAVersion;
-    const { version } = await fetchLatestBaileysVersion();
-    _cachedWAVersion = version;
-    return version;
+    try {
+        const result = await fetchLatestWaWebVersion();
+
+        if (result?.error || result?.isLatest === false) {
+            throw result.error || new Error('Versão não confirmada como atual.');
+        }
+
+        if (!Array.isArray(result?.version) || result.version.length !== 3) {
+            throw new Error('Versão recebida inválida.');
+        }
+
+        console.log('[WA VERSION] Versão atual:', result.version.join('.'));
+        return result.version;
+    } catch (error) {
+        console.error('[WA VERSION] Falha ao buscar versão online:', error.message);
+
+        const fallback = await fetchLatestBaileysVersion();
+
+        if (!Array.isArray(fallback?.version) || fallback.version.length !== 3) {
+            throw new Error('Não foi possível obter uma versão válida.');
+        }
+
+        console.warn('[WA VERSION] Utilizando versão alternativa:', fallback.version.join('.'));
+        return fallback.version;
+    }
 }
 
 async function createBotSocket(authDir) {
     try {
+        if (
+            forceFreshAuthForNextConnect &&
+            connectionMethod === 'auto'
+        ) {
+            connectionMethod = await chooseAuthenticationMethod();
+        }
+
+        let prevalidatedPairingPhoneNumber = null;
+
+        // Valida o telefone antes de mover a sessão antiga.
+        if (
+            forceFreshAuthForNextConnect &&
+            connectionMethod === 'pairing'
+        ) {
+            console.log(
+                '🔐 Novo pareamento solicitado. A sessão anterior só será arquivada após validar o número.'
+            );
+
+            prevalidatedPairingPhoneNumber =
+                await askValidPairingPhoneNumber();
+        }
+
+        if (forceFreshAuthForNextConnect) {
+            await archiveAuthBeforeRelink(authDir);
+            forceFreshAuthForNextConnect = false;
+        }
         await fs.mkdir(path.join(DATABASE_DIR, 'grupos'), { recursive: true });
         await fs.mkdir(authDir, { recursive: true });
         const {
@@ -2781,6 +3207,7 @@ async function createBotSocket(authDir) {
 
         const KyaraSock = makeWASocket({
             version,
+            browser: ['Ubuntu', 'Chrome', '22.04.4'],
             emitOwnEvents: true,
             fireInitQueries: true,
             generateHighQualityLinkPreview: true,
@@ -2801,6 +3228,12 @@ async function createBotSocket(authDir) {
             signalRepository,
             logger
         });
+
+        // Salvar as credenciais desde a criação do socket.
+        // requestPairingCode também emite creds.update.
+        KyaraSock.ev.on('creds.update', saveCreds);
+
+        aplicarKyaraMark(KyaraSock);
 
         let selectedConnectionMethod =
             connectionMethod;
@@ -2853,6 +3286,7 @@ async function createBotSocket(authDir) {
             selectedConnectionMethod === 'qr'
         ) {
 
+            KyaraSock.__kyaraConnectionMethod = 'qr';
             KyaraSock.__kyaraQrShown = false;
 
             KyaraSock.ev.on(
@@ -2871,7 +3305,7 @@ async function createBotSocket(authDir) {
 
                     console.log('');
                     console.log(
-                        '🔗 🌸 KYARA • QR CODE'
+                        '🔗 🌸 KYARA-SYSTΞM • QR CODE'
                     );
                     console.log('');
 
@@ -2907,12 +3341,21 @@ async function createBotSocket(authDir) {
             KyaraSock.__kyaraConnectionMethod =
                 'pairing';
 
+            // Observar o socket antes de solicitar o número.
+            // Assim não perdemos o primeiro evento connecting.
+            const pairingReadyPromise =
+                waitForPairingReady(KyaraSock, 120000)
+                    .then(
+                        () => ({ ok: true }),
+                        error => ({ ok: false, error })
+                    );
+
             console.log('');
             console.log(
                 '╭────────────────────────────────────────────╮'
             );
             console.log(
-                '│       🌸 KYARA • CÓDIGO DE PAREAMENTO      │'
+                '│        🌸 KYARA-SYSTΞM • PAREAMENTO        │'
             );
             console.log(
                 '├────────────────────────────────────────────┤'
@@ -2929,120 +3372,38 @@ async function createBotSocket(authDir) {
             console.log('');
 
             let phoneNumber =
-                await ask(
-                    '📱 Número: '
-                );
-
-            phoneNumber =
-                String(
-                    phoneNumber || ''
-                )
-                .replace(
-                    /\D/g,
-                    ''
-                );
-
-            if (
-                !/^\d{10,15}$/.test(
-                    phoneNumber
-                )
-            ) {
-                throw new Error(
-                    'Número inválido para o código de pareamento.'
-                );
-            }
+                prevalidatedPairingPhoneNumber ||
+                await askValidPairingPhoneNumber();
 
             console.log('');
             console.log(
-                '⏳ Gerando código de pareamento...'
+                '⏳ Aguardando o WebSocket do WhatsApp ficar pronto...'
             );
 
-            /*
-             * IMPORTANTE:
-             *
-             * Não esperamos um QR futuro.
-             *
-             * O socket já existe e o telefone já foi
-             * informado, então fazemos o pedido imediatamente.
-             *
-             * Caso o socket ainda não esteja pronto, fazemos
-             * novas tentativas sequenciais. Nunca existem
-             * duas requestPairingCode() simultâneas.
-             */
-            let pairingCode = null;
-            let lastPairingError = null;
+            // Aguardar connecting antes de pedir o código.
+            const pairingReadiness = await pairingReadyPromise;
 
-            for (
-                let attempt = 1;
-                attempt <= 4;
-                attempt++
-            ) {
-
-                try {
-
-                    console.log(
-                        `🔄 Tentativa ${attempt}/4...`
-                    );
-
-                    pairingCode =
-                        await KyaraSock.requestPairingCode(
-                            phoneNumber
-                        );
-
-                    if (
-                        pairingCode
-                    ) {
-                        break;
-                    }
-
-                } catch (error) {
-
-                    lastPairingError =
-                        error;
-
-                    console.log(
-                        `⚠️ Ainda não pronto: ${
-                            error?.message ||
-                            error
-                        }`
-                    );
-                }
-
-                if (
-                    attempt < 4
-                ) {
-                    await new Promise(
-                        resolve =>
-                            setTimeout(
-                                resolve,
-                                1500
-                            )
-                    );
-                }
+            if (!pairingReadiness.ok) {
+                throw pairingReadiness.error;
             }
 
-            if (
-                !pairingCode
-            ) {
+            // Pequena margem para a conexão estabilizar.
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-                console.error('');
-                console.error(
-                    '❌ Não foi possível gerar o código.'
-                );
-
-                if (
-                    lastPairingError
-                ) {
-                    console.error(
-                        lastPairingError?.stack ||
-                        lastPairingError
-                    );
-                }
-
-                console.error('');
-
+            if (KyaraSock.authState.creds.registered) {
                 throw new Error(
-                    'requestPairingCode não conseguiu obter um código após 4 tentativas.'
+                    'A sessão foi registrada durante a preparação; não é necessário novo código.'
+                );
+            }
+
+            console.log('🔄 Solicitando código ao WhatsApp...');
+
+            const pairingCode =
+                await KyaraSock.requestPairingCode(phoneNumber);
+
+            if (!pairingCode) {
+                throw new Error(
+                    'O WhatsApp não retornou um código de pareamento.'
                 );
             }
 
@@ -3104,6 +3465,88 @@ if (!KyaraSock.__kyaraTerminalSendWrapped) {
           jid
         );
 
+        // Fonte global nas respostas comuns; menus mantêm a fonte própria.
+        try {
+          const __kyaraFontDesign = loadMenuDesign() || {};
+          const __kyaraGlobalStyle = String(
+            __kyaraFontDesign.globalFontStyle ||
+            __kyaraFontDesign.fontStyle ||
+            'normal'
+          );
+
+          if (__kyaraGlobalStyle !== 'normal') {
+            const __kyaraPrefix = String(getCurrentPrefix() || '#').slice(0, 1);
+
+            const __kyaraIsMenuText = value => {
+              if (typeof value !== 'string') return false;
+
+              // As amostras de #fontes precisam continuar diferentes.
+              if (
+                value.toLowerCase().includes('fontes') &&
+                value.includes('Kyara Bot 123')
+              ) {
+                return true;
+              }
+
+              const lines = value.split('\n');
+
+              if (lines.length < 5 || !/[╭╰┊┃]/.test(value)) {
+                return false;
+              }
+
+              // Menus com comandos já estilizados não devem ser transformados de novo.
+              return lines.some(line => {
+                const position = line.indexOf(__kyaraPrefix);
+                return position >= 0 &&
+                  /[a-z]/i.test(
+                    line.slice(position + __kyaraPrefix.length)
+                  );
+              });
+            };
+
+            const __kyaraStyleCommonText = value => {
+              if (
+                typeof value !== 'string' ||
+                __kyaraIsMenuText(value)
+              ) {
+                return value;
+              }
+
+              return applyMenuFont(
+                value,
+                __kyaraGlobalStyle,
+                __kyaraPrefix
+              );
+            };
+
+            if (typeof rendered === 'string') {
+              rendered = __kyaraStyleCommonText(rendered);
+            } else if (
+              rendered &&
+              typeof rendered === 'object' &&
+              !Array.isArray(rendered)
+            ) {
+              const copy = { ...rendered };
+
+              if (typeof copy.text === 'string') {
+                copy.text = __kyaraStyleCommonText(copy.text);
+              }
+
+              if (typeof copy.caption === 'string') {
+                copy.caption = __kyaraStyleCommonText(copy.caption);
+              }
+
+              rendered = copy;
+            }
+          }
+        } catch (fontError) {
+          console.error(
+            '[KYARA-FONT] Falha ao aplicar fonte global:',
+            fontError?.message || fontError
+          );
+        }
+
+
       rendered =
         await applyKyaraGlobalChannelToContent(
           KyaraSock,
@@ -3111,12 +3554,143 @@ if (!KyaraSock.__kyaraTerminalSendWrapped) {
           rendered
         );
 
-      const result =
-        await __kyaraOriginalSendMessage(
+      
+      rendered = await kyaraPrepareVoiceAudio(rendered);
+/*
+       * ========================================================
+       * BOT-KYARA • SYSTEM MARK
+       * ========================================================
+       *
+       * Usa somente a identidade do próprio bot.
+       *
+       * Não altera:
+       *   - delete
+       *   - reaction
+       *   - forward
+       *   - edit
+       *   - mensagens de status
+       *   - quoted já definido
+       */
+
+      let finalOptions =
+        options || {};
+
+      try {
+
+        const ligado =
+          globalThis.ENABLE_KYARA_SYSTEM_MARK !== false;
+
+        const objectContent =
+          rendered &&
+          typeof rendered === 'object'
+            ? rendered
+            : null;
+
+        const ignorar =
+          !ligado ||
+          !objectContent ||
+          jid === 'status@broadcast' ||
+          Boolean(
+            objectContent.react ||
+            objectContent.delete ||
+            objectContent.forward ||
+            objectContent.edit ||
+            objectContent.disappearingMessagesInMessage
+          ) ||
+          Boolean(
+            finalOptions?.quoted
+          );
+
+        if (!ignorar) {
+
+          const botJid =
+            KyaraSock?.user?.id ||
+            '';
+
+          const botName =
+            getConfiguredBotName() ||
+            'KYARA-SYSTΞM';
+
+          if (botJid) {
+
+            finalOptions = {
+              ...finalOptions,
+
+              quoted: {
+
+                key: {
+
+                  remoteJid:
+                    jid,
+
+                  fromMe:
+                    true,
+
+                  id:
+                    `KYARA-SYSTEM-${Date.now()}-${Math.random()
+                      .toString(36)
+                      .slice(2, 8)}`,
+
+                  participant:
+                    botJid
+
+                },
+
+                message: {
+
+                  conversation:
+                    `${botName} • SISTEMA`
+
+                }
+
+              }
+
+            };
+
+          }
+
+        }
+
+      } catch (
+        systemMarkError
+      ) {
+
+        console.warn(
+          '[KYARA SYSTEM MARK] Ignorado:',
+          systemMarkError?.message ||
+          systemMarkError
+        );
+      }
+
+      let result;
+
+      try {
+        result = await __kyaraOriginalSendMessage(
           jid,
           rendered,
-          options
+          finalOptions
         );
+
+        const __kyaraSendDestination =
+          result?.key?.remoteJid ||
+          jid ||
+          'destino-desconhecido';
+
+        const __kyaraSendMessageId =
+          result?.key?.id ||
+          'id-nao-retornado';
+
+        console.log(
+          `[KYARA SEND] ✅ Aceito pelo socket | destino=${__kyaraSendDestination} | id=${__kyaraSendMessageId}`
+        );
+      } catch (sendError) {
+        console.error(
+          '[KYARA SEND] ❌ Falha no envio pelo socket:',
+          sendError?.stack || sendError
+        );
+
+        throw sendError;
+      }
 
       try {
         if (
@@ -3165,11 +3739,40 @@ if (
       options
     ) => {
 
-      let rendered =
-        normalizeOutgoingRelayMessage(
-          message,
-          jid
+      // KYARA_NATIVE_FLOW_BYPASS_RUNTIME_NORMALIZER: não modificar mensagens interativas nativas.
+      const containsNativeFlowBeforeNormalization = (node, depth = 0) => {
+        if (!node || typeof node !== 'object' || depth > 6) return false;
+
+        if (node.interactiveMessage?.nativeFlowMessage) return true;
+
+        for (const key of [
+          'viewOnceMessage',
+          'viewOnceMessageV2',
+          'viewOnceMessageV2Extension',
+          'ephemeralMessage',
+          'documentWithCaptionMessage'
+        ]) {
+          const nested = node[key]?.message;
+          if (nested && containsNativeFlowBeforeNormalization(nested, depth + 1)) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
+      const isNativeFlowOutgoing =
+        containsNativeFlowBeforeNormalization(message);
+
+      let rendered = isNativeFlowOutgoing
+        ? message
+        : normalizeOutgoingRelayMessage(message, jid);
+
+      if (isNativeFlowOutgoing) {
+        console.log(
+          '[KYARA RELAY] Native Flow preservado antes da normalização.'
         );
+      }
 
       rendered =
         await applyKyaraGlobalChannelToRelay(
@@ -3242,7 +3845,6 @@ try {
   );
 }
 
-        KyaraSock.ev.on('creds.update', saveCreds);
 
         KyaraSock.ev.on('groups.update', async (updates) => {
             if (!Array.isArray(updates) || updates.length === 0) return;
@@ -3269,12 +3871,12 @@ try {
 
                     const groupData = await getGroupData(groupId).catch(() => null);
 
-                    if (!groupData?.x9) return; 
+                    if (!groupData?.x9 && !(ev.imgUrl || ev.picUrl || ev.pictureUrl || ev.profilePicUrl || ev.picture)) return; 
 
                     let mensagem = null;
 
 
-                    if (ev.imgUrl || ev.picUrl) {
+                    if (ev.imgUrl || ev.picUrl || ev.pictureUrl || ev.profilePicUrl || ev.picture) {
                         mensagem = `📸 *X9 Report:* A foto do grupo foi alterada!`;
                         console.log('[DEBUG] Foto alterada detectada');
                     }
@@ -3349,7 +3951,7 @@ try {
             await handleGroupParticipantsUpdate(KyaraSock, inf);
         });
 
-        let messagesListenerAttached = false;
+        let messagesListenerSocket = null;
 
         const queueErrorHandler = async (item, error) => {
             console.error(`❌ Critical error processing message ${item.id}:`, error);
@@ -3377,12 +3979,327 @@ try {
 
         
 // === KYARA V9 HANDLER - QUANTUM ===
+
+const kyaraSetupSessions = new Map();
+
+const kyaraSetupSteps = ['nomebot', 'prefixo', 'nomedono'];
+
+function kyaraSetupExtractText(message) {
+  let current = message;
+
+  for (let depth = 0; depth < 8 && current && typeof current === 'object'; depth++) {
+    if (typeof current.conversation === 'string') {
+      return current.conversation;
+    }
+
+    if (typeof current.extendedTextMessage?.text === 'string') {
+      return current.extendedTextMessage.text;
+    }
+
+    for (const key of ['imageMessage', 'videoMessage', 'documentMessage']) {
+      if (typeof current[key]?.caption === 'string') {
+        return current[key].caption;
+      }
+    }
+
+    let next = null;
+
+    for (const key of [
+      'ephemeralMessage',
+      'viewOnceMessage',
+      'viewOnceMessageV2',
+      'viewOnceMessageV2Extension',
+      'documentWithCaptionMessage'
+    ]) {
+      if (current[key]?.message) {
+        next = current[key].message;
+        break;
+      }
+    }
+
+    if (!next) return '';
+    current = next;
+  }
+
+  return '';
+}
+
+async function kyaraSetupSend(jid, text, actions = []) {
+  const buttons = actions.length
+    ? [
+        singleSelect('⚙️ Opções', [
+          {
+            title: 'Assistente Kyara',
+            rows: actions
+          }
+        ])
+      ]
+    : undefined;
+
+  return sendFlow(KyaraSock, jid, {
+    title: 'KYARA • CONFIGURAÇÃO',
+    footer: 'KYARA • Assistente guiado',
+    text,
+    buttons
+  });
+}
+
+async function kyaraSetupPrompt(jid, session, notice = '') {
+  const labels = {
+    nomebot: 'Nome do bot',
+    prefixo: 'Prefixo dos comandos',
+    nomedono: 'Nome do dono'
+  };
+
+  const number = kyaraSetupSteps.indexOf(session.step) + 1;
+  const current = labels[session.step] || 'Configuração';
+
+  const actions = [];
+
+  if (session.step !== 'nomebot') {
+    actions.push(
+      row('↩️ Voltar', 'Voltar à etapa anterior', 'owner:setup:back')
+    );
+  }
+
+  actions.push(
+    row('❌ Cancelar', 'Descartar esta configuração', 'owner:setup:cancel')
+  );
+
+  const text = [
+    '🧭 CONFIGURAÇÃO GUIADA',
+    '',
+    'Etapa ' + number + ' de 3: ' + current,
+    notice,
+    '',
+    session.step === 'nomebot'
+      ? 'Digite o nome que aparecerá como nome do bot. Use de 2 a 32 caracteres.'
+      : session.step === 'prefixo'
+        ? 'Digite um único caractere para ser o prefixo. Exemplo: . ou !'
+        : 'Digite o nome que será exibido para o dono. Use de 2 a 40 caracteres.',
+    '',
+    'Envie sua resposta como uma mensagem normal.'
+  ].filter(Boolean).join('\n');
+
+  return kyaraSetupSend(jid, text, actions);
+}
+
+async function kyaraSetupSummary(jid, session) {
+  const text = [
+    '🧾 REVISÃO DA CONFIGURAÇÃO',
+    '',
+    'Nome do bot: ' + session.draft.nomebot,
+    'Prefixo: ' + session.draft.prefixo,
+    'Nome do dono: ' + session.draft.nomedono,
+    '',
+    'Confira os dados antes de salvar.',
+    'Nada será alterado até você confirmar.'
+  ].join('\n');
+
+  const actions = [
+    row('✅ Salvar', 'Confirmar e aplicar as alterações', 'owner:setup:save'),
+    row('✏️ Editar nome', 'Alterar o nome do bot', 'owner:setup:edit:nomebot'),
+    row('✏️ Editar prefixo', 'Alterar o prefixo', 'owner:setup:edit:prefixo'),
+    row('✏️ Editar dono', 'Alterar o nome exibido do dono', 'owner:setup:edit:nomedono'),
+    row('↩️ Voltar', 'Retornar à última etapa', 'owner:setup:back'),
+    row('❌ Cancelar', 'Descartar as alterações', 'owner:setup:cancel')
+  ];
+
+  return kyaraSetupSend(jid, text, actions);
+}
+
+async function kyaraSetupHandle(jid, id, info, liveConfig) {
+  let session = kyaraSetupSessions.get(jid);
+
+  if (id === 'owner:setup:start') {
+    if (String(jid).endsWith('@g.us')) {
+      await kyaraSetupSend(
+        jid,
+        'Por segurança, abra a conversa privada com a Kyara para configurar o bot.'
+      );
+      return true;
+    }
+
+    const config = liveConfig || getRuntimeConfig() || {};
+
+    session = {
+      step: 'nomebot',
+      draft: {
+        nomebot: String(config.nomebot || 'KYARA'),
+        prefixo: String(config.prefixo || '.'),
+        nomedono: String(config.nomedono || 'Dono')
+      }
+    };
+
+    kyaraSetupSessions.set(jid, session);
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (id === 'owner:setup:cancel') {
+    kyaraSetupSessions.delete(jid);
+    await kyaraSetupSend(jid, '❌ Configuração cancelada. Nenhuma alteração foi salva.');
+    return true;
+  }
+
+  if (!session && id && id.startsWith('owner:setup:')) {
+    await kyaraSetupSend(jid, 'Nenhuma configuração está aberta. Abra o assistente novamente pelo painel do dono.');
+    return true;
+  }
+
+  if (id === 'owner:setup:save') {
+    if (!session) return true;
+
+    const { nomebot, prefixo, nomedono } = session.draft;
+
+    if (
+      nomebot.length < 2 ||
+      nomebot.length > 32 ||
+      Array.from(prefixo).length !== 1 ||
+      /\s/.test(prefixo) ||
+      nomedono.length < 2 ||
+      nomedono.length > 40
+    ) {
+      await kyaraSetupSummary(jid, session);
+      return true;
+    }
+
+    try {
+      saveRuntimeConfig({ nomebot, prefixo, nomedono });
+      kyaraSetupSessions.delete(jid);
+
+      await kyaraSetupSend(
+        jid,
+        '✅ CONFIGURAÇÃO SALVA\n\n' +
+        'Nome do bot: ' + nomebot + '\n' +
+        'Prefixo: ' + prefixo + '\n' +
+        'Nome do dono: ' + nomedono + '\n\n' +
+        'As alterações foram gravadas no config.json existente.'
+      );
+    } catch (error) {
+      console.error('[KYARA SETUP] Falha ao salvar:', error);
+      await kyaraSetupSend(
+        jid,
+        '❌ Não foi possível salvar a configuração. A sessão continua aberta; confira o terminal.'
+      );
+    }
+
+    return true;
+  }
+
+  if (id === 'owner:setup:back') {
+    if (!session) return true;
+
+    if (session.step === 'nomebot') {
+      await kyaraSetupPrompt(jid, session, 'Você já está na primeira etapa.');
+      return true;
+    }
+
+    const index = kyaraSetupSteps.indexOf(session.step);
+    session.step = kyaraSetupSteps[Math.max(0, index - 1)];
+
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (id && id.startsWith('owner:setup:edit:')) {
+    if (!session) return true;
+
+    const field = id.slice('owner:setup:edit:'.length);
+
+    if (!kyaraSetupSteps.includes(field)) {
+      await kyaraSetupSummary(jid, session);
+      return true;
+    }
+
+    session.step = field;
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (id && id.startsWith('owner:setup:')) {
+    if (session) await kyaraSetupSummary(jid, session);
+    return true;
+  }
+
+  if (!session || id) return false;
+
+  const text = kyaraSetupExtractText(info?.message).trim();
+
+  if (!text) return false;
+
+  if (/^(cancelar|cancel|sair|\.cancelar)$/i.test(text)) {
+    kyaraSetupSessions.delete(jid);
+    await kyaraSetupSend(jid, '❌ Configuração cancelada. Nenhuma alteração foi salva.');
+    return true;
+  }
+
+  if (/^voltar$/i.test(text)) {
+    if (session.step === 'nomebot') {
+      await kyaraSetupPrompt(jid, session, 'Você já está na primeira etapa.');
+      return true;
+    }
+
+    const index = kyaraSetupSteps.indexOf(session.step);
+    session.step = kyaraSetupSteps[Math.max(0, index - 1)];
+
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (/[\u0000-\u001f\u007f]/.test(text)) {
+    await kyaraSetupPrompt(jid, session, '⚠️ A resposta contém caracteres inválidos.');
+    return true;
+  }
+
+  if (session.step === 'nomebot') {
+    if (text.length < 2 || text.length > 32) {
+      await kyaraSetupPrompt(jid, session, '⚠️ Use de 2 a 32 caracteres.');
+      return true;
+    }
+
+    session.draft.nomebot = text;
+    session.step = 'prefixo';
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (session.step === 'prefixo') {
+    if (Array.from(text).length !== 1 || /\s/.test(text)) {
+      await kyaraSetupPrompt(jid, session, '⚠️ O prefixo deve ser um único caractere, sem espaços.');
+      return true;
+    }
+
+    session.draft.prefixo = text;
+    session.step = 'nomedono';
+    await kyaraSetupPrompt(jid, session);
+    return true;
+  }
+
+  if (session.step === 'nomedono') {
+    if (text.length < 2 || text.length > 40) {
+      await kyaraSetupPrompt(jid, session, '⚠️ Use de 2 a 40 caracteres.');
+      return true;
+    }
+
+    session.draft.nomedono = text;
+    await kyaraSetupSummary(jid, session);
+    return true;
+  }
+
+  await kyaraSetupSummary(jid, session);
+  return true;
+}
+
 const kyaraFlowDebounce = new Map()
 const kyaraNativeFlowHandler = async (info) => {
   try {
     if(!info?.message || info.key.fromMe) return false
     const flowId = extractId(info.message)
-    if(!flowId ||!isOwnerFlowId(flowId)) return false
+    const setupJid = info.key.remoteJid
+    const isSetupFlow = typeof flowId === 'string' && flowId.startsWith('owner:setup:')
+    const hasSetupSession = kyaraSetupSessions.has(setupJid)
+    if ((!flowId || (!isOwnerFlowId(flowId) && !isSetupFlow)) && !hasSetupSession) return false
     const liveOwnerConfig = getRuntimeConfig()
     const jid = info.key.remoteJid
     const senderRaw =
@@ -3497,6 +4414,13 @@ const kyaraNativeFlowHandler = async (info) => {
       await KyaraSock.sendMessage(jid, { text: '⛔ *ACESSO NEGADO*\nPainel exclusivo do proprietário.' })
       return true
     }
+    if (isSetupFlow || (hasSetupSession && !flowId)) {
+      if (!isOwnerCheck) return true
+      const setupHandled = await kyaraSetupHandle(jid, flowId, info, liveOwnerConfig)
+      if (setupHandled) return true
+      if (!flowId) return false
+    }
+
     if(kyaraFlowDebounce.get(jid+flowId) && Date.now()-kyaraFlowDebounce.get(jid+flowId)<1200) return true
     kyaraFlowDebounce.set(jid+flowId, Date.now())
     await routeOwnerFlow({
@@ -3521,6 +4445,8 @@ const kyaraNativeFlowHandler = async (info) => {
 }
 
 const processMessage = async (info) => {
+
+
 
         // [KYARA_ANTI_PAYMENT_AUTO_V1]
         try {
@@ -3629,8 +4555,8 @@ const processMessage = async (info) => {
   try {
     if (
       info?.key?.remoteJid &&
-      info?.key?.remoteJid !==
-        'status@broadcast'
+      info?.key?.remoteJid !== 'status@broadcast' &&
+      !info?.key?.fromMe
     ) {
       kyaraTerminalEvent(
         'incoming',
@@ -3676,8 +4602,10 @@ const processMessage = async (info) => {
 
             if (messagesCache && info.key?.id && info.key?.remoteJid) {
 
-                const cacheKey = `${info.key.remoteJid}_${info.key.id}`;
-                messagesCache.set(cacheKey, info);
+                const cacheJids = [...new Set([info.key.remoteJid, info.key.remoteJidAlt].filter(Boolean))];
+                for (const cacheJid of cacheJids) {
+                    messagesCache.set(`${cacheJid}_${info.key.id}`, info);
+                }
             }
 
 
@@ -3689,10 +4617,23 @@ const processMessage = async (info) => {
         };
 
         const attachMessagesListener = () => {
-            if (messagesListenerAttached) return;
-            messagesListenerAttached = true;
+
+            /*
+             * O listener pertence ao socket atual.
+             * Cada reconexão recebe um novo KyaraSock.
+             */
+            if (messagesListenerSocket === KyaraSock) {
+                return;
+            }
+
+            messagesListenerSocket = KyaraSock;
+
+
 
             KyaraSock.ev.on('messages.upsert', async (m) => {
+
+
+
                 if (!m.messages || !Array.isArray(m.messages)) return;
 
 
@@ -3706,13 +4647,31 @@ const processMessage = async (info) => {
 
                 try {
 
-                    const messageProcessingPromises = m.messages.map(info =>
-                        messageQueue.add(info, processMessage).catch(err => {
-                            console.error(`❌ Failed to queue message ${info.key?.id}: ${err.message}`);
-                        })
+                    /*
+                     * 🌸 DISPATCH DIRETO
+                     *
+                     * A fila antiga estava no caminho crítico da
+                     * entrada de mensagens. O WhatsApp entrega a
+                     * mensagem diretamente ao processMessage.
+                     *
+                     * Não cria outro listener.
+                     * Não cria outro dispatcher.
+                     */
+                    const messageProcessingPromises = m.messages.map(
+                        info =>
+                            Promise.resolve()
+                                .then(() => processMessage(info))
+                                .catch(err => {
+                                    console.error(
+                                        `❌ [KYARA DISPATCH] Erro ao processar ${info?.key?.id || 'sem-id'}:`,
+                                        err?.stack || err
+                                    );
+                                })
                     );
 
-                    await Promise.allSettled(messageProcessingPromises);
+                    await Promise.allSettled(
+                        messageProcessingPromises
+                    );
 
                 } catch (err) {
                     console.error(`❌ Error in message upsert handler: ${err.message}`);
@@ -3744,6 +4703,10 @@ const processMessage = async (info) => {
              *
              * Isso mantém QR/pairing fora do modo raw.
              */
+            if (connection === 'open') {
+                KyaraSock.__kyaraConnectionOpened = true;
+            }
+
             if (
                 connection === 'open' &&
                 !KyaraSock.__kyaraTerminalStarted
@@ -3761,20 +4724,26 @@ const processMessage = async (info) => {
                     startKyaraTerminal();
 
                     console.log(
-                        '✅ Kyara Terminal iniciado após conexão.'
+                        '✅ Terminal KYARA-SYSTΞM ativo.'
                     );
 
                 } catch (terminalStartError) {
 
                     console.error(
-                        '❌ Erro ao iniciar terminal BKkyara:',
+                        '❌ Erro ao iniciar terminal KYARA-SYSTΞM:',
                         terminalStartError?.stack ||
                         terminalStartError
                     );
                 }
             }
 
-            if (!connection) {
+            if (
+                !connection &&
+                KyaraSock.__kyaraConnectionOpened !== true &&
+                KyaraSock.__kyaraConnectingEventSent !== true
+            ) {
+                KyaraSock.__kyaraConnectingEventSent = true;
+
                 try {
                     kyaraTerminalEvent('connecting', {
                         message: 'Aguardando conexão com o WhatsApp'
@@ -3797,13 +4766,55 @@ const processMessage = async (info) => {
             }
             if (connection === 'open') {
 
+                /*
+                 * 🌸 PRIORIDADE ABSOLUTA
+                 *
+                 * O listener precisa ser registrado antes de:
+                 * - limpeza de runtime
+                 * - cache
+                 * - migração
+                 * - aluguel
+                 * - sub-bots
+                 * - terminal
+                 */
+                try {
+                    attachMessagesListener();
+                } catch (listenerStartError) {
+                    console.error(
+                        '❌ [KYARA] Falha ao registrar messages.upsert:',
+                        listenerStartError?.stack ||
+                        listenerStartError
+                    );
+                }
+
+
 
                 enableKyaraCleanRuntime();
 
 
                 markSocketOpen(KyaraSock);
 
+                /*
+                 * 🌸 PRIORIDADE MÁXIMA:
+                 * ouvir mensagens antes dos caches,
+                 * migrações, aluguel e sub-bots.
+                 */
+
+
+
                 startKyaraTerminal();
+
+                /*
+                 * 🌸 KYARA — LISTENER DE MENSAGENS
+                 *
+                 * Deve ser anexado imediatamente após
+                 * a conexão abrir.
+                 *
+                 * A inicialização de caches/rental/subbots
+                 * não pode impedir o WhatsApp de entregar
+                 * mensagens ao dispatcher.
+                 */
+
 
     try {
       kyaraTerminalEvent(
@@ -3831,10 +4842,10 @@ core('Inicializando sistema de otimização...');
                         });
                     }, 10_000);
 
-                    rentalExpirationManager.nazu = KyaraSock;
+                    rentalExpirationManager.kya = KyaraSock;
                     await rentalExpirationManager.initialize();
 
-                    attachMessagesListener();
+    
 
 try {
   attachKyaraPanelSock(KyaraSock);
@@ -3880,12 +4891,23 @@ try {
                         console.error('❌ Erro ao inicializar sub-bots:', error.message);
                     }
 
+                    try {
+                        const subDeleteModule = await import('./features/subDeleteManager.js');
+                        await subDeleteModule.initializeSubDelete({
+                            mainSock: KyaraSock,
+                            ownerNumber: numerodono,
+                            ownerJid: buildUserId(numerodono, config)
+                        });
+                    } catch (error) {
+                        console.error('❌ Erro ao inicializar sub-delete:', error.message);
+                    }
+
                     console.log(`✅ Bot ${nomebot} iniciado com sucesso! Prefixo: ${prefixo} | Dono: ${nomedono}`);
                     data(`MessageQueue • ${messageQueue.batchSize} lotes • ${messageQueue.messagesPerBatch} por lote • ${messageQueue.maxWorkers} paralelas`);
                 } catch (initErr) {
 
                     console.error('❌ Erro crítico na inicialização pós-conexão:', initErr.message);
-                    setTimeout(() => startNazu(), 5000);
+                    console.error('⚠️ Socket atual preservado; não será criada outra conexão.');
                 }
             }
             if (connection === 'close') {
@@ -3897,20 +4919,78 @@ try {
                 } catch {}
 
                 markSocketClosed(KyaraSock);
-                const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
-                const reasonMessage = {
-                    [DisconnectReason.loggedOut]: 'Deslogado do WhatsApp',
-                    401: 'Sessão expirada',
-                    403: 'Acesso proibido (Forbidden)',
-                    [DisconnectReason.connectionClosed]: 'Conexão fechada',
-                    [DisconnectReason.connectionLost]: 'Conexão perdida',
-                    [DisconnectReason.connectionReplaced]: 'Conexão substituída',
-                    [DisconnectReason.timedOut]: 'Tempo de conexão esgotado',
-                    [DisconnectReason.badSession]: 'Sessão inválida',
-                    [DisconnectReason.restartRequired]: 'Reinício necessário',
-                }[reason] || 'Motivo desconhecido';
+                // Lê o erro original sem fabricar um Boom com código 500.
+                const disconnectError = lastDisconnect?.error || null;
 
-                console.log(`❌ Conexão fechada. Código: ${reason} | Motivo: ${reasonMessage}`);
+                const disconnectErrorText = [
+                    disconnectError?.name,
+                    disconnectError?.message,
+                    disconnectError?.output?.payload?.message,
+                    disconnectError?.data?.message,
+                    disconnectError?.cause?.message
+                ]
+                    .filter(Boolean)
+                    .map(String)
+                    .join(' | ');
+
+                const reasonCandidates = [
+                    disconnectError?.output?.statusCode,
+                    disconnectError?.statusCode,
+                    disconnectError?.data?.statusCode,
+                    disconnectError?.cause?.output?.statusCode,
+                    disconnectError?.cause?.statusCode
+                ];
+
+                const reason = reasonCandidates
+                    .map(value => Number(value))
+                    .find(value =>
+                        Number.isInteger(value) && value > 0
+                    ) ?? null;
+
+                // O código 500 só será considerado badSession quando
+                // a mensagem original indicar explicitamente isso.
+                const isExplicitBadSession =
+                    reason === DisconnectReason.badSession &&
+                    /bad[\s_-]*session|invalid[\s_-]*session|session.{0,24}(?:invalid|expired|corrupt)/i
+                        .test(disconnectErrorText);
+
+                const reasonMessage =
+                    reason === DisconnectReason.badSession && !isExplicitBadSession
+                        ? 'Erro 500 sem confirmação de sessão inválida'
+                        : ({
+                            [DisconnectReason.loggedOut]: 'Deslogado do WhatsApp',
+                            401: 'Sessão expirada',
+                            403: 'Acesso proibido (Forbidden)',
+                            [DisconnectReason.connectionClosed]: 'Conexão fechada',
+                            [DisconnectReason.connectionLost]: 'Conexão perdida',
+                            [DisconnectReason.connectionReplaced]: 'Conexão substituída',
+                            [DisconnectReason.timedOut]: 'Tempo de conexão esgotado',
+                            [DisconnectReason.badSession]: 'Sessão inválida',
+                            [DisconnectReason.restartRequired]: 'Reinício necessário',
+                        }[reason] || (
+                            reason === null
+                                ? 'Código não informado'
+                                : 'Motivo desconhecido'
+                        ));
+
+                console.log(
+                    `❌ Conexão fechada. Código: ${reason ?? 'não informado'} | Motivo: ${reasonMessage}`
+                );
+
+                if (
+                    reason === DisconnectReason.badSession &&
+                    !isExplicitBadSession
+                ) {
+                    console.error(
+                        '⚠️ Código 500 isolado não confirma sessão inválida. ' +
+                        'Autenticação preservada; tentando reconectar.'
+                    );
+                    console.error(
+                        `[WHATSAPP] Detalhe original: ${
+                            disconnectErrorText || 'mensagem não informada'
+                        }`
+                    );
+                }
 
 
                 if (cacheCleanupInterval) {
@@ -3926,32 +5006,127 @@ try {
 
                 if (reason === 403) {
                     forbidden403Attempts++;
-                    console.log(`⚠️ Erro 403 detectado. Tentativa ${forbidden403Attempts}/${MAX_403_ATTEMPTS}`);
 
-                    if (forbidden403Attempts >= MAX_403_ATTEMPTS) {
-                        console.log('❌ Máximo de tentativas para erro 403 atingido. Apagando QR code e parando...');
-                        await clearAuthDir(authDir);
-                        console.log('🗑️ Autenticação removida. Reinicie o bot para gerar um novo QR code.');
-                        process.exit(1);
-                    }
+                    const forbiddenDelay =
+                        forbidden403Attempts >= MAX_403_ATTEMPTS
+                            ? 60000
+                            : 5000;
 
+                    console.log(
+                        `⚠️ Erro 403 detectado (tentativa ${forbidden403Attempts}). ` +
+                        `Nova verificação em ${Math.round(forbiddenDelay / 1000)}s; sessão preservada.`
+                    );
 
-                    console.log('🔄 Tentando reconectar em 5 segundos...');
                     if (reconnectTimer) {
                         clearTimeout(reconnectTimer);
                     }
+
                     reconnectTimer = setTimeout(() => {
+                        reconnectTimer = null;
                         startNazu();
-                    }, 5000);
+                    }, forbiddenDelay);
+
                     return;
                 }
 
 
                 forbidden403Attempts = 0;
 
-                if (reason === DisconnectReason.badSession || reason === DisconnectReason.loggedOut) {
-                    await clearAuthDir(authDir);
-                    console.log('🔄 Nova autenticação será necessária na próxima inicialização.');
+                const isUnregisteredPairingAttempt =
+                    KyaraSock.__kyaraConnectionMethod === 'pairing' &&
+                    KyaraSock.authState?.creds?.registered !== true;
+
+                if (
+                    isUnregisteredPairingAttempt &&
+                    (
+                        reason === 401 ||
+                        reason === DisconnectReason.loggedOut
+                    )
+                ) {
+                    console.error(
+                        '⛔ O WhatsApp encerrou a tentativa antes de concluir o novo pareamento (401).'
+                    );
+
+                    console.error(
+                        '🔒 Isso ainda não é uma sessão autenticada. A pasta atual não será arquivada novamente.'
+                    );
+
+                    console.log(
+                        '↻ A tentativa será interrompida para evitar um ciclo de novos pareamentos.'
+                    );
+
+                    stopKyaraTerminal();
+
+                    await gracefulShutdown('SIGTERM');
+                    return;
+                }
+
+                const authWasRejected =
+                    reason === 401 ||
+                    reason === DisconnectReason.loggedOut ||
+                    (
+                        reason === DisconnectReason.badSession &&
+                        isExplicitBadSession
+                    );
+
+                if (authWasRejected) {
+                    console.error(
+                        `⛔ O WhatsApp recusou a autenticação salva. Código: ${reason} | Motivo: ${reasonMessage}.`
+                    );
+                    console.log('🔐 A sessão antiga será preservada antes do novo pareamento.');
+                    console.log('🌸 KYARA-SYSTΞM • CENTRO DE RECUPERAÇÃO');
+
+                    if (authRecoveryPromptActive) return;
+                    authRecoveryPromptActive = true;
+
+                    try {
+                        stopKyaraTerminal();
+
+                        if (reconnectTimer) {
+                            clearTimeout(reconnectTimer);
+                            reconnectTimer = null;
+                        }
+
+                        connectionMethod = 'auto';
+
+                        const nextMethod = await chooseAuthenticationMethod();
+
+                        if (!['pairing', 'qr'].includes(nextMethod)) {
+                            authRecoveryPromptActive = false;
+                            console.log('⏸️ Recuperação pausada. A autenticação antiga continua preservada.');
+                            return;
+                        }
+
+                        connectionMethod = nextMethod;
+                        forceFreshAuthForNextConnect = true;
+                        reconnectAttempts = 0;
+                        forbidden403Attempts = 0;
+
+                        console.log(nextMethod === 'pairing'
+                            ? '🔑 Preparando um novo código de pareamento…'
+                            : '▣ Preparando um novo QR Code…');
+
+                        console.log('📦 A pasta antiga será arquivada; os demais dados serão mantidos.');
+
+                        reconnectTimer = setTimeout(() => {
+                            reconnectTimer = null;
+                            authRecoveryPromptActive = false;
+                            startNazu();
+                        }, 700);
+
+                    } catch (recoveryError) {
+                        authRecoveryPromptActive = false;
+                        forceFreshAuthForNextConnect = false;
+
+                        console.error(
+                            '❌ Falha ao abrir a recuperação:',
+                            recoveryError?.stack || recoveryError
+                        );
+
+                        console.error('🔒 A autenticação antiga foi mantida sem alterações.');
+                    }
+
+                    return;
                 }
 
 
@@ -3961,7 +5136,14 @@ try {
                 }
 
 
-                let reconnectDelay = 5000;
+                // Erros 500 sem confirmação de badSession recebem
+                // uma pausa maior antes da próxima tentativa.
+                let reconnectDelay =
+                    reason === DisconnectReason.badSession &&
+                    !isExplicitBadSession
+                        ? 10000
+                        : 5000;
+
                 if (reason === DisconnectReason.timedOut) {
                     reconnectDelay = 3000; 
                 } else if (reason === DisconnectReason.connectionLost) {
@@ -3978,8 +5160,9 @@ try {
                 }
 
                 reconnectTimer = setTimeout(() => {
-                    reconnectAttempts = 0; 
-                    forbidden403Attempts = 0; 
+                    reconnectTimer = null;
+                    reconnectAttempts = 0;
+                    forbidden403Attempts = 0;
                     startNazu();
                 }, reconnectDelay);
             }
@@ -3998,22 +5181,24 @@ async function startNazu() {
         return;
     }
 
+    if (hasActiveSocket()) {
+        console.log('⚠️ Já existe um socket ativo ou conectando; nova instância ignorada.');
+        return;
+    }
+
     isReconnecting = true;
 
     try {
-        boot('Iniciando Kyara...');
+        boot('Iniciando KYARA-SYSTΞM...');
 
         await createBotSocket(AUTH_DIR);
 
     } catch (err) {
         reconnectAttempts++;
-        console.error(`❌ Erro ao iniciar o bot (tentativa ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}): ${err.message}`);
 
-
-        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-            console.error(`❌ Máximo de tentativas de reconexão alcançado (${MAX_RECONNECT_ATTEMPTS}). Parando...`);
-            process.exit(1);
-        }
+        console.error(
+            `❌ Erro ao iniciar o bot (tentativa ${reconnectAttempts}; processo mantido ativo): ${err.message}`
+        );
 
         if (err.message.includes('ENOSPC') || err.message.includes('ENOMEM')) {
             console.log('🧹 Tentando limpeza de emergência...');
@@ -4026,15 +5211,22 @@ async function startNazu() {
         }
 
 
-        const delay = Math.min(RECONNECT_DELAY_BASE * Math.pow(1.5, reconnectAttempts - 1), 60000);
-        console.log(`🔄 Aguardando ${Math.round(delay / 1000)} segundos antes de tentar novamente...`);
+        const delay = Math.min(
+            RECONNECT_DELAY_BASE *
+                Math.pow(1.5, Math.min(reconnectAttempts - 1, 8)),
+            60000
+        );
 
+        console.log(
+            `🔄 Aguardando ${Math.round(delay / 1000)} segundos antes de tentar novamente...`
+        );
 
         if (reconnectTimer) {
             clearTimeout(reconnectTimer);
         }
 
         reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
             startNazu();
         }, delay);
     } finally {
@@ -4073,6 +5265,13 @@ async function gracefulShutdown(signal) {
             console.error('❌ Erro ao desconectar sub-bots:', error.message);
         }
 
+        try {
+            const subDeleteModule = await import('./features/subDeleteManager.js');
+            await subDeleteModule.disconnectSubDelete();
+            console.log('✅ Sessão sub-delete desconectada sem apagar o pareamento');
+        } catch (error) {
+            console.error('❌ Erro ao desconectar sub-delete:', error.message);
+        }
 
         if (cacheCleanupInterval) {
             clearInterval(cacheCleanupInterval);

@@ -1,0 +1,14 @@
+{
+  "responses": [
+    {
+      "id": "1788840218918",
+      "trigger": "boa noite",
+      "response": {
+        "type": "text",
+        "content": "olá puta(o), boa noite 🌙"
+      },
+      "createdAt": "2026-09-08T04:03:38.919Z",
+      "isGlobal": true
+    }
+  ]
+}

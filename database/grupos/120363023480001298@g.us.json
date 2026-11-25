@@ -1,0 +1,72 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:41:00.143Z",
+  "groupName": "楽しい日本の大きな家族🇯🇵🥳🌸",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "143211976765554@lid",
+      "msg": 14,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mitsuki（Aniversário09/10）",
+      "firstSeen": "2026-09-15T20:41:00.149Z",
+      "lastActivity": "2026-09-27T19:02:10.917Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 15,
+      "cmd": 5,
+      "figu": 1,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-26T20:25:55.381Z",
+      "lastActivity": "2026-09-27T16:00:24.176Z"
+    },
+    {
+      "id": "14495548178601@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "マルクス",
+      "firstSeen": "2026-09-26T20:36:53.086Z",
+      "lastActivity": "2026-09-27T15:05:05.859Z"
+    },
+    {
+      "id": "188777486106872@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Edney",
+      "firstSeen": "2026-09-26T20:54:22.535Z",
+      "lastActivity": "2026-09-26T20:54:22.539Z"
+    },
+    {
+      "id": "191186761437372@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Luiz Fernando (Mizuki)💿🎶",
+      "firstSeen": "2026-09-27T16:40:24.266Z",
+      "lastActivity": "2026-09-27T16:40:24.266Z"
+    },
+    {
+      "id": "187677387292896@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Delcimar Nascimento",
+      "firstSeen": "2026-10-01T15:33:47.170Z",
+      "lastActivity": "2026-10-01T15:33:47.171Z"
+    }
+  ]
+}

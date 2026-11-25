@@ -1,0 +1,17 @@
+{
+  "commands": [
+    "atualizar"
+  ],
+  "failures": [
+    {
+      "command": "atualizar",
+      "menu": "menudono",
+      "count": 1,
+      "firstAt": "2026-10-08T02:16:18.745Z",
+      "lastAt": "2026-10-08T02:16:18.745Z",
+      "lastError": "❌ *ERRO NA ATUALIZAÇÃO!* ⚠️ O processo de atualização falhou com código: 1 🔧 *O que fazer:* ┃ ┃ 1️⃣ Verifique sua conexão com a internet ┃ 2️⃣ Certifique-se de ter Git instalado ┃ 3️⃣ Tente novamente em alguns minutos ┃ 4️⃣ Se persistir, atualize manualmente: ┃ cd dados/src/.scripts ┃ node update.js ┃ ┗━━━━━━━━━━━━━━━━━━━━━ 📂 Backup foi preservado para segurança.",
+      "stage": "reply"
+    }
+  ],
+  "updatedAt": "2026-10-08T02:16:18.746Z"
+}

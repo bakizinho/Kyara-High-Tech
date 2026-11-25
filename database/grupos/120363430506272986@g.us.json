@@ -1,0 +1,60 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-27T23:26:14.925Z",
+  "groupName": "Área #51 de testes",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 373,
+      "cmd": 341,
+      "figu": 36,
+      "pushname": "© 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-27T23:26:14.948Z",
+      "lastActivity": "2026-10-08T00:35:13.867Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 120,
+      "cmd": 32,
+      "figu": 65,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-28T00:10:46.272Z",
+      "lastActivity": "2026-10-04T02:09:57.902Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 76,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "亗⃝ 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-29T19:02:11.617Z",
+      "lastActivity": "2026-10-08T02:17:02.507Z"
+    },
+    {
+      "id": "867051314767696@bot",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Meta AI",
+      "firstSeen": "2026-10-04T08:58:22.330Z",
+      "lastActivity": "2026-10-04T08:58:22.330Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true,
+  "modobrincadeira": true,
+  "antistatus": true,
+  "assistente": true,
+  "assistentePersonality": "kyara"
+}

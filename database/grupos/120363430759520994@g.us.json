@@ -1,0 +1,63 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:03:17.239Z",
+  "groupName": "Todo mundo loko🫢🤣😋🔥",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "82030184378484@lid",
+      "msg": 12,
+      "cmd": 2,
+      "figu": 0,
+      "pushname": "꧁༒☬WS CORINGA☬༒꧂",
+      "firstSeen": "2026-09-15T21:03:17.262Z",
+      "lastActivity": "2026-09-27T19:42:19.819Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 39,
+      "cmd": 6,
+      "figu": 7,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T21:04:13.659Z",
+      "lastActivity": "2026-09-27T19:45:42.294Z"
+    },
+    {
+      "id": "263531358326991@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "『 𝐀𝐑𝐋𝐄𝐐𝐔𝐈𝐍𝐀 𝐎𝐅𝐈𝐂𝐈𝐀𝐋 』",
+      "firstSeen": "2026-09-27T19:39:37.661Z",
+      "lastActivity": "2026-10-01T14:49:21.439Z"
+    },
+    {
+      "id": "50045730697386@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "zz",
+      "firstSeen": "2026-09-27T19:43:20.323Z",
+      "lastActivity": "2026-09-27T20:03:28.199Z"
+    },
+    {
+      "id": "114444453552264@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "DI MARIA",
+      "firstSeen": "2026-09-27T19:49:37.340Z",
+      "lastActivity": "2026-09-27T19:49:37.340Z"
+    }
+  ]
+}

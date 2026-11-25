@@ -1,0 +1,3733 @@
+{
+  "version": 2,
+  "generatedAt": "2026-09-26T14:53:19Z",
+  "total": 395,
+  "sites": {
+    "pixiv": {
+      "id": "pixiv",
+      "nome": "Pixiv",
+      "url": "https://www.pixiv.net",
+      "host": "pixiv.net",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "pixivfanbox": {
+      "id": "pixivfanbox",
+      "nome": "Pixiv FANBOX",
+      "url": "https://www.fanbox.cc",
+      "host": "fanbox.cc",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "deviantart": {
+      "id": "deviantart",
+      "nome": "DeviantArt",
+      "url": "https://www.deviantart.com",
+      "host": "deviantart.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "artstation": {
+      "id": "artstation",
+      "nome": "ArtStation",
+      "url": "https://www.artstation.com",
+      "host": "artstation.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "behance": {
+      "id": "behance",
+      "nome": "Behance",
+      "url": "https://www.behance.net",
+      "host": "behance.net",
+      "category": "portfolio",
+      "engine": "adaptive"
+    },
+    "dribbble": {
+      "id": "dribbble",
+      "nome": "Dribbble",
+      "url": "https://dribbble.com",
+      "host": "dribbble.com",
+      "category": "portfolio",
+      "engine": "adaptive"
+    },
+    "artfol": {
+      "id": "artfol",
+      "nome": "Artfol",
+      "url": "https://artfol.co",
+      "host": "artfol.co",
+      "category": "arte-social",
+      "engine": "adaptive"
+    },
+    "cara": {
+      "id": "cara",
+      "nome": "Cara",
+      "url": "https://cara.app",
+      "host": "cara.app",
+      "category": "arte-social",
+      "engine": "adaptive"
+    },
+    "newgrounds": {
+      "id": "newgrounds",
+      "nome": "Newgrounds",
+      "url": "https://www.newgrounds.com",
+      "host": "newgrounds.com",
+      "category": "arte-social",
+      "engine": "adaptive"
+    },
+    "tumblr": {
+      "id": "tumblr",
+      "nome": "Tumblr",
+      "url": "https://www.tumblr.com",
+      "host": "tumblr.com",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "weasyl": {
+      "id": "weasyl",
+      "nome": "Weasyl",
+      "url": "https://www.weasyl.com",
+      "host": "weasyl.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "inkblot": {
+      "id": "inkblot",
+      "nome": "Inkblot",
+      "url": "https://inkblot.art",
+      "host": "inkblot.art",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "artfight": {
+      "id": "artfight",
+      "nome": "ArtFight",
+      "url": "https://artfight.net",
+      "host": "artfight.net",
+      "category": "arte-social",
+      "engine": "adaptive"
+    },
+    "toyhouse": {
+      "id": "toyhouse",
+      "nome": "Toyhouse",
+      "url": "https://toyhou.se",
+      "host": "toyhou.se",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "characterhub": {
+      "id": "characterhub",
+      "nome": "CharacterHub",
+      "url": "https://characterhub.com",
+      "host": "characterhub.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "refsheet": {
+      "id": "refsheet",
+      "nome": "RefSheet",
+      "url": "https://refsheet.net",
+      "host": "refsheet.net",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "furaffinity": {
+      "id": "furaffinity",
+      "nome": "Fur Affinity",
+      "url": "https://www.furaffinity.net",
+      "host": "furaffinity.net",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "sofurry": {
+      "id": "sofurry",
+      "nome": "SoFurry",
+      "url": "https://www.sofurry.com",
+      "host": "sofurry.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "e621": {
+      "id": "e621",
+      "nome": "E621",
+      "url": "https://e621.net",
+      "host": "e621.net",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "e926": {
+      "id": "e926",
+      "nome": "E926",
+      "url": "https://e926.net",
+      "host": "e926.net",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "danbooru": {
+      "id": "danbooru",
+      "nome": "Danbooru",
+      "url": "https://danbooru.donmai.us",
+      "host": "danbooru.donmai.us",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "safebooru": {
+      "id": "safebooru",
+      "nome": "Safebooru",
+      "url": "https://safebooru.org",
+      "host": "safebooru.org",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "gelbooru": {
+      "id": "gelbooru",
+      "nome": "Gelbooru",
+      "url": "https://gelbooru.com",
+      "host": "gelbooru.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "konachan": {
+      "id": "konachan",
+      "nome": "Konachan",
+      "url": "https://konachan.net",
+      "host": "konachan.net",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "yandere": {
+      "id": "yandere",
+      "nome": "Yande.re",
+      "url": "https://yande.re",
+      "host": "yande.re",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "zerochan": {
+      "id": "zerochan",
+      "nome": "Zerochan",
+      "url": "https://www.zerochan.net",
+      "host": "zerochan.net",
+      "category": "galeria",
+      "engine": "adaptive"
+    },
+    "animepictures": {
+      "id": "animepictures",
+      "nome": "Anime-Pictures",
+      "url": "https://anime-pictures.net",
+      "host": "anime-pictures.net",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "wallhaven": {
+      "id": "wallhaven",
+      "nome": "Wallhaven",
+      "url": "https://wallhaven.cc",
+      "host": "wallhaven.cc",
+      "category": "wallpaper",
+      "engine": "adaptive"
+    },
+    "wallhere": {
+      "id": "wallhere",
+      "nome": "WallHere",
+      "url": "https://wallhere.com",
+      "host": "wallhere.com",
+      "category": "wallpaper",
+      "engine": "adaptive"
+    },
+    "alphacoders": {
+      "id": "alphacoders",
+      "nome": "Alpha Coders",
+      "url": "https://wall.alphacoders.com",
+      "host": "wall.alphacoders.com",
+      "category": "wallpaper",
+      "engine": "adaptive"
+    },
+    "sankakuchannel": {
+      "id": "sankakuchannel",
+      "nome": "Sankaku Channel",
+      "url": "https://chan.sankakucomplex.com",
+      "host": "chan.sankakucomplex.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "sankakucomplex": {
+      "id": "sankakucomplex",
+      "nome": "Sankaku Complex",
+      "url": "https://www.sankakucomplex.com",
+      "host": "sankakucomplex.com",
+      "category": "arte-social",
+      "engine": "adaptive"
+    },
+    "hypnohub": {
+      "id": "hypnohub",
+      "nome": "HypnoHub",
+      "url": "https://hypnohub.net",
+      "host": "hypnohub.net",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "xbooru": {
+      "id": "xbooru",
+      "nome": "Xbooru",
+      "url": "https://xbooru.com",
+      "host": "xbooru.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "realbooru": {
+      "id": "realbooru",
+      "nome": "Realbooru",
+      "url": "https://realbooru.com",
+      "host": "realbooru.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "tbib": {
+      "id": "tbib",
+      "nome": "TBIB",
+      "url": "https://tbib.org",
+      "host": "tbib.org",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "rule34": {
+      "id": "rule34",
+      "nome": "Rule34",
+      "url": "https://rule34.xxx",
+      "host": "rule34.xxx",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "rule34us": {
+      "id": "rule34us",
+      "nome": "Rule34.us",
+      "url": "https://rule34.us",
+      "host": "rule34.us",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "paheal": {
+      "id": "paheal",
+      "nome": "Paheal",
+      "url": "https://rule34.paheal.net",
+      "host": "rule34.paheal.net",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "3dbooru": {
+      "id": "3dbooru",
+      "nome": "3dbooru",
+      "url": "http://behoimi.org",
+      "host": "behoimi.org",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "aibooru": {
+      "id": "aibooru",
+      "nome": "AIBooru",
+      "url": "https://aibooru.online",
+      "host": "aibooru.online",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "derpibooru": {
+      "id": "derpibooru",
+      "nome": "Derpibooru",
+      "url": "https://derpibooru.org",
+      "host": "derpibooru.org",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "twibooru": {
+      "id": "twibooru",
+      "nome": "Twibooru",
+      "url": "https://twibooru.org",
+      "host": "twibooru.org",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "sakugabooru": {
+      "id": "sakugabooru",
+      "nome": "Sakugabooru",
+      "url": "https://www.sakugabooru.com",
+      "host": "sakugabooru.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "serika": {
+      "id": "serika",
+      "nome": "Serika",
+      "url": "https://serika.art",
+      "host": "serika.art",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "booruorg": {
+      "id": "booruorg",
+      "nome": "Booru.org",
+      "url": "https://booru.org",
+      "host": "booru.org",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "bbooru": {
+      "id": "bbooru",
+      "nome": "BBooru",
+      "url": "https://bbooru.com",
+      "host": "bbooru.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "soybooru": {
+      "id": "soybooru",
+      "nome": "Soybooru",
+      "url": "https://soybooru.com",
+      "host": "soybooru.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "snootbooru": {
+      "id": "snootbooru",
+      "nome": "Snootbooru",
+      "url": "https://snootbooru.com",
+      "host": "snootbooru.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "visuabusters": {
+      "id": "visuabusters",
+      "nome": "VISUABUSTERS",
+      "url": "https://www.visuabusters.com/booru",
+      "host": "visuabusters.com",
+      "category": "booru",
+      "engine": "adaptive"
+    },
+    "sizebooru": {
+      "id": "sizebooru",
+      "nome": "Sizebooru",
+      "url": "https://sizebooru.com",
+      "host": "sizebooru.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "idolcomplex": {
+      "id": "idolcomplex",
+      "nome": "Idol Complex",
+      "url": "https://www.idolcomplex.com",
+      "host": "idolcomplex.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "agnph": {
+      "id": "agnph",
+      "nome": "AGNPH",
+      "url": "https://agn.ph",
+      "host": "agn.ph",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "furry34": {
+      "id": "furry34",
+      "nome": "Furry 34",
+      "url": "https://furry34.com",
+      "host": "furry34.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "e6ai": {
+      "id": "e6ai",
+      "nome": "e6AI",
+      "url": "https://e6ai.net",
+      "host": "e6ai.net",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "weebcentral": {
+      "id": "weebcentral",
+      "nome": "Weeb Central",
+      "url": "https://weebcentral.com",
+      "host": "weebcentral.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "onegai": {
+      "id": "onegai",
+      "nome": "Onegai",
+      "url": "https://onegai.moe",
+      "host": "onegai.moe",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "sketchfab": {
+      "id": "sketchfab",
+      "nome": "Sketchfab",
+      "url": "https://sketchfab.com",
+      "host": "sketchfab.com",
+      "category": "3d",
+      "engine": "adaptive"
+    },
+    "cgtrader": {
+      "id": "cgtrader",
+      "nome": "CGTrader",
+      "url": "https://www.cgtrader.com",
+      "host": "cgtrader.com",
+      "category": "3d",
+      "engine": "adaptive"
+    },
+    "blendswap": {
+      "id": "blendswap",
+      "nome": "Blend Swap",
+      "url": "https://www.blendswap.com",
+      "host": "blendswap.com",
+      "category": "3d",
+      "engine": "adaptive"
+    },
+    "polyhaven": {
+      "id": "polyhaven",
+      "nome": "Poly Haven",
+      "url": "https://polyhaven.com",
+      "host": "polyhaven.com",
+      "category": "3d",
+      "engine": "adaptive"
+    },
+    "unsplash": {
+      "id": "unsplash",
+      "nome": "Unsplash",
+      "url": "https://unsplash.com",
+      "host": "unsplash.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "pexels": {
+      "id": "pexels",
+      "nome": "Pexels",
+      "url": "https://www.pexels.com",
+      "host": "pexels.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "pixabay": {
+      "id": "pixabay",
+      "nome": "Pixabay",
+      "url": "https://pixabay.com",
+      "host": "pixabay.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "flickr": {
+      "id": "flickr",
+      "nome": "Flickr",
+      "url": "https://www.flickr.com",
+      "host": "flickr.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "500px": {
+      "id": "500px",
+      "nome": "500px",
+      "url": "https://500px.com",
+      "host": "500px.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "smugmug": {
+      "id": "smugmug",
+      "nome": "SmugMug",
+      "url": "https://www.smugmug.com",
+      "host": "smugmug.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "photovogue": {
+      "id": "photovogue",
+      "nome": "PhotoVogue",
+      "url": "https://www.vogue.com/photovogue",
+      "host": "vogue.com",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "35photo": {
+      "id": "35photo",
+      "nome": "35PHOTO",
+      "url": "https://35photo.pro",
+      "host": "35photo.pro",
+      "category": "foto",
+      "engine": "adaptive"
+    },
+    "artmajeur": {
+      "id": "artmajeur",
+      "nome": "ArtMajeur",
+      "url": "https://www.artmajeur.com",
+      "host": "artmajeur.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "saatchiart": {
+      "id": "saatchiart",
+      "nome": "Saatchi Art",
+      "url": "https://www.saatchiart.com",
+      "host": "saatchiart.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "fineartamerica": {
+      "id": "fineartamerica",
+      "nome": "Fine Art America",
+      "url": "https://fineartamerica.com",
+      "host": "fineartamerica.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "drawcrowd": {
+      "id": "drawcrowd",
+      "nome": "DrawCrowd",
+      "url": "https://drawcrowd.com",
+      "host": "drawcrowd.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "conceptart": {
+      "id": "conceptart",
+      "nome": "ConceptArt",
+      "url": "https://www.conceptart.org",
+      "host": "conceptart.org",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "characterdesignreferences": {
+      "id": "characterdesignreferences",
+      "nome": "Character Design References",
+      "url": "https://characterdesignreferences.com",
+      "host": "characterdesignreferences.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "animationresources": {
+      "id": "animationresources",
+      "nome": "Animation Resources",
+      "url": "https://animationresources.org",
+      "host": "animationresources.org",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "artvee": {
+      "id": "artvee",
+      "nome": "Artvee",
+      "url": "https://artvee.com",
+      "host": "artvee.com",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "artsy": {
+      "id": "artsy",
+      "nome": "Artsy",
+      "url": "https://www.artsy.net",
+      "host": "artsy.net",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "wikiart": {
+      "id": "wikiart",
+      "nome": "WikiArt",
+      "url": "https://www.wikiart.org",
+      "host": "wikiart.org",
+      "category": "arte",
+      "engine": "adaptive"
+    },
+    "googleartsculture": {
+      "id": "googleartsculture",
+      "nome": "Google Arts & Culture",
+      "url": "https://artsandculture.google.com",
+      "host": "artsandculture.google.com",
+      "category": "museu",
+      "engine": "adaptive"
+    },
+    "smithsonian": {
+      "id": "smithsonian",
+      "nome": "Smithsonian",
+      "url": "https://www.si.edu",
+      "host": "si.edu",
+      "category": "museu",
+      "engine": "adaptive"
+    },
+    "themet": {
+      "id": "themet",
+      "nome": "The Met",
+      "url": "https://www.metmuseum.org",
+      "host": "metmuseum.org",
+      "category": "museu",
+      "engine": "adaptive"
+    },
+    "nasaimages": {
+      "id": "nasaimages",
+      "nome": "NASA Images",
+      "url": "https://images.nasa.gov",
+      "host": "images.nasa.gov",
+      "category": "museu",
+      "engine": "adaptive"
+    },
+    "wikimediacommons": {
+      "id": "wikimediacommons",
+      "nome": "Wikimedia Commons",
+      "url": "https://commons.wikimedia.org",
+      "host": "commons.wikimedia.org",
+      "category": "arquivo",
+      "engine": "adaptive"
+    },
+    "internetarchive": {
+      "id": "internetarchive",
+      "nome": "Internet Archive",
+      "url": "https://archive.org",
+      "host": "archive.org",
+      "category": "arquivo",
+      "engine": "adaptive"
+    },
+    "pinterest": {
+      "id": "pinterest",
+      "nome": "Pinterest",
+      "url": "https://www.pinterest.com",
+      "host": "pinterest.com",
+      "category": "imagem-social",
+      "engine": "adaptive"
+    },
+    "arena": {
+      "id": "arena",
+      "nome": "Are.na",
+      "url": "https://www.are.na",
+      "host": "are.na",
+      "category": "imagem-social",
+      "engine": "adaptive"
+    },
+    "cosmos": {
+      "id": "cosmos",
+      "nome": "Cosmos",
+      "url": "https://www.cosmos.so",
+      "host": "cosmos.so",
+      "category": "imagem-social",
+      "engine": "adaptive"
+    },
+    "museumdigital": {
+      "id": "museumdigital",
+      "nome": "Museum Digital",
+      "url": "https://www.museum-digital.de",
+      "host": "museum-digital.de",
+      "category": "museu",
+      "engine": "adaptive"
+    },
+    "comicbookplus": {
+      "id": "comicbookplus",
+      "nome": "Comic Book Plus",
+      "url": "https://comicbookplus.com",
+      "host": "comicbookplus.com",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "webtoon": {
+      "id": "webtoon",
+      "nome": "WEBTOON",
+      "url": "https://www.webtoons.com",
+      "host": "webtoons.com",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "tapas": {
+      "id": "tapas",
+      "nome": "Tapas",
+      "url": "https://tapas.io",
+      "host": "tapas.io",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "mangadex": {
+      "id": "mangadex",
+      "nome": "MangaDex",
+      "url": "https://mangadex.org",
+      "host": "mangadex.org",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "globalcomix": {
+      "id": "globalcomix",
+      "nome": "GlobalComix",
+      "url": "https://globalcomix.com",
+      "host": "globalcomix.com",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "webcomics": {
+      "id": "webcomics",
+      "nome": "WebComics",
+      "url": "https://www.webcomicsapp.com",
+      "host": "webcomicsapp.com",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "comicvine": {
+      "id": "comicvine",
+      "nome": "Comic Vine",
+      "url": "https://comicvine.gamespot.com",
+      "host": "comicvine.gamespot.com",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "readcomiconline": {
+      "id": "readcomiconline",
+      "nome": "Read Comic Online",
+      "url": "https://readcomiconline.li",
+      "host": "readcomiconline.li",
+      "category": "quadrinhos",
+      "engine": "adaptive"
+    },
+    "archiveofourown": {
+      "id": "archiveofourown",
+      "nome": "Archive of Our Own",
+      "url": "https://archiveofourown.org",
+      "host": "archiveofourown.org",
+      "category": "comunidade",
+      "engine": "adaptive"
+    },
+    "imagebam": {
+      "id": "imagebam",
+      "nome": "ImageBam",
+      "url": "https://www.imagebam.com",
+      "host": "imagebam.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imagechest": {
+      "id": "imagechest",
+      "nome": "ImageChest",
+      "url": "https://imgchest.com",
+      "host": "imgchest.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imagefap": {
+      "id": "imagefap",
+      "nome": "ImageFap",
+      "url": "https://www.imagefap.com",
+      "host": "imagefap.com",
+      "category": "host-adulto",
+      "engine": "adaptive"
+    },
+    "imagepond": {
+      "id": "imagepond",
+      "nome": "ImagePond",
+      "url": "https://www.imagepond.net",
+      "host": "imagepond.net",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imageshack": {
+      "id": "imageshack",
+      "nome": "ImageShack",
+      "url": "https://imageshack.com",
+      "host": "imageshack.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgbb": {
+      "id": "imgbb",
+      "nome": "ImgBB",
+      "url": "https://imgbb.com",
+      "host": "imgbb.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgbox": {
+      "id": "imgbox",
+      "nome": "imgbox",
+      "url": "https://imgbox.com",
+      "host": "imgbox.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imagetwist": {
+      "id": "imagetwist",
+      "nome": "ImageTwist",
+      "url": "https://imagetwist.com",
+      "host": "imagetwist.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgdrive": {
+      "id": "imgdrive",
+      "nome": "ImgDrive",
+      "url": "https://imgdrive.net",
+      "host": "imgdrive.net",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgkiwi": {
+      "id": "imgkiwi",
+      "nome": "IMG.Kiwi",
+      "url": "https://img.kiwi",
+      "host": "img.kiwi",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgpile": {
+      "id": "imgpile",
+      "nome": "imgpile",
+      "url": "https://imgpile.com",
+      "host": "imgpile.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgpv": {
+      "id": "imgpv",
+      "nome": "IMGPV",
+      "url": "https://imgpv.com",
+      "host": "imgpv.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgtaxi": {
+      "id": "imgtaxi",
+      "nome": "ImgTaxi",
+      "url": "https://imgtaxi.com",
+      "host": "imgtaxi.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "imgth": {
+      "id": "imgth",
+      "nome": "Imgth",
+      "url": "https://imgth.com",
+      "host": "imgth.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "slickpic": {
+      "id": "slickpic",
+      "nome": "SlickPic",
+      "url": "https://www.slickpic.com",
+      "host": "slickpic.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "postimages": {
+      "id": "postimages",
+      "nome": "Postimages",
+      "url": "https://postimages.org",
+      "host": "postimages.org",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "pixhost": {
+      "id": "pixhost",
+      "nome": "PiXhost",
+      "url": "https://pixhost.to",
+      "host": "pixhost.to",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "pixeldrain": {
+      "id": "pixeldrain",
+      "nome": "Pixeldrain",
+      "url": "https://pixeldrain.com",
+      "host": "pixeldrain.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "uploadir": {
+      "id": "uploadir",
+      "nome": "Uploadir",
+      "url": "https://uploadir.com",
+      "host": "uploadir.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "urlgalleries": {
+      "id": "urlgalleries",
+      "nome": "Urlgalleries",
+      "url": "https://urlgalleries.com",
+      "host": "urlgalleries.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "catbox": {
+      "id": "catbox",
+      "nome": "Catbox",
+      "url": "https://catbox.moe",
+      "host": "catbox.moe",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "litterbox": {
+      "id": "litterbox",
+      "nome": "Litterbox",
+      "url": "https://litterbox.catbox.moe",
+      "host": "litterbox.catbox.moe",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "acidimg": {
+      "id": "acidimg",
+      "nome": "Acidimg",
+      "url": "https://acidimg.cc",
+      "host": "acidimg.cc",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "fuskator": {
+      "id": "fuskator",
+      "nome": "Fuskator",
+      "url": "https://fuskator.com",
+      "host": "fuskator.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "picstate": {
+      "id": "picstate",
+      "nome": "PicState",
+      "url": "https://picstate.com",
+      "host": "picstate.com",
+      "category": "host-imagem",
+      "engine": "adaptive"
+    },
+    "pimpandhost": {
+      "id": "pimpandhost",
+      "nome": "PimpAndHost",
+      "url": "https://pimpandhost.com",
+      "host": "pimpandhost.com",
+      "category": "host-adulto",
+      "engine": "adaptive"
+    },
+    "imgadult": {
+      "id": "imgadult",
+      "nome": "ImgAdult",
+      "url": "https://imgadult.com",
+      "host": "imgadult.com",
+      "category": "host-adulto",
+      "engine": "adaptive"
+    },
+    "pornimage": {
+      "id": "pornimage",
+      "nome": "Porn Image",
+      "url": "https://porn-image.com",
+      "host": "porn-image.com",
+      "category": "host-adulto",
+      "engine": "adaptive"
+    },
+    "pornpics": {
+      "id": "pornpics",
+      "nome": "PornPics",
+      "url": "https://www.pornpics.com",
+      "host": "pornpics.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "nudestar": {
+      "id": "nudestar",
+      "nome": "NudeStar",
+      "url": "https://nudostar.tv",
+      "host": "nudostar.tv",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "fappic": {
+      "id": "fappic",
+      "nome": "Fappic",
+      "url": "https://fappic.com",
+      "host": "fappic.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "erome": {
+      "id": "erome",
+      "nome": "EroMe",
+      "url": "https://erome.com",
+      "host": "erome.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "fapello": {
+      "id": "fapello",
+      "nome": "Fapello",
+      "url": "https://fapello.com",
+      "host": "fapello.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "girlsreleased": {
+      "id": "girlsreleased",
+      "nome": "Girls Released",
+      "url": "https://girlsreleased.com",
+      "host": "girlsreleased.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "goddess247": {
+      "id": "goddess247",
+      "nome": "Goddess247",
+      "url": "https://goddess247.com",
+      "host": "goddess247.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "adultphotosets": {
+      "id": "adultphotosets",
+      "nome": "Adult Photo Sets",
+      "url": "https://adultphotosets.best",
+      "host": "adultphotosets.best",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "celebbooru": {
+      "id": "celebbooru",
+      "nome": "Celeb Booru",
+      "url": "https://celeb.booru.org",
+      "host": "celeb.booru.org",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "hotleak": {
+      "id": "hotleak",
+      "nome": "Hotleak",
+      "url": "https://hotleak.vip",
+      "host": "hotleak.vip",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "ahottie": {
+      "id": "ahottie",
+      "nome": "AHottie",
+      "url": "https://ahottie.top",
+      "host": "ahottie.top",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "adultempire": {
+      "id": "adultempire",
+      "nome": "Adult Empire",
+      "url": "https://www.adultempire.com",
+      "host": "adultempire.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "8muses": {
+      "id": "8muses",
+      "nome": "8Muses",
+      "url": "https://comics.8muses.com",
+      "host": "comics.8muses.com",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "allporncomic": {
+      "id": "allporncomic",
+      "nome": "AllPornComic",
+      "url": "https://allporncomic.com",
+      "host": "allporncomic.com",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "hbrowse": {
+      "id": "hbrowse",
+      "nome": "HBrowse",
+      "url": "https://hbrowse.com",
+      "host": "hbrowse.com",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "hdoujin": {
+      "id": "hdoujin",
+      "nome": "HDoujin",
+      "url": "https://hdoujin.org",
+      "host": "hdoujin.org",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "hentai2read": {
+      "id": "hentai2read",
+      "nome": "Hentai2Read",
+      "url": "https://hentai2read.com",
+      "host": "hentai2read.com",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "hitomi": {
+      "id": "hitomi",
+      "nome": "Hitomi",
+      "url": "https://hitomi.la",
+      "host": "hitomi.la",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaifoundry": {
+      "id": "hentaifoundry",
+      "nome": "Hentai Foundry",
+      "url": "https://www.hentai-foundry.com",
+      "host": "hentai-foundry.com",
+      "category": "arte-adulto",
+      "engine": "adaptive"
+    },
+    "hentaihere": {
+      "id": "hentaihere",
+      "nome": "HentaiHere",
+      "url": "https://hentaihere.com",
+      "host": "hentaihere.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaihand": {
+      "id": "hentaihand",
+      "nome": "HentaiHand",
+      "url": "https://hentaihand.com",
+      "host": "hentaihand.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentainexus": {
+      "id": "hentainexus",
+      "nome": "HentaiNexus",
+      "url": "https://hentainexus.com",
+      "host": "hentainexus.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaiera": {
+      "id": "hentaiera",
+      "nome": "HentaiEra",
+      "url": "https://hentaiera.com",
+      "host": "hentaiera.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentairox": {
+      "id": "hentairox",
+      "nome": "HentaiRox",
+      "url": "https://hentairox.com",
+      "host": "hentairox.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaifox": {
+      "id": "hentaifox",
+      "nome": "HentaiFox",
+      "url": "https://hentaifox.com",
+      "host": "hentaifox.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaienvy": {
+      "id": "hentaienvy",
+      "nome": "HentaiEnvy",
+      "url": "https://hentaienvy.com",
+      "host": "hentaienvy.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaizap": {
+      "id": "hentaizap",
+      "nome": "HentaiZap",
+      "url": "https://hentaizap.com",
+      "host": "hentaizap.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaiimage": {
+      "id": "hentaiimage",
+      "nome": "Hentai Image",
+      "url": "https://hentai-img-xxx.com",
+      "host": "hentai-img-xxx.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaicosplay": {
+      "id": "hentaicosplay",
+      "nome": "Hentai Cosplay",
+      "url": "https://hentai-cosplay-xxx.com",
+      "host": "hentai-cosplay-xxx.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "simplyhentai": {
+      "id": "simplyhentai",
+      "nome": "Simply Hentai",
+      "url": "https://simply-hentai.com",
+      "host": "simply-hentai.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "imhentai": {
+      "id": "imhentai",
+      "nome": "IMHentai",
+      "url": "https://imhentai.xxx",
+      "host": "imhentai.xxx",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "exhentai": {
+      "id": "exhentai",
+      "nome": "ExHentai",
+      "url": "https://exhentai.org",
+      "host": "exhentai.org",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "ehentai": {
+      "id": "ehentai",
+      "nome": "E-Hentai",
+      "url": "https://e-hentai.org",
+      "host": "e-hentai.org",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "luscious": {
+      "id": "luscious",
+      "nome": "Luscious",
+      "url": "https://luscious.net",
+      "host": "luscious.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaistigma": {
+      "id": "hentaistigma",
+      "nome": "Hentai Stigma",
+      "url": "https://hentaistigma.com",
+      "host": "hentaistigma.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaihavenarchive": {
+      "id": "hentaihavenarchive",
+      "nome": "Hentai Haven Archive",
+      "url": "https://hentaihaven.xxx",
+      "host": "hentaihaven.xxx",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentainame": {
+      "id": "hentainame",
+      "nome": "Hentai Name",
+      "url": "https://hentainame.com",
+      "host": "hentainame.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaitop": {
+      "id": "hentaitop",
+      "nome": "Hentai Top",
+      "url": "https://hentaitop.com",
+      "host": "hentaitop.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "pururin": {
+      "id": "pururin",
+      "nome": "Pururin",
+      "url": "https://pururin.io",
+      "host": "pururin.io",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "nozomi": {
+      "id": "nozomi",
+      "nome": "Nozomi",
+      "url": "https://nozomi.la",
+      "host": "nozomi.la",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "myhentaigallery": {
+      "id": "myhentaigallery",
+      "nome": "MyHentaiGallery",
+      "url": "https://myhentaigallery.com",
+      "host": "myhentaigallery.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaihome": {
+      "id": "hentaihome",
+      "nome": "Hentai Home",
+      "url": "https://hentaihome.net",
+      "host": "hentaihome.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaichan": {
+      "id": "hentaichan",
+      "nome": "Hentai Chan",
+      "url": "https://hentaichan.net",
+      "host": "hentaichan.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaishare": {
+      "id": "hentaishare",
+      "nome": "Hentai Share",
+      "url": "https://hentaishare.com",
+      "host": "hentaishare.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaitube": {
+      "id": "hentaitube",
+      "nome": "Hentai Tube",
+      "url": "https://hentaitube.tv",
+      "host": "hentaitube.tv",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentair18": {
+      "id": "hentair18",
+      "nome": "Hentai R18",
+      "url": "https://hentair18.com",
+      "host": "hentair18.com",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaigallery": {
+      "id": "hentaigallery",
+      "nome": "Hentai Gallery",
+      "url": "https://hentaigallery.net",
+      "host": "hentaigallery.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaiworld": {
+      "id": "hentaiworld",
+      "nome": "Hentai World",
+      "url": "https://hentaiworld.tv",
+      "host": "hentaiworld.tv",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaicafe": {
+      "id": "hentaicafe",
+      "nome": "Hentai Cafe",
+      "url": "https://hentaicafe.net",
+      "host": "hentaicafe.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaiclub": {
+      "id": "hentaiclub",
+      "nome": "Hentai Club",
+      "url": "https://hentaiclub.net",
+      "host": "hentaiclub.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaiarchive": {
+      "id": "hentaiarchive",
+      "nome": "Hentai Archive",
+      "url": "https://hentaiarchive.net",
+      "host": "hentaiarchive.net",
+      "category": "galeria-adulto",
+      "engine": "adaptive"
+    },
+    "hentaimanga": {
+      "id": "hentaimanga",
+      "nome": "Hentai Manga",
+      "url": "https://hentaimanga.me",
+      "host": "hentaimanga.me",
+      "category": "quadrinhos-adulto",
+      "engine": "adaptive"
+    },
+    "manganelo": {
+      "id": "manganelo",
+      "nome": "MangaNelo",
+      "url": "https://manganato.com",
+      "host": "manganato.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangapark": {
+      "id": "mangapark",
+      "nome": "MangaPark",
+      "url": "https://mangapark.net",
+      "host": "mangapark.net",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangahere": {
+      "id": "mangahere",
+      "nome": "MangaHere",
+      "url": "https://www.mangahere.cc",
+      "host": "mangahere.cc",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangasee": {
+      "id": "mangasee",
+      "nome": "MangaSee",
+      "url": "https://mangasee123.com",
+      "host": "mangasee123.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangareader": {
+      "id": "mangareader",
+      "nome": "MangaReader",
+      "url": "https://mangareader.to",
+      "host": "mangareader.to",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "senmanga": {
+      "id": "senmanga",
+      "nome": "SenManga",
+      "url": "https://raw.senmanga.com",
+      "host": "raw.senmanga.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "dynastyreader": {
+      "id": "dynastyreader",
+      "nome": "Dynasty Reader",
+      "url": "https://dynasty-scans.com",
+      "host": "dynasty-scans.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "hiperdex": {
+      "id": "hiperdex",
+      "nome": "HiperDEX",
+      "url": "https://hiperdex.com",
+      "host": "hiperdex.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "fallenangelsscans": {
+      "id": "fallenangelsscans",
+      "nome": "Fallen Angels Scans",
+      "url": "https://www.fascans.com",
+      "host": "fascans.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "sensescans": {
+      "id": "sensescans",
+      "nome": "Sense-Scans",
+      "url": "https://sensescans.com",
+      "host": "sensescans.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "tcbscans": {
+      "id": "tcbscans",
+      "nome": "TCB Scans",
+      "url": "https://tcbscans.me",
+      "host": "tcbscans.me",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangafire": {
+      "id": "mangafire",
+      "nome": "MangaFire",
+      "url": "https://mangafire.to",
+      "host": "mangafire.to",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangakatana": {
+      "id": "mangakatana",
+      "nome": "MangaKatana",
+      "url": "https://mangakatana.com",
+      "host": "mangakatana.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangakakalot": {
+      "id": "mangakakalot",
+      "nome": "MangaKakalot",
+      "url": "https://mangakakalot.gg",
+      "host": "mangakakalot.gg",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangatown": {
+      "id": "mangatown",
+      "nome": "MangaTown",
+      "url": "https://www.mangatown.com",
+      "host": "mangatown.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangaowl": {
+      "id": "mangaowl",
+      "nome": "MangaOwl",
+      "url": "https://mangaowl.net",
+      "host": "mangaowl.net",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangafox": {
+      "id": "mangafox",
+      "nome": "MangaFox",
+      "url": "https://fanfox.net",
+      "host": "fanfox.net",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangaclash": {
+      "id": "mangaclash",
+      "nome": "MangaClash",
+      "url": "https://mangaclash.com",
+      "host": "mangaclash.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "mangabuddy": {
+      "id": "mangabuddy",
+      "nome": "MangaBuddy",
+      "url": "https://mangabuddy.com",
+      "host": "mangabuddy.com",
+      "category": "manga",
+      "engine": "adaptive"
+    },
+    "pornreactor": {
+      "id": "pornreactor",
+      "nome": "PornReactor",
+      "url": "https://pornreactor.to",
+      "host": "pornreactor.to",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "silverpic": {
+      "id": "silverpic",
+      "nome": "SilverPic",
+      "url": "https://silverpic.com",
+      "host": "silverpic.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "sexcom": {
+      "id": "sexcom",
+      "nome": "Sex.com",
+      "url": "https://www.sex.com",
+      "host": "sex.com",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "okporn": {
+      "id": "okporn",
+      "nome": "OK.PORN",
+      "url": "https://ok.porn",
+      "host": "ok.porn",
+      "category": "adulto",
+      "engine": "adaptive"
+    },
+    "rule34world": {
+      "id": "rule34world",
+      "nome": "Rule34 World",
+      "url": "https://rule34.world",
+      "host": "rule34.world",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "rule34xyz": {
+      "id": "rule34xyz",
+      "nome": "Rule34 XYZ",
+      "url": "https://rule34.xyz",
+      "host": "rule34.xyz",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "r34vault": {
+      "id": "r34vault",
+      "nome": "R34 Vault",
+      "url": "https://r34vault.com",
+      "host": "r34vault.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "rule34hentai": {
+      "id": "rule34hentai",
+      "nome": "Rule34Hentai",
+      "url": "https://rule34hentai.net",
+      "host": "rule34hentai.net",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "bcbnsfw": {
+      "id": "bcbnsfw",
+      "nome": "BCBNSFW",
+      "url": "https://booru.bcbnsfw.space",
+      "host": "booru.bcbnsfw.space",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "botbooru": {
+      "id": "botbooru",
+      "nome": "BotBooru",
+      "url": "https://botbooru.com",
+      "host": "botbooru.com",
+      "category": "booru-adulto",
+      "engine": "adaptive"
+    },
+    "fantia": {
+      "id": "fantia",
+      "nome": "Fantia",
+      "url": "https://fantia.jp",
+      "host": "fantia.jp",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "cien": {
+      "id": "cien",
+      "nome": "Ci-en",
+      "url": "https://ci-en.dlsite.com",
+      "host": "ci-en.dlsite.com",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "booth": {
+      "id": "booth",
+      "nome": "BOOTH",
+      "url": "https://booth.pm",
+      "host": "booth.pm",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "skeb": {
+      "id": "skeb",
+      "nome": "Skeb",
+      "url": "https://skeb.jp",
+      "host": "skeb.jp",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "nijie": {
+      "id": "nijie",
+      "nome": "Nijie",
+      "url": "https://nijie.info",
+      "host": "nijie.info",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "nicoseiga": {
+      "id": "nicoseiga",
+      "nome": "Nico Seiga",
+      "url": "https://seiga.nicovideo.jp",
+      "host": "seiga.nicovideo.jp",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "poipiku": {
+      "id": "poipiku",
+      "nome": "Poipiku",
+      "url": "https://poipiku.com",
+      "host": "poipiku.com",
+      "category": "criadores",
+      "engine": "adaptive"
+    },
+    "misskey": {
+      "id": "misskey",
+      "nome": "Misskey",
+      "url": "https://misskey.io",
+      "host": "misskey.io",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "pawoo": {
+      "id": "pawoo",
+      "nome": "Pawoo",
+      "url": "https://pawoo.net",
+      "host": "pawoo.net",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "baraag": {
+      "id": "baraag",
+      "nome": "Baraag",
+      "url": "https://baraag.net",
+      "host": "baraag.net",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "mastodon": {
+      "id": "mastodon",
+      "nome": "Mastodon",
+      "url": "https://mastodon.social",
+      "host": "mastodon.social",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "bluesky": {
+      "id": "bluesky",
+      "nome": "Bluesky",
+      "url": "https://bsky.app",
+      "host": "bsky.app",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "x": {
+      "id": "x",
+      "nome": "X",
+      "url": "https://x.com",
+      "host": "x.com",
+      "category": "social",
+      "engine": "adaptive"
+    },
+    "inkbunny": {
+      "id": "inkbunny",
+      "nome": "Inkbunny",
+      "url": "https://inkbunny.net",
+      "host": "inkbunny.net",
+      "category": "furry",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "itaku": {
+      "id": "itaku",
+      "nome": "Itaku",
+      "url": "https://itaku.ee",
+      "host": "itaku.ee",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "vsco": {
+      "id": "vsco",
+      "nome": "Vsco",
+      "url": "https://vsco.co",
+      "host": "vsco.co",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "foriio": {
+      "id": "foriio",
+      "nome": "Foriio",
+      "url": "https://foriio.com",
+      "host": "foriio.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "photo": {
+      "id": "photo",
+      "nome": "Photo",
+      "url": "https://photo.net",
+      "host": "photo.net",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "photobucket": {
+      "id": "photobucket",
+      "nome": "Photobucket",
+      "url": "https://photobucket.com",
+      "host": "photobucket.com",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "imgur": {
+      "id": "imgur",
+      "nome": "Imgur",
+      "url": "https://imgur.com",
+      "host": "imgur.com",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "turboimagehost": {
+      "id": "turboimagehost",
+      "nome": "Turboimagehost",
+      "url": "https://turboimagehost.com",
+      "host": "turboimagehost.com",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "s3nd": {
+      "id": "s3nd",
+      "nome": "S3Nd",
+      "url": "https://s3nd.pics",
+      "host": "s3nd.pics",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "jpg7": {
+      "id": "jpg7",
+      "nome": "Jpg7",
+      "url": "https://jpg7.cr",
+      "host": "jpg7.cr",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "putmega": {
+      "id": "putmega",
+      "nome": "Putmega",
+      "url": "https://putmega.com",
+      "host": "putmega.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "filester": {
+      "id": "filester",
+      "nome": "Filester",
+      "url": "https://filester.me",
+      "host": "filester.me",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "reddit": {
+      "id": "reddit",
+      "nome": "Reddit",
+      "url": "https://reddit.com",
+      "host": "reddit.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapercave": {
+      "id": "wallpapercave",
+      "nome": "Wallpapercave",
+      "url": "https://wallpapercave.com",
+      "host": "wallpapercave.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperflare": {
+      "id": "wallpaperflare",
+      "nome": "Wallpaperflare",
+      "url": "https://wallpaperflare.com",
+      "host": "wallpaperflare.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperscraft": {
+      "id": "wallpaperscraft",
+      "nome": "Wallpaperscraft",
+      "url": "https://wallpaperscraft.com",
+      "host": "wallpaperscraft.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperaccess": {
+      "id": "wallpaperaccess",
+      "nome": "Wallpaperaccess",
+      "url": "https://wallpaperaccess.com",
+      "host": "wallpaperaccess.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperswide": {
+      "id": "wallpaperswide",
+      "nome": "Wallpaperswide",
+      "url": "https://wallpaperswide.com",
+      "host": "wallpaperswide.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperup": {
+      "id": "wallpaperup",
+      "nome": "Wallpaperup",
+      "url": "https://wallpaperup.com",
+      "host": "wallpaperup.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "hdqwalls": {
+      "id": "hdqwalls",
+      "nome": "Hdqwalls",
+      "url": "https://hdqwalls.com",
+      "host": "hdqwalls.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperbat": {
+      "id": "wallpaperbat",
+      "nome": "Wallpaperbat",
+      "url": "https://wallpaperbat.com",
+      "host": "wallpaperbat.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapersden": {
+      "id": "wallpapersden",
+      "nome": "Wallpapersden",
+      "url": "https://wallpapersden.com",
+      "host": "wallpapersden.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperbetter": {
+      "id": "wallpaperbetter",
+      "nome": "Wallpaperbetter",
+      "url": "https://wallpaperbetter.com",
+      "host": "wallpaperbetter.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapershome": {
+      "id": "wallpapershome",
+      "nome": "Wallpapershome",
+      "url": "https://wallpapershome.com",
+      "host": "wallpapershome.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperfusion": {
+      "id": "wallpaperfusion",
+      "nome": "Wallpaperfusion",
+      "url": "https://wallpaperfusion.com",
+      "host": "wallpaperfusion.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "mob": {
+      "id": "mob",
+      "nome": "Wallpaper",
+      "url": "https://wallpaper.mob.org",
+      "host": "wallpaper.mob.org",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperhouse": {
+      "id": "wallpaperhouse",
+      "nome": "Wallpaper House",
+      "url": "https://wallpaper-house.com",
+      "host": "wallpaper-house.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapermaiden": {
+      "id": "wallpapermaiden",
+      "nome": "Wallpapermaiden",
+      "url": "https://wallpapermaiden.com",
+      "host": "wallpapermaiden.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapers13": {
+      "id": "wallpapers13",
+      "nome": "Wallpapers13",
+      "url": "https://wallpapers13.com",
+      "host": "wallpapers13.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperstock": {
+      "id": "wallpaperstock",
+      "nome": "Wallpaperstock",
+      "url": "https://wallpaperstock.net",
+      "host": "wallpaperstock.net",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperboat": {
+      "id": "wallpaperboat",
+      "nome": "Wallpaperboat",
+      "url": "https://wallpaperboat.com",
+      "host": "wallpaperboat.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpapersmug": {
+      "id": "wallpapersmug",
+      "nome": "Wallpapersmug",
+      "url": "https://wallpapersmug.com",
+      "host": "wallpapersmug.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperset": {
+      "id": "wallpaperset",
+      "nome": "Wallpaperset",
+      "url": "https://wallpaperset.com",
+      "host": "wallpaperset.com",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wallpaperscraft2": {
+      "id": "wallpaperscraft2",
+      "nome": "Wallpaperscraft",
+      "url": "https://wallpaperscraft.ru",
+      "host": "wallpaperscraft.ru",
+      "category": "wallpaper",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "allthefallen": {
+      "id": "allthefallen",
+      "nome": "Booru",
+      "url": "https://booru.allthefallen.moe",
+      "host": "booru.allthefallen.moe",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "borvar": {
+      "id": "borvar",
+      "nome": "Booru",
+      "url": "https://booru.borvar.art",
+      "host": "booru.borvar.art",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "furbooru": {
+      "id": "furbooru",
+      "nome": "Furbooru",
+      "url": "https://furbooru.org",
+      "host": "furbooru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "ponybooru": {
+      "id": "ponybooru",
+      "nome": "Ponybooru",
+      "url": "https://ponybooru.org",
+      "host": "ponybooru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "3dbooru2": {
+      "id": "3dbooru2",
+      "nome": "3Dbooru",
+      "url": "https://3dbooru.org",
+      "host": "3dbooru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "sankaku": {
+      "id": "sankaku",
+      "nome": "Chan",
+      "url": "https://chan.sankaku.app",
+      "host": "chan.sankaku.app",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "booru": {
+      "id": "booru",
+      "nome": "The Collection",
+      "url": "https://the-collection.booru.org",
+      "host": "the-collection.booru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "llection": {
+      "id": "llection",
+      "nome": "Co",
+      "url": "https://co.llection.pics",
+      "host": "co.llection.pics",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "booru2": {
+      "id": "booru2",
+      "nome": "Allgirl",
+      "url": "https://allgirl.booru.org",
+      "host": "allgirl.booru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "booru3": {
+      "id": "booru3",
+      "nome": "Drawfriends",
+      "url": "https://drawfriends.booru.org",
+      "host": "drawfriends.booru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "booru4": {
+      "id": "booru4",
+      "nome": "Vidyart2",
+      "url": "https://vidyart2.booru.org",
+      "host": "vidyart2.booru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "booru5": {
+      "id": "booru5",
+      "nome": "Illusioncards",
+      "url": "https://illusioncards.booru.org",
+      "host": "illusioncards.booru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "co": {
+      "id": "co",
+      "nome": "Scatbooru",
+      "url": "https://scatbooru.co.uk",
+      "host": "scatbooru.co.uk",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "smuglo": {
+      "id": "smuglo",
+      "nome": "Smuglo",
+      "url": "https://smuglo.li",
+      "host": "smuglo.li",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "guro": {
+      "id": "guro",
+      "nome": "Boards",
+      "url": "https://boards.guro.cx",
+      "host": "boards.guro.cx",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "94chan": {
+      "id": "94chan",
+      "nome": "94Chan",
+      "url": "https://94chan.org",
+      "host": "94chan.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "bbwchan": {
+      "id": "bbwchan",
+      "nome": "Bbw Chan",
+      "url": "https://bbw-chan.link",
+      "host": "bbw-chan.link",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "aryion": {
+      "id": "aryion",
+      "nome": "Aryion",
+      "url": "https://aryion.com",
+      "host": "aryion.com",
+      "category": "furry",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "furrybooru": {
+      "id": "furrybooru",
+      "nome": "Furrybooru",
+      "url": "https://furrybooru.org",
+      "host": "furrybooru.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "furry4ever": {
+      "id": "furry4ever",
+      "nome": "Furry4Ever",
+      "url": "https://furry4ever.com",
+      "host": "furry4ever.com",
+      "category": "furry",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "furrypile": {
+      "id": "furrypile",
+      "nome": "Furry Pile",
+      "url": "https://furry-pile.com",
+      "host": "furry-pile.com",
+      "category": "furry",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "furrylife": {
+      "id": "furrylife",
+      "nome": "Furrylife",
+      "url": "https://furrylife.online",
+      "host": "furrylife.online",
+      "category": "furry",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "giphy": {
+      "id": "giphy",
+      "nome": "Giphy",
+      "url": "https://giphy.com",
+      "host": "giphy.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "tenor": {
+      "id": "tenor",
+      "nome": "Tenor",
+      "url": "https://tenor.com",
+      "host": "tenor.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "redgifs": {
+      "id": "redgifs",
+      "nome": "Redgifs",
+      "url": "https://redgifs.com",
+      "host": "redgifs.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifcities": {
+      "id": "gifcities",
+      "nome": "Gifcities",
+      "url": "https://gifcities.org",
+      "host": "gifcities.org",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifbin": {
+      "id": "gifbin",
+      "nome": "Gifbin",
+      "url": "https://gifbin.com",
+      "host": "gifbin.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifdb": {
+      "id": "gifdb",
+      "nome": "Gifdb",
+      "url": "https://gifdb.com",
+      "host": "gifdb.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifsec": {
+      "id": "gifsec",
+      "nome": "Gifsec",
+      "url": "https://gifsec.com",
+      "host": "gifsec.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "makeagif": {
+      "id": "makeagif",
+      "nome": "Makeagif",
+      "url": "https://makeagif.com",
+      "host": "makeagif.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifs": {
+      "id": "gifs",
+      "nome": "Gifs",
+      "url": "https://gifs.com",
+      "host": "gifs.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "gifmaker": {
+      "id": "gifmaker",
+      "nome": "Gifmaker",
+      "url": "https://gifmaker.me",
+      "host": "gifmaker.me",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "ezgif": {
+      "id": "ezgif",
+      "nome": "Ezgif",
+      "url": "https://ezgif.com",
+      "host": "ezgif.com",
+      "category": "gif",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "youtube": {
+      "id": "youtube",
+      "nome": "YouTube",
+      "url": "https://youtube.com",
+      "host": "youtube.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "tiktok": {
+      "id": "tiktok",
+      "nome": "TikTok",
+      "url": "https://tiktok.com",
+      "host": "tiktok.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "instagram": {
+      "id": "instagram",
+      "nome": "Instagram",
+      "url": "https://instagram.com",
+      "host": "instagram.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "facebook": {
+      "id": "facebook",
+      "nome": "Facebook",
+      "url": "https://facebook.com",
+      "host": "facebook.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "vimeo": {
+      "id": "vimeo",
+      "nome": "Vimeo",
+      "url": "https://vimeo.com",
+      "host": "vimeo.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "dailymotion": {
+      "id": "dailymotion",
+      "nome": "Dailymotion",
+      "url": "https://dailymotion.com",
+      "host": "dailymotion.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "twitch": {
+      "id": "twitch",
+      "nome": "Twitch",
+      "url": "https://twitch.tv",
+      "host": "twitch.tv",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "bilibili": {
+      "id": "bilibili",
+      "nome": "Bilibili",
+      "url": "https://bilibili.com",
+      "host": "bilibili.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "iwara": {
+      "id": "iwara",
+      "nome": "Iwara",
+      "url": "https://iwara.tv",
+      "host": "iwara.tv",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "rumble": {
+      "id": "rumble",
+      "nome": "Rumble",
+      "url": "https://rumble.com",
+      "host": "rumble.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "odysee": {
+      "id": "odysee",
+      "nome": "Odysee",
+      "url": "https://odysee.com",
+      "host": "odysee.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "streamable": {
+      "id": "streamable",
+      "nome": "Streamable",
+      "url": "https://streamable.com",
+      "host": "streamable.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "9gag": {
+      "id": "9gag",
+      "nome": "9Gag",
+      "url": "https://9gag.com",
+      "host": "9gag.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "veoh": {
+      "id": "veoh",
+      "nome": "Veoh",
+      "url": "https://veoh.com",
+      "host": "veoh.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "kwai": {
+      "id": "kwai",
+      "nome": "Kwai",
+      "url": "https://kwai.com",
+      "host": "kwai.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "likee": {
+      "id": "likee",
+      "nome": "Likee",
+      "url": "https://likee.video",
+      "host": "likee.video",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "douyin": {
+      "id": "douyin",
+      "nome": "Douyin",
+      "url": "https://douyin.com",
+      "host": "douyin.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "snapchat": {
+      "id": "snapchat",
+      "nome": "Snapchat",
+      "url": "https://snapchat.com",
+      "host": "snapchat.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "vk": {
+      "id": "vk",
+      "nome": "Vk",
+      "url": "https://vk.com",
+      "host": "vk.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "bitchute": {
+      "id": "bitchute",
+      "nome": "Bitchute",
+      "url": "https://bitchute.com",
+      "host": "bitchute.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "dtube": {
+      "id": "dtube",
+      "nome": "Dtube",
+      "url": "https://dtube.tv",
+      "host": "dtube.tv",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "webmshare": {
+      "id": "webmshare",
+      "nome": "Webmshare",
+      "url": "https://webmshare.com",
+      "host": "webmshare.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "vidlii": {
+      "id": "vidlii",
+      "nome": "Vidlii",
+      "url": "https://vidlii.com",
+      "host": "vidlii.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "brightcove": {
+      "id": "brightcove",
+      "nome": "Brightcove",
+      "url": "https://brightcove.com",
+      "host": "brightcove.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "23video": {
+      "id": "23video",
+      "nome": "23Video",
+      "url": "https://23video.com",
+      "host": "23video.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "afreecatv": {
+      "id": "afreecatv",
+      "nome": "Afreecatv",
+      "url": "https://afreecatv.com",
+      "host": "afreecatv.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "17": {
+      "id": "17",
+      "nome": "17",
+      "url": "https://17.live",
+      "host": "17.live",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "aparat": {
+      "id": "aparat",
+      "nome": "Aparat",
+      "url": "https://aparat.com",
+      "host": "aparat.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "kick": {
+      "id": "kick",
+      "nome": "Kick",
+      "url": "https://kick.com",
+      "host": "kick.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "rooter": {
+      "id": "rooter",
+      "nome": "Rooter",
+      "url": "https://rooter.gg",
+      "host": "rooter.gg",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "clapperapp": {
+      "id": "clapperapp",
+      "nome": "Clapperapp",
+      "url": "https://clapperapp.com",
+      "host": "clapperapp.com",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "triller": {
+      "id": "triller",
+      "nome": "Triller",
+      "url": "https://triller.co",
+      "host": "triller.co",
+      "category": "video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "pornhub": {
+      "id": "pornhub",
+      "nome": "Pornhub",
+      "url": "https://pornhub.com",
+      "host": "pornhub.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "xvideos": {
+      "id": "xvideos",
+      "nome": "Xvideos",
+      "url": "https://xvideos.com",
+      "host": "xvideos.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "xhamster": {
+      "id": "xhamster",
+      "nome": "Xhamster",
+      "url": "https://xhamster.com",
+      "host": "xhamster.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "redtube": {
+      "id": "redtube",
+      "nome": "Redtube",
+      "url": "https://redtube.com",
+      "host": "redtube.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "youporn": {
+      "id": "youporn",
+      "nome": "Youporn",
+      "url": "https://youporn.com",
+      "host": "youporn.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "spankbang": {
+      "id": "spankbang",
+      "nome": "Spankbang",
+      "url": "https://spankbang.com",
+      "host": "spankbang.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "tube8": {
+      "id": "tube8",
+      "nome": "Tube8",
+      "url": "https://tube8.com",
+      "host": "tube8.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "4tube": {
+      "id": "4tube",
+      "nome": "4Tube",
+      "url": "https://4tube.com",
+      "host": "4tube.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "manyvids": {
+      "id": "manyvids",
+      "nome": "Manyvids",
+      "url": "https://manyvids.com",
+      "host": "manyvids.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "eporner": {
+      "id": "eporner",
+      "nome": "Eporner",
+      "url": "https://eporner.com",
+      "host": "eporner.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "pornstarstube": {
+      "id": "pornstarstube",
+      "nome": "Pornstarstube",
+      "url": "https://pornstarstube.com",
+      "host": "pornstarstube.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "fikfap": {
+      "id": "fikfap",
+      "nome": "Fikfap",
+      "url": "https://fikfap.com",
+      "host": "fikfap.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "fapachi": {
+      "id": "fapachi",
+      "nome": "Fapachi",
+      "url": "https://fapachi.com",
+      "host": "fapachi.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "girlswithmuscle": {
+      "id": "girlswithmuscle",
+      "nome": "Girlswithmuscle",
+      "url": "https://girlswithmuscle.com",
+      "host": "girlswithmuscle.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "fitnakedgirls": {
+      "id": "fitnakedgirls",
+      "nome": "Fitnakedgirls",
+      "url": "https://fitnakedgirls.com",
+      "host": "fitnakedgirls.com",
+      "category": "adult-video",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "bato": {
+      "id": "bato",
+      "nome": "Bato",
+      "url": "https://bato.to",
+      "host": "bato.to",
+      "category": "manga",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "weebdex": {
+      "id": "weebdex",
+      "nome": "Weebdex",
+      "url": "https://weebdex.org",
+      "host": "weebdex.org",
+      "category": "manga",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "kaliscan": {
+      "id": "kaliscan",
+      "nome": "Kaliscan",
+      "url": "https://kaliscan.me",
+      "host": "kaliscan.me",
+      "category": "manga",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "rawkuma": {
+      "id": "rawkuma",
+      "nome": "Rawkuma",
+      "url": "https://rawkuma.net",
+      "host": "rawkuma.net",
+      "category": "manga",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "soundcloud": {
+      "id": "soundcloud",
+      "nome": "SoundCloud",
+      "url": "https://soundcloud.com",
+      "host": "soundcloud.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "bandcamp": {
+      "id": "bandcamp",
+      "nome": "Bandcamp",
+      "url": "https://bandcamp.com",
+      "host": "bandcamp.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "audiomack": {
+      "id": "audiomack",
+      "nome": "Audiomack",
+      "url": "https://audiomack.com",
+      "host": "audiomack.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "mixcloud": {
+      "id": "mixcloud",
+      "nome": "Mixcloud",
+      "url": "https://mixcloud.com",
+      "host": "mixcloud.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "jamendo": {
+      "id": "jamendo",
+      "nome": "Jamendo",
+      "url": "https://jamendo.com",
+      "host": "jamendo.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "reverbnation": {
+      "id": "reverbnation",
+      "nome": "Reverbnation",
+      "url": "https://reverbnation.com",
+      "host": "reverbnation.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "podomatic": {
+      "id": "podomatic",
+      "nome": "Podomatic",
+      "url": "https://podomatic.com",
+      "host": "podomatic.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "podchaser": {
+      "id": "podchaser",
+      "nome": "Podchaser",
+      "url": "https://podchaser.com",
+      "host": "podchaser.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "player": {
+      "id": "player",
+      "nome": "Player",
+      "url": "https://player.fm",
+      "host": "player.fm",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "whyp": {
+      "id": "whyp",
+      "nome": "Whyp",
+      "url": "https://whyp.it",
+      "host": "whyp.it",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "audio": {
+      "id": "audio",
+      "nome": "Audio",
+      "url": "https://audio.com",
+      "host": "audio.com",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "hearthis": {
+      "id": "hearthis",
+      "nome": "Hearthis",
+      "url": "https://hearthis.at",
+      "host": "hearthis.at",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "audius": {
+      "id": "audius",
+      "nome": "Audius",
+      "url": "https://audius.co",
+      "host": "audius.co",
+      "category": "audio",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "civitai": {
+      "id": "civitai",
+      "nome": "Civitai",
+      "url": "https://civitai.com",
+      "host": "civitai.com",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "tensor": {
+      "id": "tensor",
+      "nome": "Tensor",
+      "url": "https://tensor.art",
+      "host": "tensor.art",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "openart": {
+      "id": "openart",
+      "nome": "Openart",
+      "url": "https://openart.ai",
+      "host": "openart.ai",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "lexica": {
+      "id": "lexica",
+      "nome": "Lexica",
+      "url": "https://lexica.art",
+      "host": "lexica.art",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "mage": {
+      "id": "mage",
+      "nome": "Mage",
+      "url": "https://mage.space",
+      "host": "mage.space",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "seaart": {
+      "id": "seaart",
+      "nome": "Seaart",
+      "url": "https://seaart.ai",
+      "host": "seaart.ai",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "ideogram": {
+      "id": "ideogram",
+      "nome": "Ideogram",
+      "url": "https://ideogram.ai",
+      "host": "ideogram.ai",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "nightcafe": {
+      "id": "nightcafe",
+      "nome": "Nightcafe",
+      "url": "https://nightcafe.studio",
+      "host": "nightcafe.studio",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "playground": {
+      "id": "playground",
+      "nome": "Playground",
+      "url": "https://playground.com",
+      "host": "playground.com",
+      "category": "ai",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "thingiverse": {
+      "id": "thingiverse",
+      "nome": "Thingiverse",
+      "url": "https://thingiverse.com",
+      "host": "thingiverse.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "turbosquid": {
+      "id": "turbosquid",
+      "nome": "Turbosquid",
+      "url": "https://turbosquid.com",
+      "host": "turbosquid.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "free3d": {
+      "id": "free3d",
+      "nome": "Free3D",
+      "url": "https://free3d.com",
+      "host": "free3d.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "3dexport": {
+      "id": "3dexport",
+      "nome": "3Dexport",
+      "url": "https://3dexport.com",
+      "host": "3dexport.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "myminifactory": {
+      "id": "myminifactory",
+      "nome": "Myminifactory",
+      "url": "https://myminifactory.com",
+      "host": "myminifactory.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "cults3d": {
+      "id": "cults3d",
+      "nome": "Cults3D",
+      "url": "https://cults3d.com",
+      "host": "cults3d.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "printables": {
+      "id": "printables",
+      "nome": "Printables",
+      "url": "https://printables.com",
+      "host": "printables.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "makerworld": {
+      "id": "makerworld",
+      "nome": "Makerworld",
+      "url": "https://makerworld.com",
+      "host": "makerworld.com",
+      "category": "3d",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "europeana": {
+      "id": "europeana",
+      "nome": "Europeana",
+      "url": "https://europeana.eu",
+      "host": "europeana.eu",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "britishmuseum": {
+      "id": "britishmuseum",
+      "nome": "Britishmuseum",
+      "url": "https://britishmuseum.org",
+      "host": "britishmuseum.org",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "louvre": {
+      "id": "louvre",
+      "nome": "Louvre",
+      "url": "https://louvre.fr",
+      "host": "louvre.fr",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "getty": {
+      "id": "getty",
+      "nome": "Getty",
+      "url": "https://getty.edu",
+      "host": "getty.edu",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "artic": {
+      "id": "artic",
+      "nome": "Artic",
+      "url": "https://artic.edu",
+      "host": "artic.edu",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "rijksmuseum": {
+      "id": "rijksmuseum",
+      "nome": "Rijksmuseum",
+      "url": "https://rijksmuseum.nl",
+      "host": "rijksmuseum.nl",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "nypl": {
+      "id": "nypl",
+      "nome": "Digitalcollections",
+      "url": "https://digitalcollections.nypl.org",
+      "host": "digitalcollections.nypl.org",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "loc": {
+      "id": "loc",
+      "nome": "Loc",
+      "url": "https://loc.gov",
+      "host": "loc.gov",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "dp": {
+      "id": "dp",
+      "nome": "Dp",
+      "url": "https://dp.la",
+      "host": "dp.la",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wellcomecollection": {
+      "id": "wellcomecollection",
+      "nome": "Wellcomecollection",
+      "url": "https://wellcomecollection.org",
+      "host": "wellcomecollection.org",
+      "category": "museum",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "photocrowd": {
+      "id": "photocrowd",
+      "nome": "Photocrowd",
+      "url": "https://photocrowd.com",
+      "host": "photocrowd.com",
+      "category": "imagem",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "viewbug": {
+      "id": "viewbug",
+      "nome": "Viewbug",
+      "url": "https://viewbug.com",
+      "host": "viewbug.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "1x": {
+      "id": "1x",
+      "nome": "1X",
+      "url": "https://1x.com",
+      "host": "1x.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "4chan": {
+      "id": "4chan",
+      "nome": "4Chan",
+      "url": "https://4chan.org",
+      "host": "4chan.org",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "4chanarchives": {
+      "id": "4chanarchives",
+      "nome": "4Chanarchives",
+      "url": "https://4chanarchives.com",
+      "host": "4chanarchives.com",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "8chan": {
+      "id": "8chan",
+      "nome": "8Chan",
+      "url": "https://8chan.moe",
+      "host": "8chan.moe",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "8kun": {
+      "id": "8kun",
+      "nome": "8Kun",
+      "url": "https://8kun.top",
+      "host": "8kun.top",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "2chan": {
+      "id": "2chan",
+      "nome": "2Chan",
+      "url": "https://2chan.net",
+      "host": "2chan.net",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "schan": {
+      "id": "schan",
+      "nome": "Schan",
+      "url": "https://schan.help",
+      "host": "schan.help",
+      "category": "booru",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "2ch": {
+      "id": "2ch",
+      "nome": "2Ch",
+      "url": "https://2ch.org",
+      "host": "2ch.org",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "4archive": {
+      "id": "4archive",
+      "nome": "4Archive",
+      "url": "https://4archive.org",
+      "host": "4archive.org",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wikimedia": {
+      "id": "wikimedia",
+      "nome": "Wikimedia",
+      "url": "https://wikimedia.org",
+      "host": "wikimedia.org",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "wikimedia2": {
+      "id": "wikimedia2",
+      "nome": "Species",
+      "url": "https://species.wikimedia.org",
+      "host": "species.wikimedia.org",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "mediawiki": {
+      "id": "mediawiki",
+      "nome": "Mediawiki",
+      "url": "https://mediawiki.org",
+      "host": "mediawiki.org",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "fandom": {
+      "id": "fandom",
+      "nome": "Fandom",
+      "url": "https://fandom.com",
+      "host": "fandom.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "blogger": {
+      "id": "blogger",
+      "nome": "Blogger",
+      "url": "https://blogger.com",
+      "host": "blogger.com",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    },
+    "slideshare": {
+      "id": "slideshare",
+      "nome": "Slideshare",
+      "url": "https://slideshare.net",
+      "host": "slideshare.net",
+      "category": "adaptive",
+      "engine": "adaptive",
+      "status": "unverified"
+    }
+  },
+  "aliases": {
+    "pix": "pixiv",
+    "fanbox": "pixivfanbox",
+    "deviant": "deviantart",
+    "e6": "e621",
+    "r34": "rule34",
+    "rule34x": "rule34",
+    "gel": "gelbooru",
+    "booru": "booruorg",
+    "pin": "pinterest",
+    "wall": "wallhaven",
+    "alpha": "alphacoders",
+    "manga": "mangadex",
+    "twitter": "x",
+    "toyhou": "toyhouse",
+    "yande": "yandere",
+    "chan": "sankakuchannel",
+    "behoimi": "3dbooru",
+    "agn": "agnph",
+    "vogue": "photovogue",
+    "artsandculture": "googleartsculture",
+    "si": "smithsonian",
+    "metmuseum": "themet",
+    "images": "nasaimages",
+    "commons": "wikimediacommons",
+    "archive": "internetarchive",
+    "are": "arena",
+    "webtoons": "webtoon",
+    "webcomicsapp": "webcomics",
+    "imgchest": "imagechest",
+    "img": "imgkiwi",
+    "nudostar": "nudestar",
+    "celeb": "celebbooru",
+    "comics": "8muses",
+    "hentaiimgxxx": "hentaiimage",
+    "hentaicosplayxxx": "hentaicosplay",
+    "hentaihaven": "hentaihavenarchive",
+    "manganato": "manganelo",
+    "mangasee123": "mangasee",
+    "raw": "senmanga",
+    "dynastyscans": "dynastyreader",
+    "fascans": "fallenangelsscans",
+    "fanfox": "mangafox",
+    "sex": "sexcom",
+    "ok": "okporn",
+    "seiga": "nicoseiga",
+    "bsky": "bluesky",
+    "pixivnet": "pixiv",
+    "deviantartcom": "deviantart",
+    "artstationcom": "artstation",
+    "behancenet": "behance",
+    "dribbblecom": "dribbble",
+    "caraapp": "cara",
+    "artfolco": "artfol",
+    "newgroundscom": "newgrounds",
+    "inkblotart": "inkblot",
+    "weasylcom": "weasyl",
+    "characterhubcom": "characterhub",
+    "furaffinitynet": "furaffinity",
+    "sofurrycom": "sofurry",
+    "inkbunnynet": "inkbunny",
+    "poipikucom": "poipiku",
+    "seiganicovideojp": "nicoseiga",
+    "nijieinfo": "nijie",
+    "itakuee": "itaku",
+    "vscoco": "vsco",
+    "cosmosso": "cosmos",
+    "foriiocom": "foriio",
+    "photonet": "photo",
+    "smugmugcom": "smugmug",
+    "slickpiccom": "slickpic",
+    "photobucketcom": "photobucket",
+    "500pxcom": "500px",
+    "35photopro": "35photo",
+    "imgurcom": "imgur",
+    "imgbbcom": "imgbb",
+    "imgboxcom": "imgbox",
+    "imgchestcom": "imagechest",
+    "postimagesorg": "postimages",
+    "pixhostto": "pixhost",
+    "pixeldraincom": "pixeldrain",
+    "imagebamcom": "imagebam",
+    "imageshackcom": "imageshack",
+    "imgdrivenet": "imgdrive",
+    "imgpilecom": "imgpile",
+    "imagetwistcom": "imagetwist",
+    "imgpvcom": "imgpv",
+    "imgtaxicom": "imgtaxi",
+    "turboimagehostcom": "turboimagehost",
+    "s3ndpics": "s3nd",
+    "jpg7cr": "jpg7",
+    "putmegacom": "putmega",
+    "filesterme": "filester",
+    "pinterestcom": "pinterest",
+    "tumblrcom": "tumblr",
+    "redditcom": "reddit",
+    "flickrcom": "flickr",
+    "pinterestcouk": "pinterest",
+    "pinterestca": "pinterest",
+    "pinterestfr": "pinterest",
+    "pinterestde": "pinterest",
+    "pinterestes": "pinterest",
+    "wallhavencc": "wallhaven",
+    "wallherecom": "wallhere",
+    "wallalphacoderscom": "alphacoders",
+    "wallpapercavecom": "wallpapercave",
+    "wallpaperflarecom": "wallpaperflare",
+    "wallpaperscraftcom": "wallpaperscraft",
+    "wallpaperaccesscom": "wallpaperaccess",
+    "wallpaperswidecom": "wallpaperswide",
+    "wallpaperupcom": "wallpaperup",
+    "hdqwallscom": "hdqwalls",
+    "wallpaperbatcom": "wallpaperbat",
+    "wallpapersdencom": "wallpapersden",
+    "wallpaperbettercom": "wallpaperbetter",
+    "wallpapershomecom": "wallpapershome",
+    "wallpaperfusioncom": "wallpaperfusion",
+    "wallpapermoborg": "mob",
+    "wallpaperhousecom": "wallpaperhouse",
+    "wallpapermaidencom": "wallpapermaiden",
+    "wallpapers13com": "wallpapers13",
+    "wallpaperstocknet": "wallpaperstock",
+    "wallpaperboatcom": "wallpaperboat",
+    "wallpapersmugcom": "wallpapersmug",
+    "wallpapersetcom": "wallpaperset",
+    "wallpaperscraftru": "wallpaperscraft2",
+    "zerochannet": "zerochan",
+    "konachannet": "konachan",
+    "animepicturesnet": "animepictures",
+    "danboorudonmaius": "danbooru",
+    "gelboorucom": "gelbooru",
+    "rule34xxx": "rule34",
+    "safebooruorg": "safebooru",
+    "e621net": "e621",
+    "e926net": "e926",
+    "aibooruonline": "aibooru",
+    "booruallthefallenmoe": "allthefallen",
+    "booruborvarart": "borvar",
+    "furbooruorg": "furbooru",
+    "ponybooruorg": "ponybooru",
+    "derpibooruorg": "derpibooru",
+    "rule34pahealnet": "paheal",
+    "hypnohubnet": "hypnohub",
+    "xboorucom": "xbooru",
+    "tbiborg": "tbib",
+    "sizeboorucom": "sizebooru",
+    "bboorucom": "bbooru",
+    "soyboorucom": "soybooru",
+    "snootboorucom": "snootbooru",
+    "boorubcbnsfwspace": "bcbnsfw",
+    "visuabusterscom": "visuabusters",
+    "furry34com": "furry34",
+    "e6ainet": "e6ai",
+    "rule34hentainet": "rule34hentai",
+    "r34vaultcom": "r34vault",
+    "3dbooruorg": "3dbooru2",
+    "idolcomplexcom": "idolcomplex",
+    "chansankakuapp": "sankaku",
+    "thecollectionbooruorg": "booru",
+    "collectionpics": "llection",
+    "allgirlbooruorg": "booru2",
+    "drawfriendsbooruorg": "booru3",
+    "vidyart2booruorg": "booru4",
+    "illusioncardsbooruorg": "booru5",
+    "scatboorucouk": "co",
+    "smugloli": "smuglo",
+    "boardsgurocx": "guro",
+    "94chanorg": "94chan",
+    "bbwchanlink": "bbwchan",
+    "ehentaiorg": "ehentai",
+    "exhentaiorg": "exhentai",
+    "imhentaixxx": "imhentai",
+    "hitomila": "hitomi",
+    "lusciousnet": "luscious",
+    "nozomila": "nozomi",
+    "pururinio": "pururin",
+    "myhentaigallerycom": "myhentaigallery",
+    "hentaihomenet": "hentaihome",
+    "hentaichannet": "hentaichan",
+    "hentaisharecom": "hentaishare",
+    "hentaimangame": "hentaimanga",
+    "hentaigallerynet": "hentaigallery",
+    "hentaiarchivenet": "hentaiarchive",
+    "hentaicafenet": "hentaicafe",
+    "hentaiclubnet": "hentaiclub",
+    "hentair18com": "hentair18",
+    "hentaitopcom": "hentaitop",
+    "hentai2readcom": "hentai2read",
+    "hentaifoxcom": "hentaifox",
+    "hentaienvycom": "hentaienvy",
+    "hentaieracom": "hentaiera",
+    "hentairoxcom": "hentairox",
+    "hentaizapcom": "hentaizap",
+    "hentaihandcom": "hentaihand",
+    "hentaiherecom": "hentaihere",
+    "hentainexuscom": "hentainexus",
+    "hentaiimgxxxcom": "hentaiimage",
+    "hentaicosplayxxxcom": "hentaicosplay",
+    "hentaifoundrycom": "hentaifoundry",
+    "allporncomiccom": "allporncomic",
+    "comics8musescom": "8muses",
+    "hbrowsecom": "hbrowse",
+    "hdoujinorg": "hdoujin",
+    "simplyhentaicom": "simplyhentai",
+    "hentaihavenxxx": "hentaihavenarchive",
+    "hentainamecom": "hentainame",
+    "hentaiworldtv": "hentaiworld",
+    "aryioncom": "aryion",
+    "baraagnet": "baraag",
+    "pawoonet": "pawoo",
+    "furrybooruorg": "furrybooru",
+    "furry4evercom": "furry4ever",
+    "furrypilecom": "furrypile",
+    "furrylifeonline": "furrylife",
+    "giphycom": "giphy",
+    "tenorcom": "tenor",
+    "redgifscom": "redgifs",
+    "gifcitiesorg": "gifcities",
+    "gifbincom": "gifbin",
+    "gifdbcom": "gifdb",
+    "gifseccom": "gifsec",
+    "makeagifcom": "makeagif",
+    "gifscom": "gifs",
+    "gifmakerme": "gifmaker",
+    "ezgifcom": "ezgif",
+    "youtubecom": "youtube",
+    "tiktokcom": "tiktok",
+    "instagramcom": "instagram",
+    "facebookcom": "facebook",
+    "xcom": "x",
+    "vimeocom": "vimeo",
+    "dailymotioncom": "dailymotion",
+    "twitchtv": "twitch",
+    "bilibilicom": "bilibili",
+    "iwaratv": "iwara",
+    "rumblecom": "rumble",
+    "odyseecom": "odysee",
+    "streamablecom": "streamable",
+    "9gagcom": "9gag",
+    "veohcom": "veoh",
+    "kwaicom": "kwai",
+    "likeevideo": "likee",
+    "douyincom": "douyin",
+    "snapchatcom": "snapchat",
+    "vkcom": "vk",
+    "bitchutecom": "bitchute",
+    "dtubetv": "dtube",
+    "webmsharecom": "webmshare",
+    "vidliicom": "vidlii",
+    "brightcovecom": "brightcove",
+    "23videocom": "23video",
+    "afreecatvcom": "afreecatv",
+    "17live": "17",
+    "aparatcom": "aparat",
+    "kickcom": "kick",
+    "rootergg": "rooter",
+    "clapperappcom": "clapperapp",
+    "trillerco": "triller",
+    "pornhubcom": "pornhub",
+    "xvideoscom": "xvideos",
+    "xhamstercom": "xhamster",
+    "redtubecom": "redtube",
+    "youporncom": "youporn",
+    "spankbangcom": "spankbang",
+    "tube8com": "tube8",
+    "4tubecom": "4tube",
+    "eromecom": "erome",
+    "manyvidscom": "manyvids",
+    "epornercom": "eporner",
+    "pornreactorto": "pornreactor",
+    "pornstarstubecom": "pornstarstube",
+    "fapellocom": "fapello",
+    "nudostartv": "nudestar",
+    "fikfapcom": "fikfap",
+    "fapachicom": "fapachi",
+    "girlsreleasedcom": "girlsreleased",
+    "girlswithmusclecom": "girlswithmuscle",
+    "fitnakedgirlscom": "fitnakedgirls",
+    "mangadexorg": "mangadex",
+    "batoto": "bato",
+    "dynastyscanscom": "dynastyreader",
+    "globalcomixcom": "globalcomix",
+    "webtoonscom": "webtoon",
+    "tapasio": "tapas",
+    "comicbookpluscom": "comicbookplus",
+    "comicvinegamespotcom": "comicvine",
+    "mangafireto": "mangafire",
+    "mangareaderto": "mangareader",
+    "manganatocom": "manganelo",
+    "mangakakalotgg": "mangakakalot",
+    "mangatowncom": "mangatown",
+    "fanfoxnet": "mangafox",
+    "mangaparknet": "mangapark",
+    "rawsenmangacom": "senmanga",
+    "tcbscansme": "tcbscans",
+    "sensescanscom": "sensescans",
+    "hiperdexcom": "hiperdex",
+    "weebcentralcom": "weebcentral",
+    "weebdexorg": "weebdex",
+    "kaliscanme": "kaliscan",
+    "fascanscom": "fallenangelsscans",
+    "rawkumanet": "rawkuma",
+    "readcomiconlineli": "readcomiconline",
+    "soundcloudcom": "soundcloud",
+    "bandcampcom": "bandcamp",
+    "audiomackcom": "audiomack",
+    "mixcloudcom": "mixcloud",
+    "jamendocom": "jamendo",
+    "reverbnationcom": "reverbnation",
+    "archiveorg": "internetarchive",
+    "podomaticcom": "podomatic",
+    "podchasercom": "podchaser",
+    "playerfm": "player",
+    "whypit": "whyp",
+    "audiocom": "audio",
+    "hearthisat": "hearthis",
+    "audiusco": "audius",
+    "civitaicom": "civitai",
+    "tensorart": "tensor",
+    "openartai": "openart",
+    "lexicaart": "lexica",
+    "magespace": "mage",
+    "seaartai": "seaart",
+    "ideogramai": "ideogram",
+    "nightcafestudio": "nightcafe",
+    "playgroundcom": "playground",
+    "creatornightcafestudio": "nightcafe",
+    "sketchfabcom": "sketchfab",
+    "cgtradercom": "cgtrader",
+    "polyhavencom": "polyhaven",
+    "blendswapcom": "blendswap",
+    "thingiversecom": "thingiverse",
+    "turbosquidcom": "turbosquid",
+    "free3dcom": "free3d",
+    "3dexportcom": "3dexport",
+    "myminifactorycom": "myminifactory",
+    "cults3dcom": "cults3d",
+    "printablescom": "printables",
+    "makerworldcom": "makerworld",
+    "commonswikimediaorg": "wikimediacommons",
+    "artveecom": "artvee",
+    "metmuseumorg": "themet",
+    "siedu": "smithsonian",
+    "imagesnasagov": "nasaimages",
+    "museumdigitalde": "museumdigital",
+    "artsandculturegooglecom": "googleartsculture",
+    "wikiartorg": "wikiart",
+    "europeanaeu": "europeana",
+    "britishmuseumorg": "britishmuseum",
+    "louvrefr": "louvre",
+    "gettyedu": "getty",
+    "articedu": "artic",
+    "rijksmuseumnl": "rijksmuseum",
+    "digitalcollectionsnyplorg": "nypl",
+    "locgov": "loc",
+    "dpla": "dp",
+    "wellcomecollectionorg": "wellcomecollection",
+    "unsplashcom": "unsplash",
+    "pexelscom": "pexels",
+    "pixabaycom": "pixabay",
+    "photocrowdcom": "photocrowd",
+    "viewbugcom": "viewbug",
+    "1xcom": "1x",
+    "4chanorg": "4chan",
+    "4chanarchivescom": "4chanarchives",
+    "8chanmoe": "8chan",
+    "8kuntop": "8kun",
+    "2channet": "2chan",
+    "schanhelp": "schan",
+    "2chorg": "2ch",
+    "4archiveorg": "4archive",
+    "wikimediaorg": "wikimedia",
+    "specieswikimediaorg": "wikimedia2",
+    "mediawikiorg": "mediawiki",
+    "fandomcom": "fandom",
+    "bloggercom": "blogger",
+    "slidesharenet": "slideshare",
+    "pinterestuk": "pinterest",
+    "pintereste": "pinterest",
+    "nightcafecreator": "nightcafe",
+    "yt": "youtube",
+    "tube": "youtube",
+    "ig": "instagram",
+    "insta": "instagram",
+    "tt": "tiktok",
+    "tw": "x",
+    "rd": "reddit"
+  },
+  "native": [
+    "rule34"
+  ]
+}

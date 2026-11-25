@@ -19,7 +19,7 @@ import {
 export async function kyaraCore({
   mensagem = {},
   ia,
-  nazu = null,
+  kya = null,
   ownerNumber = null,
   personality = 'humana',
   customPrompt = null,
@@ -28,7 +28,7 @@ export async function kyaraCore({
 
   if (!ia || typeof ia.makeAssistentRequest !== 'function') {
     throw new Error(
-      '[KYARA CORE] Motor ia.makeAssistentRequest não está disponível'
+      '[KYARA-SYSTΞM CORE] Motor ia.makeAssistentRequest não está disponível'
     );
   }
 
@@ -58,7 +58,7 @@ export async function kyaraCore({
     });
   } catch (experimentalError) {
     console.error(
-      '[KYARA EXPERIMENTAL] Falha não crítica:',
+      '[KYARA-SYSTΞM EXPERIMENTAL] Falha não crítica:',
       experimentalError?.message || experimentalError
     );
   }
@@ -85,15 +85,15 @@ const intencao = entenderIntencao(texto);
     }
   };
 
-  console.log(`[KYARA CORE] 💬 ${texto.substring(0, 80)}`);
-  console.log(`[KYARA CORE] 🧠 Intenção: ${intencao}`);
-  console.log(`[KYARA CORE] 🎭 Persona: ${KYARA_PERSONA.nome}`);
+  console.log(`[KYARA-SYSTΞM CORE] 💬 ${texto.substring(0, 80)}`);
+  console.log(`[KYARA-SYSTΞM CORE] 🧠 Intenção: ${intencao}`);
+  console.log(`[KYARA-SYSTΞM CORE] 🎭 Persona: ${KYARA_PERSONA.nome}`);
 
   const resposta = await ia.makeAssistentRequest(
     {
       mensagens: [mensagemComContexto]
     },
-    nazu,
+    kya,
     ownerNumber,
     personality,
     customPrompt

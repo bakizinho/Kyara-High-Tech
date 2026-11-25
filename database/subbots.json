@@ -1,0 +1,15 @@
+{
+  "subbots": {
+    "subbot_1791420812522_rkhfa0y1": {
+      "id": "subbot_1791420812522_rkhfa0y1",
+      "phoneNumber": "5512991954582",
+      "ownerNumber": "28145558278209@lid",
+      "subBotLid": "98810856476901@lid",
+      "status": "conectado",
+      "createdAt": "2026-10-08T00:53:32.522Z",
+      "lastPairingRequest": "2026-10-08T00:54:03.439Z",
+      "lastConnection": "2026-10-08T02:18:12.654Z",
+      "number": "5512991954582"
+    }
+  }
+}

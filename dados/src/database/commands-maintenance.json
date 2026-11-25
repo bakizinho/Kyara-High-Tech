@@ -1,4 +1,417 @@
 {
-  "commands": [],
-  "updatedAt": "2026-09-27T00:28:38.796Z"
+  "commands": [
+    "anime",
+    "antideletepv",
+    "assistente",
+    "audiosticker",
+    "cases",
+    "cmdajuste",
+    "conectarsubbot",
+    "d",
+    "entrar",
+    "ffrose",
+    "figurante",
+    "figurante2",
+    "gay",
+    "hentai",
+    "instagram",
+    "kwai",
+    "ler",
+    "menuadm",
+    "menudono",
+    "perfil",
+    "ping2",
+    "pinterest",
+    "play",
+    "playaudio",
+    "playvideo",
+    "pornhub",
+    "reqsticker",
+    "revelar",
+    "roubar",
+    "s",
+    "set-fotobv",
+    "sfig",
+    "sfiganim",
+    "take",
+    "tiktok",
+    "togif",
+    "transcrever",
+    "tts",
+    "uno",
+    "voxmd",
+    "vozhomem"
+  ],
+  "failures": [
+    {
+      "command": "gay",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-11-25T21:00:51.167Z",
+      "lastAt": "2026-11-25T21:00:51.167Z",
+      "lastError": "❌ Ocorreu um erro interno. Tente novamente em alguns minutos.",
+      "stage": "reply"
+    },
+    {
+      "command": "cases",
+      "menu": "menudono",
+      "count": 13,
+      "firstAt": "2026-09-29T19:02:10.284Z",
+      "lastAt": "2026-11-25T20:47:25.462Z",
+      "lastError": "📜 *Lista de Comandos (Cases)*: 21 3dcrack abracar abracarrpg abraco abrirgp aceitar aceitarconvite aceitarrpg aceitarticket achievements achievementsbn activate add addai addalias addaluguel addauto addautoadm addautoadmidia addautoadmin addautoadmmidia addautomedia addautomidia addautoresponse addblackglobal addblacklist addcmd addcmd-subdono addcmdmedia addcmdmidia addcmdvip adddiasaluguel addindica addindicacao addindicar addmod addmodcmd addnopref addnoprefix addparceria addpartnership addpremium addpremiumgp addreact addregra addrule addsubbot addsubdono addvip addvipcommand addvipgp add",
+      "stage": "reply"
+    },
+    {
+      "command": "take",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-11-25T16:45:33.644Z",
+      "lastAt": "2026-11-25T16:45:33.644Z",
+      "lastError": "❌ Ocorreu um erro interno. Tente novamente em alguns minutos.",
+      "stage": "reply"
+    },
+    {
+      "command": "audiosticker",
+      "menu": "outros",
+      "count": 15,
+      "firstAt": "2026-11-25T03:22:39.917Z",
+      "lastAt": "2026-11-25T16:30:01.450Z",
+      "lastError": "❌ Não consegui criar a figurinha com som. Cannot derive from empty media key",
+      "stage": "reply"
+    },
+    {
+      "command": "s",
+      "menu": "outros",
+      "count": 5,
+      "firstAt": "2026-10-06T22:20:07.854Z",
+      "lastAt": "2026-11-16T15:41:04.344Z",
+      "lastError": "❌ Ocorreu um erro interno. Tente novamente em alguns minutos.",
+      "stage": "reply"
+    },
+    {
+      "command": "play",
+      "menu": "menudown",
+      "count": 9,
+      "firstAt": "2026-09-28T18:20:08.465Z",
+      "lastAt": "2026-11-15T00:39:31.245Z",
+      "lastError": "Não foi possível obter informações dessa URL.",
+      "stage": "reply"
+    },
+    {
+      "command": "revelar",
+      "menu": "outros",
+      "count": 3,
+      "firstAt": "2026-11-08T14:22:24.725Z",
+      "lastAt": "2026-11-14T22:43:19.220Z",
+      "lastError": "❌ Falha ao processar e revelar a mídia.",
+      "stage": "reply"
+    },
+    {
+      "command": "figurante",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-11-14T22:42:26.065Z",
+      "lastAt": "2026-11-14T22:42:26.065Z",
+      "lastError": "❌ Não consegui criar a figurinha grande. Tente novamente com outra imagem.",
+      "stage": "reply"
+    },
+    {
+      "command": "playvideo",
+      "menu": "outros",
+      "count": 18,
+      "firstAt": "2026-10-07T00:46:37.888Z",
+      "lastAt": "2026-11-14T01:29:41.035Z",
+      "lastError": "❌ Não consegui preparar o vídeo. Media upload failed on all hosts",
+      "stage": "reply"
+    },
+    {
+      "command": "tts",
+      "menu": "outros",
+      "count": 7,
+      "firstAt": "2026-10-03T19:15:50.543Z",
+      "lastAt": "2026-11-12T13:17:21.850Z",
+      "lastError": "❌ Não consegui gerar ou alterar a voz. Erro: Command failed: python infer.py --model #data/data/com.termux/files/home/tts/kitsune/model/latest_model_fp16.pth --fast-cpu --speaker frieren --text Olá! Você está ouvindo um teste de síntese de voz do sistema VØX. Este é um teste para avaliar a qualidade do áudio, a pronúncia das palavras, a clareza da voz, a velocidade da fala e a entonação. Atenção! Iniciando sequência de verificação. Um, dois, três... quatro, cinco, seis... ABCDEFGHIJKLMNOPQRSTUVWXYZ. Agora vamos testar algumas palavras: tecnologia, inteligência artificial, comunicação, velocida",
+      "stage": "reply"
+    },
+    {
+      "command": "reqsticker",
+      "menu": "outros",
+      "count": 5,
+      "firstAt": "2026-10-12T23:07:39.519Z",
+      "lastAt": "2026-11-12T12:54:48.162Z",
+      "lastError": "❌ Não foi possível enviar a mensagem de pagamento.",
+      "stage": "reply"
+    },
+    {
+      "command": "d",
+      "menu": "outros",
+      "count": 7,
+      "firstAt": "2026-10-07T17:39:26.312Z",
+      "lastAt": "2026-11-12T12:43:32.767Z",
+      "lastError": "❌ Não foi possível apagar a mensagem agora.",
+      "stage": "reply"
+    },
+    {
+      "command": "instagram",
+      "menu": "menudown",
+      "count": 5,
+      "firstAt": "2026-10-15T03:17:06.061Z",
+      "lastAt": "2026-11-08T15:12:34.151Z",
+      "lastError": "❌ Não consegui baixar nenhuma mídia pública. O conteúdo pode exigir login, estar indisponível ou ter bloqueado a extração.",
+      "stage": "reply"
+    },
+    {
+      "command": "conectarsubbot",
+      "menu": "menudono",
+      "count": 2,
+      "firstAt": "2026-10-28T23:39:06.260Z",
+      "lastAt": "2026-10-28T23:40:40.177Z",
+      "lastError": "❌ Erro ao reconectar sub-bot: Connection Closed",
+      "stage": "reply"
+    },
+    {
+      "command": "sfiganim",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-27T00:05:43.843Z",
+      "lastAt": "2026-10-27T00:05:43.843Z",
+      "lastError": "❌ *Erro ao criar o pacote.* Media upload failed on all hosts",
+      "stage": "reply"
+    },
+    {
+      "command": "hentai",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-23T00:51:39.404Z",
+      "lastAt": "2026-10-23T00:51:39.404Z",
+      "lastError": "require is not defined",
+      "stage": "dispatcher"
+    },
+    {
+      "command": "anime",
+      "menu": "outros",
+      "count": 3,
+      "firstAt": "2026-10-22T17:12:55.864Z",
+      "lastAt": "2026-10-22T23:59:25.965Z",
+      "lastError": "A rota deste efeito não existe no serviço (HTTP 404).",
+      "stage": "reply"
+    },
+    {
+      "command": "antideletepv",
+      "menu": "outros",
+      "count": 3,
+      "firstAt": "2026-10-22T23:19:55.621Z",
+      "lastAt": "2026-10-22T23:23:58.979Z",
+      "lastError": "❌ Não consegui gerar ou enviar o código. Confira a conexão e tente novamente.",
+      "stage": "reply"
+    },
+    {
+      "command": "ffrose",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-22T19:47:32.504Z",
+      "lastAt": "2026-10-22T19:47:32.504Z",
+      "lastError": "A rota deste efeito não existe no serviço (HTTP 404).",
+      "stage": "reply"
+    },
+    {
+      "command": "pornhub",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-22T18:51:33.428Z",
+      "lastAt": "2026-10-22T18:51:33.428Z",
+      "lastError": "O serviço de logos retornou HTTP 404. Verifique a chave e o limite de requisições.",
+      "stage": "reply"
+    },
+    {
+      "command": "kwai",
+      "menu": "menudown",
+      "count": 1,
+      "firstAt": "2026-10-16T01:36:43.888Z",
+      "lastAt": "2026-10-16T01:36:43.888Z",
+      "lastError": "❌ Não foi possível obter informações dessa URL.",
+      "stage": "reply"
+    },
+    {
+      "command": "set-fotobv",
+      "menu": "menuadm",
+      "count": 6,
+      "firstAt": "2026-09-28T04:25:11.461Z",
+      "lastAt": "2026-10-15T23:23:22.549Z",
+      "lastError": "ocorreu um erro 💔",
+      "stage": "reply"
+    },
+    {
+      "command": "playaudio",
+      "menu": "outros",
+      "count": 17,
+      "firstAt": "2026-09-28T14:28:02.164Z",
+      "lastAt": "2026-10-15T12:38:34.071Z",
+      "lastError": "❌ Não consegui baixar o áudio. ERROR: [Instagram] DeSpNz-J5TL: No video formats found!; please report this issue on https://github.com/yt-dlp/yt-dlp/issues?q= , filling out the appropriate issue template. Confirm you are on the latest version using yt-dlp -U ERROR: [Instagram] DeSpN0Qppr4: No video formats found!; please report this issue on https://github.com/yt-dlp/yt-dlp/issues?q= , filling out the appropriate issue template. Confirm you are on the latest version using yt-dlp -U ERROR: [Instagram] DeSpN1EJFce: No video formats found!; please report this issue on https://github.com/yt-dlp/yt",
+      "stage": "reply"
+    },
+    {
+      "command": "ping2",
+      "menu": "outros",
+      "count": 4,
+      "firstAt": "2026-10-14T22:51:47.756Z",
+      "lastAt": "2026-10-14T23:03:21.084Z",
+      "lastError": "❌ Erro ao mostrar o Ping 2. Verifique o terminal.",
+      "stage": "reply"
+    },
+    {
+      "command": "perfil",
+      "menu": "outros",
+      "count": 4,
+      "firstAt": "2026-10-08T21:42:08.748Z",
+      "lastAt": "2026-10-14T20:53:47.782Z",
+      "lastError": "❌ Não foi possível gerar o perfil agora.",
+      "stage": "reply"
+    },
+    {
+      "command": "pinterest",
+      "menu": "menudown",
+      "count": 1,
+      "firstAt": "2026-10-13T23:20:01.926Z",
+      "lastAt": "2026-10-13T23:20:01.926Z",
+      "lastError": "❌ Erro no Pinterest. Invalid album type. Expected an array.",
+      "stage": "reply"
+    },
+    {
+      "command": "cmdajuste",
+      "menu": "menudono",
+      "count": 5,
+      "firstAt": "2026-10-10T02:33:47.166Z",
+      "lastAt": "2026-10-13T22:34:55.797Z",
+      "lastError": "╭━━━〔 ⚠️ ERROS DETECTADOS 〕━━━╮ ┃ ┃ 01. #perfil ┃ 📂 🧩 OUTROS COMANDOS ┃ 🔁 2 ocorrência(s) ┃ 🧩 reply ┃ ❌ ❌ Não foi possível gerar o perfil agora. ┃ ┃ 02. #cmdajuste ┃ 📂 👑 MENUDONO • OWNER ┃ 🔁 4 ocorrência(s) ┃ 🧩 reply ┃ ❌ ╭━━━〔 ⚠️ ERROS DETECTADOS 〕━━━╮ ┃ ┃ 01. #reqsticker ┃ 📂 🧩 OUTROS COMANDOS ┃ 🔁 2 ocorrência(s) ┃ 🧩 reply ┃ ❌ ❌ Não foi possível enviar a mensagem de pagamento. ┃ ┃ 02. #cases ┃ 📂 👑 MENUDONO • OWNER ┃ 🔁 6 ocorrência(s) ┃ 🧩 reply ┃ ❌ 📜 *Lista de Comandos (Cases)*: 21 abracar abracarrpg abraco abrirgp aceitar aceitarconvite aceitarrpg aceitarticket achievements ac",
+      "stage": "reply"
+    },
+    {
+      "command": "menuadm",
+      "menu": "menuadm",
+      "count": 1,
+      "firstAt": "2026-10-12T21:49:43.528Z",
+      "lastAt": "2026-10-12T21:49:43.528Z",
+      "lastError": "❌ *Erro ao executar comando* TypeError [ERR_INVALID_ARG_VALUE]: The argument 'file' cannot be empty. Received ''",
+      "stage": "reply"
+    },
+    {
+      "command": "menudono",
+      "menu": "menudono",
+      "count": 1,
+      "firstAt": "2026-10-12T21:49:32.901Z",
+      "lastAt": "2026-10-12T21:49:32.901Z",
+      "lastError": "❌ *Erro ao executar comando* TypeError [ERR_INVALID_ARG_VALUE]: The argument 'file' cannot be empty. Received ''",
+      "stage": "reply"
+    },
+    {
+      "command": "sfig",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-12T15:13:38.097Z",
+      "lastAt": "2026-10-12T15:13:38.097Z",
+      "lastError": "❌ *Erro ao criar o pacote.* Invalid media type",
+      "stage": "reply"
+    },
+    {
+      "command": "assistente",
+      "menu": "menuadm",
+      "count": 1,
+      "firstAt": "2026-10-12T04:11:22.327Z",
+      "lastAt": "2026-10-12T04:11:22.327Z",
+      "lastError": "❌ Falha ao consultar a IA. O erro detalhado foi registrado no terminal.",
+      "stage": "reply"
+    },
+    {
+      "command": "togif",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-11T22:06:54.601Z",
+      "lastAt": "2026-10-11T22:06:54.601Z",
+      "lastError": "❌ Erro ao converter a figurinha animada.",
+      "stage": "reply"
+    },
+    {
+      "command": "tiktok",
+      "menu": "menudown",
+      "count": 1,
+      "firstAt": "2026-10-11T18:56:02.085Z",
+      "lastAt": "2026-10-11T18:56:02.085Z",
+      "lastError": "❌ A VØX XΞNØR encontrou um erro ao executar esse comando.",
+      "stage": "reply"
+    },
+    {
+      "command": "transcrever",
+      "menu": "outros",
+      "count": 2,
+      "firstAt": "2026-10-01T15:48:57.022Z",
+      "lastAt": "2026-10-10T13:49:29.602Z",
+      "lastError": "GitHub não configurado. Defina GITHUB_TOKEN antes de usar este recurso.",
+      "stage": "dispatcher"
+    },
+    {
+      "command": "voxmd",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-09T23:44:47.993Z",
+      "lastAt": "2026-10-09T23:44:47.993Z",
+      "lastError": "Falha ao enviar os botões: Cannot find package '@systemzero/baileys' imported from #data/data/com.termux/files/home/storage/𝙑Ø𝙓-𝙈𝘿-/dados/src/index.js",
+      "stage": "reply"
+    },
+    {
+      "command": "ler",
+      "menu": "outros",
+      "count": 4,
+      "firstAt": "2026-10-03T20:29:20.452Z",
+      "lastAt": "2026-10-08T21:45:50.931Z",
+      "lastError": "❌ Não consegui transformar essa frase em voz. Erro: GRADIUM_API_KEY não configurada.",
+      "stage": "reply"
+    },
+    {
+      "command": "figurante2",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-10-03T15:45:55.958Z",
+      "lastAt": "2026-10-03T15:45:55.958Z",
+      "lastError": "❌ Não consegui gerar a imagem gigante.",
+      "stage": "reply"
+    },
+    {
+      "command": "entrar",
+      "menu": "menudono",
+      "count": 1,
+      "firstAt": "2026-10-01T15:04:29.421Z",
+      "lastAt": "2026-10-01T15:04:29.421Z",
+      "lastError": "❌ Erro ao entrar no grupo. Link inválido ou permissão negada.",
+      "stage": "reply"
+    },
+    {
+      "command": "uno",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-09-29T01:04:34.158Z",
+      "lastAt": "2026-09-29T01:04:34.158Z",
+      "lastError": "🎴 *UNO - Comandos* #uno criar - Cria uma nova partida #uno entrar - Entra em uma partida #uno iniciar - Inicia a partida (criador) #uno jogar <n°> - Joga uma carta pelo número #uno jogar <n°> <cor> - Joga coringa com cor #uno comprar - Compra uma carta #uno mao - Ver sua mão (envia no PV) #uno uno - Grita UNO! #uno status - Ver status da partida #uno cancelar - Cancela a partida (host/admin) #uno sair - Sair da partida *Cores:* vermelho/azul/verde/amarelo *Especiais:* #2, reverso, pular, coringa, #4 ⚠️ *Timeout:* 1 minuto por turno 🚨 3 timeouts = expulsão!",
+      "stage": "reply"
+    },
+    {
+      "command": "vozhomem",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-09-28T23:20:12.151Z",
+      "lastAt": "2026-09-28T23:20:12.151Z",
+      "lastError": "❌ Ocorreu um erro interno. Tente novamente em alguns minutos.",
+      "stage": "reply"
+    },
+    {
+      "command": "roubar",
+      "menu": "outros",
+      "count": 1,
+      "firstAt": "2026-11-25T21:40:24.881Z",
+      "lastAt": "2026-11-25T21:40:24.881Z",
+      "lastError": "A vítima está sem dinheiro na carteira. Roubo falhou.",
+      "stage": "reply"
+    }
+  ],
+  "updatedAt": "2026-11-25T21:40:24.882Z"
 }

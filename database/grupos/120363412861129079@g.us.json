@@ -1,0 +1,90 @@
+{
+  "mark": {},
+  "createdAt": "2026-10-01T14:36:55.280Z",
+  "groupName": "- ~ Grupo OFC | 𝖊'𝖋'𝖈 ~ -",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "38651148947473@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "༺༒_l_𝕮𝕳𝕴𝕩_l_༒༻",
+      "firstSeen": "2026-10-01T14:36:55.302Z",
+      "lastActivity": "2026-10-01T14:37:10.273Z"
+    },
+    {
+      "id": "238637409144851@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝙸𝚝𝚑𝚊𝚕𝚘 𝚛𝚢𝚞",
+      "firstSeen": "2026-10-01T14:37:19.939Z",
+      "lastActivity": "2026-10-01T15:26:07.118Z"
+    },
+    {
+      "id": "80879082844165@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Harpia.OFC† 𓃶  | 𝖊𝖋𝖈 𖤐",
+      "firstSeen": "2026-10-01T15:24:52.824Z",
+      "lastActivity": "2026-10-01T15:26:15.685Z"
+    },
+    {
+      "id": "186342222913674@lid",
+      "msg": 8,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Harpia.OFC† 𓃶  | 𝖊𝖋𝖈 𖤐",
+      "firstSeen": "2026-10-01T15:50:36.362Z",
+      "lastActivity": "2026-10-01T16:07:34.095Z"
+    },
+    {
+      "id": "222668435529728@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "ケルオリジナル",
+      "firstSeen": "2026-10-01T15:55:46.871Z",
+      "lastActivity": "2026-10-01T15:55:46.872Z"
+    },
+    {
+      "id": "36048381948088@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Nick",
+      "firstSeen": "2026-10-01T16:02:13.876Z",
+      "lastActivity": "2026-10-01T16:07:55.993Z"
+    },
+    {
+      "id": "59640284987489@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Depressão",
+      "firstSeen": "2026-10-01T16:24:05.545Z",
+      "lastActivity": "2026-10-01T16:24:05.545Z"
+    },
+    {
+      "id": "264544937107527@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Usuário Desconhecido",
+      "firstSeen": "2026-10-01T21:23:33.427Z",
+      "lastActivity": "2026-10-01T21:23:34.011Z"
+    }
+  ]
+}

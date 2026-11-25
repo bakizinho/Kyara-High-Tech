@@ -1,0 +1,65 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-10T01:05:40.148Z",
+  "groupName": "MELHORES AMIGOS ADITZ ANIMES ",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 5,
+      "cmd": 1,
+      "figu": 1,
+      "pushname": "᳀REI BAKI",
+      "firstSeen": "2026-09-10T01:05:40.165Z",
+      "lastActivity": "2026-09-22T15:27:52.037Z"
+    },
+    {
+      "id": "118279758684166@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Bendito Poba 🇵🇹 ⚽",
+      "firstSeen": "2026-09-10T06:26:03.729Z",
+      "lastActivity": "2026-09-22T18:32:44.462Z"
+    },
+    {
+      "id": "187287132463184@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Mama",
+      "firstSeen": "2026-09-11T12:53:15.179Z",
+      "lastActivity": "2026-09-23T08:10:04.816Z"
+    },
+    {
+      "id": "56629949104184@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "príncipe vegeta",
+      "firstSeen": "2026-09-11T13:03:31.037Z",
+      "lastActivity": "2026-09-22T21:03:30.835Z"
+    },
+    {
+      "id": "103448884330738@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Son William",
+      "firstSeen": "2026-09-19T03:22:11.844Z",
+      "lastActivity": "2026-09-22T18:43:56.070Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true
+}

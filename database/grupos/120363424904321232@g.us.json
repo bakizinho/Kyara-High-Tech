@@ -1,0 +1,45 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T21:03:21.926Z",
+  "groupName": "˚₊  🎌  ꒷ ᨳ  𝑪hat ' 𝑶n  ₊ ˚ ✧",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "108757514240224@lid",
+      "msg": 2,
+      "cmd": 2,
+      "figu": 0,
+      "pushname": "Braga",
+      "firstSeen": "2026-09-15T21:03:22.181Z",
+      "lastActivity": "2026-09-15T21:12:11.850Z"
+    },
+    {
+      "id": "124756619710702@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "𝕹  のぶら",
+      "firstSeen": "2026-09-29T19:49:35.710Z",
+      "lastActivity": "2026-09-29T19:50:11.638Z"
+    },
+    {
+      "id": "200515413606597@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝐂𝐨𝐥𝐥𝐲",
+      "firstSeen": "2026-09-29T20:10:24.384Z",
+      "lastActivity": "2026-09-29T20:10:24.385Z"
+    }
+  ]
+}

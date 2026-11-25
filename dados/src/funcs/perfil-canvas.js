@@ -284,7 +284,7 @@ function resolveIdentity({
 }
 
 async function getPhoto({
-  nazu,
+  kya,
   ids = [],
   target,
   sender,
@@ -445,7 +445,7 @@ async function getPhoto({
         );
 
         if (
-          typeof nazu?.profilePictureUrl !==
+          typeof kya?.profilePictureUrl !==
           'function'
         ) {
           throw new Error(
@@ -455,7 +455,7 @@ async function getPhoto({
 
         const url =
           await Promise.race([
-            nazu.profilePictureUrl(
+            kya.profilePictureUrl(
               jid,
               type
             ),
@@ -567,7 +567,7 @@ async function getPhoto({
 }
 
 async function getBio(
-  nazu,
+  kya,
   ids
 ) {
   for (const id of ids) {
@@ -585,7 +585,7 @@ async function getBio(
     try {
       const status =
         await timeout(
-          nazu.fetchStatus(id),
+          kya.fetchStatus(id),
           700
         );
 
@@ -2707,7 +2707,7 @@ async function createProfileGif(
 }
 
 export default async function handler({
-  nazu,
+  kya,
   from,
   sender,
   pushname,
@@ -2775,7 +2775,7 @@ export default async function handler({
     const [photo, bio] =
       await Promise.all([
         getPhoto({
-          nazu,
+          kya,
           ids,
           target: targetJid,
           sender,
@@ -2787,7 +2787,7 @@ export default async function handler({
         }),
 
         getBio(
-          nazu,
+          kya,
           ids
         )
       ]);
@@ -2868,7 +2868,7 @@ export default async function handler({
           photo
         );
 
-      await nazu.sendMessage(
+      await kya.sendMessage(
         from,
         {
           video: result.video,
@@ -3410,7 +3410,7 @@ export async function gerarImagemKyara(
 }
 
 export async function gerarImagemHandler({
-  nazu,
+  kya,
   from,
   info,
   q,
@@ -3454,7 +3454,7 @@ export async function gerarImagemHandler({
         tema
       );
 
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         image,

@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-10-01T14:48:47.033Z",
+  "groupName": "Rlk Isaías cheio do ódio no coração",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "3010939895854@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Hashtag Esfiha",
+      "firstSeen": "2026-10-01T14:48:47.053Z",
+      "lastActivity": "2026-10-01T14:48:47.053Z"
+    },
+    {
+      "id": "14886541205648@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "santos",
+      "firstSeen": "2026-10-01T15:05:22.629Z",
+      "lastActivity": "2026-10-01T15:05:22.629Z"
+    }
+  ]
+}

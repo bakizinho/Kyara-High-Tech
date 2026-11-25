@@ -1,0 +1,71 @@
+{
+  "nomedono": "𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠",
+  "numerodono": "5584987480834",
+  "nomebot": "KYARA-SYSTΞM",
+  "prefixo": "#",
+  "lidowner": "28145558278209@lid",
+  "github_ofc": "https://github.com/bakizinho/Kyara-High-Tech",
+  "autor": "𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠",
+  "repositorio": "Kyara-High-Tech",
+  "WA_WEB_VERSION": {
+    "aviso": "Não mexa aqui, pode afetar o funcionamento do BOT.",
+    "value": [
+      2,
+      3000,
+      1034740716
+    ]
+  },
+  "globalMode": true,
+  "channels": {
+    "oComeco": "https://whatsapp.com/channel/0029VbCXBCy8fewmEhto8J0w",
+    "botKyara": "https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r"
+  },
+
+  "ownerMenu": {
+    "title": "👑 KYARA • DONO MODE",
+    "footer": "👑 KYARA • DONO MODE",
+    "panelTitle": "📂 PAINEL KYARA",
+    "panelDescription": "Cada categoria abre seus comandos organizados.",
+    "channelText": "📢 Acompanhe os canais oficiais O COMEÇO e BOT-KYARA nos botões abaixo.",
+    "categories": {},
+    "channels": {}
+  },
+  "menu": {
+    "title": "🌸 KYARA • MENU",
+    "footer": "🌸 KYARA • KYARA OS",
+    "mode": "auto"
+  },
+  "kyaraChannel": {
+    "enabled": true,
+    "name": "BOT-KYARA",
+    "invite": "0029VbCs39EIyPtbsseKIP3r",
+    "url": "https://whatsapp.com/channel/0029VbCs39EIyPtbsseKIP3r"
+  },
+  "API_KEY_TED": "tedzinho",
+  "APIKEY_SYS": "tedbot2026",
+  "kyaraAppearance": {
+    "primary": "#000000",
+    "secondary": "#000000",
+    "name": "𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠",
+    "description": "Sistema de configurações",
+    "backgroundImage": "/uploads/kyara-1791683546768-nt7yg9.png",
+    "backgroundOpacity": 100
+  },
+  "kyaraOwnerProfile": {
+    "name": "𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠",
+    "role": "Proprietário / Desenvolvedor",
+    "bio": "Hello, eu sou o 𝙑Ø𝙓-𝙈𝘿, o desenvolvedor do bot, espero q vcs estejam gostando da nova atualização... obrigado por usarem a Kyara",
+    "contact": "5584987480834",
+    "image": "/uploads/kyara-1791735526495-w77yoo.png",
+    "banner": "/uploads/kyara-1791735537301-nec3m6.png",
+    "photoX": 67,
+    "photoY": 20,
+    "bannerY": 10
+  },
+  "vozAssistente": "isadora",
+  "verificadoMensagens": false,
+  "kyaraMarkEnabled": false,
+  "API_KEY_LOGOS": "tedzinho"
+
+
+}

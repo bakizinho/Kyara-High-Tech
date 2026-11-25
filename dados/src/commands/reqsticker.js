@@ -6,8 +6,6 @@ import {
 
 import {
   prepareWAMessageMedia,
-  generateWAMessageFromContent,
-  generateMessageIDV2,
   downloadContentFromMessage
 } from 'baileys'
 
@@ -251,12 +249,12 @@ ${prefix}reqsticker`
 
 
     if (
-      typeof kyara.relayMessage !==
+      typeof kyara.sendMessage !==
       'function'
     ) {
 
       throw new Error(
-        'BOT-KYARA está sem relayMessage().'
+        'BOT-KYARA está sem sendMessage().'
       )
 
     }
@@ -285,133 +283,82 @@ ${prefix}reqsticker`
     }
 
 
-    const msgGerada =
-      await generateWAMessageFromContent(
-        from,
-        conteudo,
-        {
-          userJid:
-            kyara.user.id,
-
-          messageId:
-            generateMessageIDV2(
-              kyara.user.id
-            )
-        }
-      )
-
-
-    if (
-      !msgGerada?.message ||
-      !msgGerada?.key?.id
-    ) {
-
-      throw new Error(
-        'generateWAMessageFromContent não gerou uma mensagem válida.'
-      )
-
-    }
-
 
     /*
-     * ========================================================
-     * CACHE DA KEY ORIGINAL DO REQUEST PAYMENT
-     * ========================================================
-     *
-     * requestPaymentMessage é criado localmente pelo Kyara.
-     *
-     * Por isso ele pode não passar novamente por
-     * messages.upsert -> connect.js.
-     *
-     * Guardamos a mensagem gerada aqui para o #apagar
-     * poder utilizar a KEY REAL posteriormente.
+     * Envio pelo próprio socket do @c4bal/baileys.
+     * O conteúdo do RequestPayment é preservado em modo raw.
+     * A KEY retornada será a referência usada pelo #d.
      */
+
+    const msgEnviada = await kyara.sendMessage(
+      from,
+      {
+        ...conteudo,
+        raw: true
+      }
+    )
+
+    if (!msgEnviada?.key?.id) {
+      throw new Error(
+        'sendMessage não retornou a KEY do RequestPaymentMessage.'
+      )
+    }
+
+    const paymentKeyOriginal = {
+      ...msgEnviada.key,
+
+      remoteJid:
+        msgEnviada.key.remoteJid ||
+        from,
+
+      id:
+        msgEnviada.key.id,
+
+      fromMe:
+        true
+    }
 
     if (
       messagesCache &&
-      typeof messagesCache.set === 'function' &&
-      msgGerada?.key?.id
+      typeof messagesCache.set === 'function'
     ) {
-
       const cacheKey =
-        `${msgGerada.key.remoteJid || from}_${msgGerada.key.id}`
-
+        `${paymentKeyOriginal.remoteJid}_${paymentKeyOriginal.id}`
 
       messagesCache.set(
         cacheKey,
         {
-          ...msgGerada,
+          ...msgEnviada,
 
           key: {
-            ...msgGerada.key
+            ...paymentKeyOriginal
           },
 
           message:
-            msgGerada.message,
+            msgEnviada.message ||
+            conteudo,
 
           messageTimestamp:
-            Math.floor(
-              Date.now() / 1000
-            )
-
+            msgEnviada.messageTimestamp ||
+            Math.floor(Date.now() / 1000)
         }
       )
 
-
       console.log(
-        '[REQSTICKER][CACHE] ✅ KEY original armazenada:',
+        '[REQSTICKER][CACHE] ✅ KEY retornada pelo sendMessage:',
         JSON.stringify(
           {
             cacheKey,
-            remoteJid:
-              msgGerada.key.remoteJid,
-            id:
-              msgGerada.key.id,
-            fromMe:
-              msgGerada.key.fromMe,
-            participant:
-              msgGerada.key.participant,
-            participantAlt:
-              msgGerada.key.participantAlt,
-            participantPn:
-              msgGerada.key.participantPn
+            remoteJid: paymentKeyOriginal.remoteJid,
+            id: paymentKeyOriginal.id,
+            fromMe: paymentKeyOriginal.fromMe,
+            participant: paymentKeyOriginal.participant || null,
+            participantAlt: paymentKeyOriginal.participantAlt || null
           },
           null,
           2
         )
       )
-
-    } else {
-
-      console.warn(
-        '[REQSTICKER][CACHE] ⚠️ Não foi possível armazenar a KEY original.'
-      )
-
-    }
-
-
-    /*
-     * ========================================================
-     * GUARDA A KEY ORIGINAL DO REQUEST PAYMENT
-     * ========================================================
-     *
-     * Esse payment foi criado pelo próprio Kyara.
-     * Ele não precisa passar novamente por messages.upsert
-     * para poder ser cancelado depois.
-     */
-
-    const paymentKeyOriginal = {
-      ...msgGerada.key,
-
-      remoteJid:
-        msgGerada.key.remoteJid ||
-        from,
-
-      id:
-        msgGerada.key.id,
-
-      fromMe:
-        true
     }
 
     rememberPaymentRequest(
@@ -419,14 +366,18 @@ ${prefix}reqsticker`
       paymentKeyOriginal
     )
 
-
-    await kyara.relayMessage(
-      from,
-      msgGerada.message,
-      {
-        messageId:
-          msgGerada.key.id
-      }
+    console.log(
+      '[REQSTICKER][STORE] ✅ KEY original guardada:',
+      JSON.stringify(
+        {
+          remoteJid: paymentKeyOriginal.remoteJid,
+          id: paymentKeyOriginal.id,
+          fromMe: paymentKeyOriginal.fromMe,
+          participant: paymentKeyOriginal.participant || null
+        },
+        null,
+        2
+      )
     )
 
 

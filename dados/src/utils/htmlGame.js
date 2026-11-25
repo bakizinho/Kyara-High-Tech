@@ -28,7 +28,7 @@ function getSocket(options = {}) {
 
   return (
     options.sock ||
-    options.nazu ||
+    options.kya ||
     options.socket
   );
 

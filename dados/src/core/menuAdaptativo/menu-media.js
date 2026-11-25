@@ -592,30 +592,6 @@ async function localMedia(
     return null
   }
 
-  /*
-   * IMPORTANTE:
-   * menu.jpg é o fallback antigo.
-   * Se existir uma animação irmã,
-   * ela ganha prioridade.
-   */
-
-  if (
-    isDefaultMenuImage(
-      filePath
-    )
-  ) {
-
-    const animated =
-      findSiblingAnimation()
-
-    if (animated) {
-      return localMedia(
-        animated,
-        role
-      )
-    }
-  }
-
   if (
     !isVideoPath(
       filePath
@@ -780,11 +756,24 @@ export async function getMenuMedia(
     const animated =
       findSiblingAnimation()
 
-    return animated
-      ? localMedia(
-          animated,
-          role
-        )
+    if (animated) {
+      return localMedia(
+        animated,
+        role
+      )
+    }
+
+    const fallbackImage =
+      path.join(
+        MEDIA_DIR,
+        'menu.jpg'
+      )
+
+    return isValidFile(fallbackImage)
+      ? {
+          type: 'image',
+          path: fallbackImage
+        }
       : null
   }
 

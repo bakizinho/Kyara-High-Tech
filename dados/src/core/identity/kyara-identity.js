@@ -9,7 +9,7 @@ const CONFIG_PATH = path.resolve(
 )
 
 const FALLBACK_NAME =
-  'KYARA'
+  '𝗞𝗬𝗔𝗥𝗔-𝗦𝗬𝗦𝗧Ξ𝗠'
 
 const FALLBACK_PREFIX =
   '#'
@@ -80,6 +80,8 @@ function cleanValue(
  * IDENTIDADE
  * ============================================================
  */
+
+export const KYARA_CREATOR_NAME = '𝗩Ø𝗫 𝗦𝗬𝗦𝗧Ξ𝗠';
 
 export function getConfiguredBotName() {
 

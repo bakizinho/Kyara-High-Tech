@@ -1,6 +1,6 @@
 import { generateWAMessageFromContent, proto } from 'baileys'
 
-export async function testeQuickReplyUnico(nazu, from) {
+export async function testeQuickReplyUnico(kya, from) {
   const logs = {
     serializado: false,
     waMessageValido: false,
@@ -51,7 +51,7 @@ export async function testeQuickReplyUnico(nazu, from) {
       from,
       content,
       {
-        userJid: nazu?.user?.id
+        userJid: kya?.user?.id
       }
     )
 
@@ -66,7 +66,7 @@ export async function testeQuickReplyUnico(nazu, from) {
     logs.relayChamado = true
     console.log('[4] Chamando relayMessage...')
 
-    const result = await nazu.relayMessage(
+    const result = await kya.relayMessage(
       from,
       waMsg.message,
       {

@@ -233,266 +233,104 @@ export async function sendFlow(
     title = '',
     buttons = [],
     media = null,
-    mentionedJid = []
+    mentionedJid = [],
+    viewOnce = false
   } = {}
 ) {
-  if (!Kyara) {
-    throw new Error(
-      'Socket Kyara não informado'
-    )
+  if (!Kyara || typeof Kyara.sendMessage !== 'function') {
+    throw new Error('Socket Kyara inválido ou sem sendMessage');
   }
 
-  if (!jid) {
-    throw new Error(
-      'JID não informado'
-    )
-  }
+  const nativeFlow = (Array.isArray(buttons) ? buttons : [])
+    .map((button) => {
+      let params = {};
 
-  const prepared =
-    normalizeOutgoingContent(
-      {
-        text,
-        footer,
-        title,
-        buttons
-      },
-      jid
-    )
+      try {
+        params =
+          typeof button?.buttonParamsJson === 'string'
+            ? JSON.parse(button.buttonParamsJson)
+            : {};
+      } catch {
+        params = {};
+      }
 
-  const nativeButtons =
-    (
-      prepared.buttons ||
-      []
-    ).map(
-      button =>
-        nativeButton(
-          button.name,
-          JSON.parse(
-            button.buttonParamsJson
-          )
-        )
-    )
+      const name = String(button?.name || '');
+      const displayText = String(
+        params.display_text ||
+        params.title ||
+        button?.text ||
+        'Selecionar'
+      ).trim();
 
-  const nativeFlow =
-    proto
-      .Message
-      .InteractiveMessage
-      .NativeFlowMessage
-      .create({
-        buttons:
-          nativeButtons,
+      if (name === 'quick_reply') {
+        const id = String(params.id || '').trim();
+        return id ? { text: displayText, id } : null;
+      }
 
-        messageParamsJson:
-          '{}',
+      if (name === 'cta_url') {
+        const url = String(params.url || '').trim();
+        return url
+          ? { text: displayText, url }
+          : null;
+      }
 
-        messageVersion:
-          1
-      })
+      if (name === 'cta_copy') {
+        const copy = String(params.copy_code || '').trim();
+        return copy
+          ? { text: displayText, copy }
+          : null;
+      }
 
-  let mediaMessage =
-    null
-
-  if (
-    media?.path &&
-    fs.existsSync(
-      media.path
-    )
-  ) {
-    try {
-      const buffer =
-        fs.readFileSync(
-          media.path
-        )
-
-      if (
-        !buffer.length
-      ) {
-        throw new Error(
-          'Arquivo de mídia vazio'
-        )
+      if (name === 'cta_call') {
+        const call = String(params.phone_number || '').trim();
+        return call
+          ? { text: displayText, call }
+          : null;
       }
 
       if (
-        media.type ===
-        'video'
+        name === 'single_select' &&
+        Array.isArray(params.sections) &&
+        params.sections.length
       ) {
-        const preparedMedia =
-          await prepareWAMessageMedia(
-            {
-              video:
-                buffer,
-
-              mimetype:
-                'video/mp4',
-
-              gifPlayback:
-                true
-            },
-
-            {
-              upload:
-                Kyara.waUploadToServer
-            }
-          )
-
-        mediaMessage = {
-          type:
-            'video',
-
-          message:
-            preparedMedia
-              ?.videoMessage ||
-            null
-        }
-
-      } else {
-        const preparedMedia =
-          await prepareWAMessageMedia(
-            {
-              image:
-                buffer
-            },
-
-            {
-              upload:
-                Kyara.waUploadToServer
-            }
-          )
-
-        mediaMessage = {
-          type:
-            'image',
-
-          message:
-            preparedMedia
-              ?.imageMessage ||
-            null
-        }
+        return {
+          text: displayText,
+          sections: params.sections
+        };
       }
 
-    } catch (
-      mediaError
-    ) {
-      console.warn(
-        '[KYARA FLOW MEDIA]',
-        mediaError?.message ||
-        mediaError
-      )
+      return null;
+    })
+    .filter(Boolean);
+
+  const messageText = [title, text]
+    .map(value => String(value || '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+  const content = {
+    text: messageText || '🌸 BKkyara',
+    footer: String(footer || ''),
+    nativeFlow,
+    interactiveAsTemplate: false,
+    viewOnce: false
+  };
+
+  if (Array.isArray(mentionedJid) && mentionedJid.length) {
+    content.mentions = mentionedJid;
+  }
+
+  if (media && typeof media === 'object') {
+    for (const key of ['image', 'video', 'document']) {
+      if (media[key]) content[key] = media[key];
     }
   }
 
-  const header =
-    mediaMessage?.message
-      ? {
-          title:
-            prepared.title,
-
-          hasMediaAttachment:
-            true,
-
-          ...(mediaMessage.type ===
-          'video'
-            ? {
-                videoMessage:
-                  mediaMessage.message
-              }
-            : {
-                imageMessage:
-                  mediaMessage.message
-              })
-        }
-      : {
-          title:
-            prepared.title,
-
-          hasMediaAttachment:
-            false
-        }
-
-  const interactive =
-    proto
-      .Message
-      .InteractiveMessage
-      .create({
-        body:
-          proto
-            .Message
-            .InteractiveMessage
-            .Body
-            .create({
-              text:
-                prepared.text
-            }),
-
-        footer:
-          proto
-            .Message
-            .InteractiveMessage
-            .Footer
-            .create({
-              text:
-                prepared.footer
-            }),
-
-        header:
-          proto
-            .Message
-            .InteractiveMessage
-            .Header
-            .create(
-              header
-            ),
-
-        nativeFlowMessage:
-          nativeFlow
-      })
-
-  if (
-    Array.isArray(
-      mentionedJid
-    ) &&
-    mentionedJid.length
-  ) {
-    interactive.contextInfo = {
-      mentionedJid
-    }
-  }
-
-  const message =
-    generateWAMessageFromContent(
-      jid,
-
-      {
-        interactiveMessage:
-          interactive
-      },
-
-      {
-        userJid:
-          Kyara.user?.id ||
-          jid
-      }
-    )
-
-  await Kyara.relayMessage(
-    jid,
-    message.message,
-
-    {
-      messageId:
-        message.key.id,
-
-      additionalNodes:
-        additionalNodes(
-          jid
-        )
-    }
-  )
+  const result = await Kyara.sendMessage(jid, content);
 
   console.log(
-    '[KYARA FLOW] Native Flow enviado:',
-    message.key.id
-  )
+    `[KYARA FLOW] Native Flow enviado via sendMessage: ${jid} | botões: ${nativeFlow.length}`
+  );
 
-  return message
+  return result;
 }

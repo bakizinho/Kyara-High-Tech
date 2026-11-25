@@ -277,7 +277,7 @@ function resolveCommand(command) {
 }
 
 export async function exportZipCommand({
-  nazu,
+  kya,
   info,
   from,
   command
@@ -288,7 +288,7 @@ export async function exportZipCommand({
   const target = COMMAND_MAP[canonical];
 
   if (!target) {
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         text:
@@ -309,7 +309,7 @@ export async function exportZipCommand({
   const filePath = path.resolve(target);
 
   if (!fs.existsSync(filePath)) {
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         text:
@@ -381,7 +381,7 @@ export async function exportZipCommand({
      * enviar Buffer diretamente como document.
      * Nunca converter o ZIP para texto/string.
      */
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         document: buffer,
@@ -419,7 +419,7 @@ export async function exportZipCommand({
       error
     );
 
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         text:

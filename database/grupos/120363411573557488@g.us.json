@@ -1,0 +1,99 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-09T17:20:12.097Z",
+  "groupName": "Testar o bot",
+  "modorpg": true,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 1577,
+      "cmd": 1371,
+      "figu": 318,
+      "pushname": "© 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-09T17:20:12.122Z",
+      "lastActivity": "2026-10-08T02:19:50.013Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 465,
+      "cmd": 38,
+      "figu": 28,
+      "pushname": "亗⃝ 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-10T00:11:45.649Z",
+      "lastActivity": "2026-10-08T02:19:09.112Z"
+    },
+    {
+      "id": "16845667094736@lid",
+      "msg": 392,
+      "cmd": 6,
+      "figu": 164,
+      "pushname": ".....",
+      "firstSeen": "2026-09-14T23:28:57.504Z",
+      "lastActivity": "2026-10-03T23:31:02.317Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 620,
+      "cmd": 27,
+      "figu": 148,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T19:16:36.338Z",
+      "lastActivity": "2026-10-08T02:21:38.181Z"
+    },
+    {
+      "id": "45828039278696@lid",
+      "msg": 27,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Aline_",
+      "firstSeen": "2026-09-25T23:16:55.902Z",
+      "lastActivity": "2026-09-27T14:50:43.115Z"
+    },
+    {
+      "id": "98810856476901@lid",
+      "msg": 3,
+      "cmd": 4,
+      "figu": 1,
+      "pushname": "Silk",
+      "firstSeen": "2026-10-08T01:00:07.301Z",
+      "lastActivity": "2026-10-08T02:20:42.554Z"
+    }
+  ],
+  "autodlMode": "off",
+  "autodl": false,
+  "assistente": false,
+  "assistentePersonality": "kyara",
+  "modobrincadeira": true,
+  "bemvindo2": true,
+  "welcome": {
+    "photo": true,
+    "photoType": "api"
+  },
+  "autotranscrever": false,
+  "antistatus": false,
+  "bemvindo": true,
+  "exit": {
+    "enabled": false
+  },
+  "modoADV": false,
+  "antilinkhard": true,
+  "warnings": {
+    "4836821061781@lid": [
+      {
+        "reason": "Envio de link",
+        "timestamp": 1790131455898,
+        "issuer": "87244476010549@lid"
+      }
+    ]
+  }
+}

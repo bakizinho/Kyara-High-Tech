@@ -1,0 +1,73 @@
+{
+  "mark": {},
+  "createdAt": "2026-10-01T15:13:08.515Z",
+  "groupName": "Caso de família do zap",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "157299620450339@lid",
+      "msg": 15,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "𝓈𝒶𝒽 .",
+      "firstSeen": "2026-10-01T15:13:08.532Z",
+      "lastActivity": "2026-10-01T15:25:45.922Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 36,
+      "cmd": 7,
+      "figu": 22,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-10-01T15:13:44.995Z",
+      "lastActivity": "2026-10-01T16:22:18.421Z"
+    },
+    {
+      "id": "139956576075801@lid",
+      "msg": 24,
+      "cmd": 2,
+      "figu": 20,
+      "pushname": "Mr Michael Efremova",
+      "firstSeen": "2026-10-01T15:15:14.888Z",
+      "lastActivity": "2026-10-01T16:21:43.478Z"
+    },
+    {
+      "id": "192844702736458@lid",
+      "msg": 21,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "♡☾𓂅𝓱𝓪𝓽𝓼𝓾𝓶𝓪𝓴𝓲𓂅☽♡",
+      "firstSeen": "2026-10-01T15:19:35.665Z",
+      "lastActivity": "2026-10-01T16:22:25.429Z"
+    },
+    {
+      "id": "182154478792878@lid",
+      "msg": 18,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "𝑺𝑨𝑮𝒁 𓅇",
+      "firstSeen": "2026-10-01T15:26:08.648Z",
+      "lastActivity": "2026-10-01T15:53:39.548Z"
+    },
+    {
+      "id": "150341219782904@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "X ratão (cretino do krl)",
+      "firstSeen": "2026-10-01T16:07:03.907Z",
+      "lastActivity": "2026-10-01T16:07:03.907Z"
+    }
+  ],
+  "modobrincadeira": true
+}

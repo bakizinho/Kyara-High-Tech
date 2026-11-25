@@ -111,7 +111,7 @@ export async function handleKyaraGames(
   }
 
   const socket =
-    options.nazu ||
+    options.kya ||
     options.sock ||
     options.socket;
 

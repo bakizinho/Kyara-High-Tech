@@ -1,0 +1,36 @@
+{
+  "mark": {},
+  "createdAt": "2026-10-01T16:10:11.001Z",
+  "groupName": "Femboys",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "140720761528404@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "★⁂⁙𝕲𝔲𝔦𝖑𝔥𝔢𝖗𝔪𝖊⁙⁂★",
+      "firstSeen": "2026-10-01T16:10:11.048Z",
+      "lastActivity": "2026-10-01T16:10:11.048Z"
+    },
+    {
+      "id": "5171610447958@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Rato Racker",
+      "firstSeen": "2026-10-01T16:10:17.412Z",
+      "lastActivity": "2026-10-01T16:10:17.412Z"
+    }
+  ]
+}

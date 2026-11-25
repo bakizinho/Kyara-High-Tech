@@ -129,16 +129,136 @@ async function dl(url) {
 }
 
 async function search(query) {
-    if (!query) {
+    const term = String(query || '').trim();
+
+    if (!term) {
         return {
             ok: false,
+            urls: [],
             msg: 'Digite o que deseja pesquisar no TikTok.'
         };
     }
 
+    const found = new Set();
+
+    const normalize = value => String(value || '')
+        .replace(/\\u002[fF]/g, '/')
+        .replace(/\\u0026/g, '&')
+        .replace(/\\\//g, '/')
+        .replace(/&amp;/gi, '&');
+
+    const collect = value => {
+        const html = normalize(value);
+
+        const matches = html.match(
+            /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[^\s"'<>\\]+?\/video\/\d+/gi
+        ) || [];
+
+        for (const candidate of matches) {
+            try {
+                const u = new URL(
+                    candidate.startsWith('http')
+                        ? candidate
+                        : `https://${candidate}`
+                );
+
+                if (!/(^|\.)tiktok\.com$/i.test(u.hostname)) {
+                    continue;
+                }
+
+                if (!/^\/@[^/]+\/video\/\d+/.test(u.pathname)) {
+                    continue;
+                }
+
+                found.add(
+                    `https://www.tiktok.com${u.pathname}`
+                );
+
+            } catch {}
+        }
+    };
+
+    // Pesquisa pública do TikTok.
+    try {
+        const response = await fetch(
+            `https://www.tiktok.com/search?q=${encodeURIComponent(term)}`,
+            {
+                signal: AbortSignal.timeout(12000),
+                headers: {
+                    'user-agent':
+                        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36',
+                    'accept-language':
+                        'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+                }
+            }
+        );
+
+        if (response.ok) {
+            collect(await response.text());
+        }
+
+    } catch (error) {
+        console.warn(
+            '[TikTok SEARCH]',
+            error?.message || error
+        );
+    }
+
+    // Complemento por índice público.
+    if (found.size < 10) {
+        try {
+            const endpoint =
+                `https://html.duckduckgo.com/html/?q=${
+                    encodeURIComponent(`site:tiktok.com/@ ${term}`)
+                }`;
+
+            const response = await fetch(endpoint, {
+                signal: AbortSignal.timeout(12000),
+                headers: {
+                    'user-agent':
+                        'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36'
+                }
+            });
+
+            if (response.ok) {
+                const html = await response.text();
+
+                for (const m of html.matchAll(/uddg=([^&"']+)/g)) {
+                    try {
+                        collect(decodeURIComponent(m[1]));
+                    } catch {}
+
+                    if (found.size >= 10) break;
+                }
+
+                collect(html);
+            }
+
+        } catch (error) {
+            console.warn(
+                '[TikTok SEARCH FALLBACK]',
+                error?.message || error
+            );
+        }
+    }
+
+    const urls = [...found].slice(0, 10);
+
+    if (!urls.length) {
+        return {
+            ok: false,
+            urls: [],
+            msg: 'Não encontrei vídeos públicos do TikTok para esse termo. Tente outro termo ou envie um link.'
+        };
+    }
+
     return {
-        ok: false,
-        msg: 'A pesquisa por palavra-chave do TikTok ainda será migrada para o sistema local. Use um link do TikTok por enquanto.'
+        ok: true,
+        type: 'video',
+        title: term,
+        link: urls[0],
+        urls,
+        count: urls.length
     };
 }
 

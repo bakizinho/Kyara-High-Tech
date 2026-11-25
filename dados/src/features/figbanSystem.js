@@ -169,7 +169,7 @@ function formatPanel(database) {
 }
 
 export async function handleFigban({
-  nazu,
+  kya,
   info,
   from,
   isGroup,
@@ -491,9 +491,9 @@ export async function handleFigban({
   }
 
   try {
-    await nazu.groupParticipantsUpdate(from, [target], 'remove');
+    await kya.groupParticipantsUpdate(from, [target], 'remove');
 
-    await nazu.sendMessage(
+    await kya.sendMessage(
       from,
       {
         text:

@@ -67,7 +67,7 @@ function saveJidLidCache(force = false) {
 }
 
 // Busca LID do cache ou via onWhatsApp
-async function getLidFromJidCached(nazu, jid) {
+async function getLidFromJidCached(kya, jid) {
   if (!isValidJid(jid)) {
     return jid; // Já é LID ou outro formato
   }
@@ -81,7 +81,7 @@ async function getLidFromJidCached(nazu, jid) {
   
   // 2. Se não está no cache, busca via API
   try {
-    const result = await nazu.onWhatsApp(jid);
+    const result = await kya.onWhatsApp(jid);
     if (result && result[0] && result[0].lid) {
       let lid = result[0].lid;
       
@@ -107,7 +107,7 @@ async function getLidFromJidCached(nazu, jid) {
 }
 
 // Converte um array de IDs (JID/LID) para LID em batch
-async function convertIdsToLid(nazu, ids) {
+async function convertIdsToLid(kya, ids) {
   if (!Array.isArray(ids) || ids.length === 0) return [];
   
   const converted = [];
@@ -116,7 +116,7 @@ async function convertIdsToLid(nazu, ids) {
   const batchSize = 5;
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
-    const batchPromises = batch.map(id => getLidFromJidCached(nazu, id));
+    const batchPromises = batch.map(id => getLidFromJidCached(kya, id));
     const batchResults = await Promise.all(batchPromises);
     converted.push(...batchResults);
   }
@@ -156,7 +156,7 @@ function idInArray(id, array) {
 }
 
 // Converte qualquer ID (JID ou LID) para o formato unificado (preferencialmente LID)
-async function normalizeUserId(nazu, userId) {
+async function normalizeUserId(kya, userId) {
   if (!userId || typeof userId !== 'string') return userId;
   
   // Se já é LID, retorna direto
@@ -166,7 +166,7 @@ async function normalizeUserId(nazu, userId) {
   
   // Se é JID, busca o LID
   if (isValidJid(userId)) {
-    return await getLidFromJidCached(nazu, userId);
+    return await getLidFromJidCached(kya, userId);
   }
   
   // Outros formatos retornam como estão
@@ -205,10 +205,40 @@ function formatUptime(seconds, longFormat = false, showZero = false) {
   return uptimeStr.length > 0 ? uptimeStr.join(longFormat ? ', ' : ' ') : longFormat ? '0 segundos' : '0s';
 }
 
+const KYARA_UNICODE_LETTER_MAP = new Map([
+  ['ᴀ', 'a'], ['ʙ', 'b'], ['ᴄ', 'c'], ['ᴅ', 'd'], ['ᴇ', 'e'],
+  ['ꜰ', 'f'], ['ɢ', 'g'], ['ʜ', 'h'], ['ɪ', 'i'], ['ᴊ', 'j'],
+  ['ᴋ', 'k'], ['ʟ', 'l'], ['ᴍ', 'm'], ['ɴ', 'n'], ['ᴏ', 'o'],
+  ['ᴘ', 'p'], ['ǫ', 'q'], ['ʀ', 'r'], ['s', 's'], ['ᴛ', 't'],
+  ['ᴜ', 'u'], ['ᴠ', 'v'], ['ᴡ', 'w'], ['x', 'x'], ['ʏ', 'y'],
+  ['ᴢ', 'z'],
+  ['ᴁ', 'ae'], ['ᴔ', 'oe'], ['ⱽ', 'v'], ['ᴸ', 'l'], ['ᴿ', 'r'],
+  ['ᴬ', 'a'], ['ᴮ', 'b'], ['ᶜ', 'c'], ['ᴰ', 'd'], ['ᴱ', 'e'],
+  ['ᶠ', 'f'], ['ᴳ', 'g'], ['ᴴ', 'h'], ['ᴵ', 'i'], ['ᴶ', 'j'],
+  ['ᴷ', 'k'], ['ᴸ', 'l'], ['ᴹ', 'm'], ['ᴺ', 'n'], ['ᴼ', 'o'],
+  ['ᴾ', 'p'], ['ᴿ', 'r'], ['ᵀ', 't'], ['ᵁ', 'u'], ['ⱽ', 'v'],
+  ['ᵂ', 'w'], ['ˣ', 'x'], ['ʸ', 'y'], ['ᶻ', 'z']
+]);
+
 const normalizar = (texto, keepCase = false) => {
   if (!texto || typeof texto !== 'string') return '';
-  const normalizedText = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return keepCase ? normalizedText : normalizedText.toLowerCase();
+
+  let normalizedText = texto
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[\uFE00-\uFE0F]/g, '');
+
+  normalizedText = Array.from(normalizedText, char =>
+    KYARA_UNICODE_LETTER_MAP.get(char) || char
+  ).join('');
+
+  normalizedText = normalizedText
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return keepCase
+    ? normalizedText
+    : normalizedText.toLowerCase();
 };
 
 /**
@@ -412,10 +442,10 @@ const getUserName = (userId) => {
 };
 
 // Função para obter LID a partir de JID (quando necessário para compatibilidade)
-const getLidFromJid = async (nazu, jid) => {
+const getLidFromJid = async (kya, jid) => {
   if (!isValidJid(jid)) return jid; // Já é LID ou outro formato
   try {
-    const result = await nazu.onWhatsApp(jid);
+    const result = await kya.onWhatsApp(jid);
     if (result && result[0] && result[0].lid) {
       return result[0].lid;
     }
@@ -434,8 +464,8 @@ return String(numberString).replace(/[^\d]/g, '') + '@s.whatsapp.net';
 };
 
 // Função para obter o ID do bot
-const getBotId = (nazu) => {
-  const botId = nazu.user.id.split(':')[0];
+const getBotId = (kya) => {
+  const botId = kya.user.id.split(':')[0];
   return botId.includes('@lid') ? botId : botId + '@s.whatsapp.net';
 };
 

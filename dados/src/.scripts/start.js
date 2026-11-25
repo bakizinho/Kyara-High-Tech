@@ -13,21 +13,28 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '../../..');
 const CONNECT = path.join(ROOT, 'dados', 'src', 'connect.js');
 
-const VERSION = '10.2.1';
-const NAME = 'KYARA';
+const VERSION = '11.0.0';
+const PROFILE_CONFIG = path.join(ROOT, 'dados', 'src', 'config.json');
+let PROFILE = {};
+try {
+    PROFILE = JSON.parse(fs.readFileSync(PROFILE_CONFIG, 'utf8'));
+} catch {}
+const NAME = String(PROFILE.nomebot || 'KYARA-SYSTΞM');
 
 const A = {
     reset: '\x1b[0m',
     bold: '\x1b[1m',
     dim: '\x1b[2m',
 
-    cyan: '\x1b[96m',
-    magenta: '\x1b[95m',
-    green: '\x1b[92m',
-    yellow: '\x1b[93m',
-    red: '\x1b[91m',
-    white: '\x1b[97m',
-    gray: '\x1b[90m',
+    purple: '\x1b[38;2;55;135;255m',
+    pink: '\x1b[38;2;55;135;255m',
+    cyan: '\x1b[38;2;65;205;255m',
+    green: '\x1b[38;5;120m',
+    yellow: '\x1b[38;5;221m',
+    red: '\x1b[38;5;204m',
+    white: '\x1b[38;5;255m',
+    gray: '\x1b[38;5;245m',
+    magenta: '\x1b[38;2;55;135;255m',
 
     clear: '\x1b[2J\x1b[H',
     hide: '\x1b[?25l',
@@ -71,9 +78,9 @@ function showCursor() {
 const LOGO = [
     '╭────────────────────────────────────────────────────────────╮',
     '│                                                            │',
-    '│                    🌸  K Y A R A  O S                     │',
+    '│                   🌸  K Y A R A - S Y S T Ξ M             │',
     '│                                                            │',
-    '│              WhatsApp Bot • Terminal Normal               │',
+    '│                  WhatsApp Bot • Terminal                  │',
     '│                                                            │',
     '╰────────────────────────────────────────────────────────────╯'
 ];
@@ -93,8 +100,12 @@ async function logoAnimation() {
 
         const color =
             i === 2
-                ? A.magenta
-                : A.cyan;
+                ? A.pink + A.bold
+                : i === 4
+                    ? A.cyan
+                    : i === 6
+                        ? A.purple
+                        : A.gray;
 
         console.log(
             c(
@@ -203,6 +214,7 @@ function validCreds(dir) {
 function findSession() {
 
     const possible = [
+        path.join(ROOT, 'dados', 'database', 'qr-code'),
         path.join(ROOT, 'dados', 'auth'),
         path.join(ROOT, 'dados', 'auth_info'),
         path.join(ROOT, 'dados', 'session'),
@@ -267,7 +279,10 @@ function findSession() {
                 continue;
             }
 
-            if (ignored.has(entry.name)) {
+            if (
+                ignored.has(entry.name) ||
+                /(?:backup|backups|relink|old|antigo)/i.test(entry.name)
+            ) {
                 continue;
             }
 
@@ -346,7 +361,7 @@ function dashboard(session) {
     const line = '─'.repeat(inner);
 
     const title =
-        '🌸 KYARA OS';
+        '🌸 KYARA-SYSTΞM';
 
     const subtitle =
         'SYSTEM STATUS';
@@ -424,7 +439,7 @@ function authMenu() {
 
     console.log(
         c('│ ', A.magenta) +
-        c('AUTHENTICATION', A.white) +
+        c('CENTRO DE CONEXÃO', A.white) +
         safePad(
             'AUTHENTICATION',
             width - 5
@@ -463,10 +478,21 @@ function authMenu() {
 
     console.log(
         c('│  ', A.magenta) +
-        c('3', A.red) +
+        c('3', A.green) +
+        '  👤  CONFIGURAR DONO DO BOT' +
+        safePad(
+            '│  3  👤  CONFIGURAR DONO DO BOT',
+            width - 2
+        ) +
+        c('│', A.magenta)
+    );
+
+    console.log(
+        c('│  ', A.magenta) +
+        c('0', A.red) +
         '  🚪  SAIR' +
         safePad(
-            '│  3  🚪  SAIR',
+            '│  0  🚪  SAIR',
             width - 2
         ) +
         c('│', A.magenta)
@@ -509,11 +535,127 @@ function ask(text) {
     });
 }
 
+
+/* ================================================================
+   KYARA • CONFIGURAÇÃO DO PROPRIETÁRIO
+================================================================ */
+
+function askRaw(question) {
+    return new Promise(resolve => {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        rl.question(question, answer => {
+            rl.close();
+            resolve(String(answer || '').trim());
+        });
+    });
+}
+
+async function configureOwner() {
+    let config;
+
+    try {
+        config = JSON.parse(
+            fs.readFileSync(PROFILE_CONFIG, 'utf8')
+        );
+    } catch (error) {
+        throw new Error(
+            `Não foi possível ler config.json: ${error.message}`
+        );
+    }
+
+    const oldName = String(config.nomedono || 'Dono');
+    const oldPhone = String(config.numerodono || '')
+        .replace(/\D/g, '');
+
+    console.log('');
+    console.log('╭────────────────────────────────────────────╮');
+    console.log('│       🌸 KYARA-SYSTΞM • DONO DO BOT        │');
+    console.log('├────────────────────────────────────────────┤');
+    console.log('│ Informe o nome e o número do proprietário. │');
+    console.log('│ O número deve incluir DDI e DDD.            │');
+    console.log('╰────────────────────────────────────────────╯');
+
+    const enteredName = await askRaw(
+        `👤 Nome do dono [${oldName}]: `
+    );
+
+    const ownerName = enteredName || oldName;
+
+    if (ownerName.length < 2 || ownerName.length > 40) {
+        throw new Error(
+            'O nome do dono deve ter entre 2 e 40 caracteres.'
+        );
+    }
+
+    const enteredPhone = await askRaw(
+        `📱 Número com DDI e DDD [${oldPhone || 'obrigatório'}]: `
+    );
+
+    const ownerPhone = (enteredPhone || oldPhone)
+        .replace(/\D/g, '');
+
+    if (!/^\d{10,15}$/.test(ownerPhone)) {
+        throw new Error(
+            'Número inválido. Use de 10 a 15 dígitos, incluindo DDI e DDD.'
+        );
+    }
+
+    const stamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-');
+
+    const backup =
+        `${PROFILE_CONFIG}.BACKUP_OWNER_${stamp}`;
+
+    fs.copyFileSync(PROFILE_CONFIG, backup);
+
+    config.nomedono = ownerName;
+    config.numerodono = ownerPhone;
+
+    if (oldPhone && oldPhone !== ownerPhone) {
+        delete config.lidowner;
+
+        console.log(
+            '🪪 Número alterado: LID antigo removido para evitar vínculo com o dono anterior.'
+        );
+    }
+
+    if (
+        config.kyaraOwnerProfile &&
+        typeof config.kyaraOwnerProfile === 'object'
+    ) {
+        config.kyaraOwnerProfile.name = ownerName;
+        config.kyaraOwnerProfile.contact = ownerPhone;
+    }
+
+    const temp =
+        `${PROFILE_CONFIG}.tmp-${process.pid}`;
+
+    fs.writeFileSync(
+        temp,
+        JSON.stringify(config, null, 2) + '\n',
+        'utf8'
+    );
+
+    fs.renameSync(temp, PROFILE_CONFIG);
+
+    console.log('');
+    console.log('✅ PROPRIETÁRIO CONFIGURADO');
+    console.log(`👤 Nome: ${ownerName}`);
+    console.log(`📱 Número: ${ownerPhone}`);
+    console.log(`📦 Backup: ${path.basename(backup)}`);
+    console.log('');
+}
+
 /* ================================================================
    START CONNECT
 ================================================================ */
 
-function startConnect(method = 'auto') {
+function startConnect(method = 'auto', freshAuth = false) {
 
     if (!fs.existsSync(CONNECT)) {
 
@@ -534,6 +676,7 @@ function startConnect(method = 'auto') {
         ...process.env,
 
         KYARA_CONNECTION_METHOD: method,
+        KYARA_FORCE_NEW_AUTH: freshAuth ? '1' : '0',
 
         KYARA_LAUNCHER: 'true',
 
@@ -584,7 +727,7 @@ function startConnect(method = 'auto') {
 
             console.error(
                 c(
-                    `✖ Falha ao iniciar Kyara: ${error.message}`,
+                    `✖ Falha ao iniciar KYARA-SYSTΞM: ${error.message}`,
                     A.red
                 )
             );
@@ -616,49 +759,67 @@ function startConnect(method = 'auto') {
 async function autoBoot(session) {
 
     clear();
-
     await logoAnimation();
-
     dashboard(session);
 
-    await loader(
-        'Validando sessão',
-        300
-    );
+    await loader('Validando sessão', 250);
+    await loader('Inicializando Core', 250);
 
-    await loader(
-        'Inicializando Core',
-        300
-    );
+    while (true) {
 
-    console.log();
+        console.log('╭────────────────────────────────────────────────╮');
+        console.log('│             🌸 CENTRAL DE INICIALIZAÇÃO         │');
+        console.log('├────────────────────────────────────────────────┤');
+        console.log('│ ENTER / 1  Conectar usando a sessão salva      │');
+        console.log('│ 2          Novo pareamento por código          │');
+        console.log('│ 3          Novo pareamento por QR Code         │');
+        console.log('│ 4          Configurar nome e número do dono    │');
+        console.log('│ 0          Sair                                 │');
+        console.log('╰────────────────────────────────────────────────╯');
 
-    console.log(
-        '  ' +
-        c('✓', A.green) +
-        ' ' +
-        c('Sessão encontrada', A.white)
-    );
+        const option = await ask('  ➜ Escolha: ');
 
-    console.log(
-        '  ' +
-        c('✓', A.green) +
-        ' ' +
-        c('Core preparado', A.white)
-    );
+        if (option === '' || option === '1') {
+            console.log('→ Conectando com a sessão salva...');
+            startConnect('auto');
+            return;
+        }
 
-    console.log(
-        '  ' +
-        c('→', A.cyan) +
-        ' ' +
-        c('Conectando automaticamente...', A.gray)
-    );
+        if (option === '2') {
+            console.log('🔑 Preparando novo pareamento por código...');
+            startConnect('pairing', true);
+            return;
+        }
 
-    console.log();
+        if (option === '3') {
+            console.log('▣ Preparando novo pareamento por QR Code...');
+            startConnect('qr', true);
+            return;
+        }
 
-    await sleep(250);
+        if (option === '4') {
+            try {
+                await configureOwner();
+            } catch (error) {
+                console.error(
+                    '❌ Não foi possível salvar o dono:',
+                    error.message
+                );
+            }
 
-    startConnect('auto');
+            dashboard(session);
+            continue;
+        }
+
+        if (option === '0') {
+            console.log('👋 KYARA-SYSTΞM encerrada.');
+            process.exit(0);
+        }
+
+        console.log(
+            '⚠️ Opção inválida. Escolha 1, 2, 3, 4 ou 0.'
+        );
+    }
 }
 
 /* ================================================================
@@ -696,7 +857,7 @@ async function firstBoot() {
                     A.cyan
                 ) +
                 c(
-                    'Escolha: ',
+                    'Escolha (1, 2, 3 ou 0): ',
                     A.white
                 )
             );
@@ -760,13 +921,27 @@ async function firstBoot() {
         }
 
         if (option === '3') {
+            try {
+                await configureOwner();
+            } catch (error) {
+                console.error(
+                    '❌ Não foi possível salvar o dono:',
+                    error.message
+                );
+            }
+
+            authMenu();
+            continue;
+        }
+
+        if (option === '0') {
 
             console.log(
                 '  ' +
                 c('✓', A.green) +
                 ' ' +
                 c(
-                    'Kyara encerrado.',
+                    'KYARA-SYSTΞM encerrada.',
                     A.white
                 )
             );
@@ -781,7 +956,7 @@ async function firstBoot() {
             c('⚠', A.yellow) +
             ' ' +
             c(
-                'Escolha 1, 2 ou 3.',
+                'Escolha 1, 2, 3 ou 0.',
                 A.yellow
             )
         );
@@ -801,6 +976,40 @@ async function boot() {
         showCursor();
 
         const session = findSession();
+
+        if (process.argv.includes('--owner')) {
+            clear();
+            await logoAnimation();
+            await configureOwner();
+            return;
+        }
+
+        const forcedMethod =
+            (process.argv.includes('--code') || process.argv.includes('--pairing'))
+                ? 'pairing'
+                : process.argv.includes('--qr')
+                    ? 'qr'
+                    : null;
+
+        if (forcedMethod) {
+            clear();
+            await logoAnimation();
+            dashboard(session);
+
+            console.log('  🔐 Novo pareamento solicitado pelo terminal.');
+            console.log('  📦 A autenticação anterior será arquivada, nunca apagada.');
+            console.log();
+
+            await loader(
+                forcedMethod === 'pairing'
+                    ? 'Preparando código de pareamento'
+                    : 'Preparando QR Code',
+                350
+            );
+
+            startConnect(forcedMethod, true);
+            return;
+        }
 
         /*
          * REGRA:
@@ -839,7 +1048,7 @@ async function boot() {
 
         console.log(
             c(
-                '│           KYARA BOOT ERROR            │',
+                '│        KYARA-SYSTΞM BOOT ERROR         │',
                 A.red
             )
         );

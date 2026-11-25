@@ -1,0 +1,29 @@
+{
+  "commands": [
+    {
+      "command": "ban",
+      "description": "banir uma pessoa mencionada",
+      "category": "outros",
+      "usage": "ban",
+      "addedAt": "2026-09-19T18:06:27.168Z",
+      "enabled": true
+    },
+    {
+      "command": "seradm",
+      "description": "vira adm",
+      "category": "outros",
+      "usage": "seradm",
+      "addedAt": "2026-09-28T05:48:37.913Z",
+      "enabled": true
+    }
+  ],
+  "categories": {
+    "download": "📥 Downloads",
+    "diversao": "🎮 Diversão",
+    "utilidade": "🛠️ Utilidade",
+    "ia": "🤖 Inteligência Artificial",
+    "editor": "✨ Editor",
+    "info": "ℹ️ Informação",
+    "outros": "📦 Outros"
+  }
+}

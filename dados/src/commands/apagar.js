@@ -16,10 +16,8 @@
  * ============================================================
  */
 
-import {
-  getPaymentRequestKey,
-  forgetPaymentRequest
-} from '../utils/paymentRequestStore.js'
+import { getPaymentRequestKey } from '../utils/paymentRequestStore.js'
+
 
 
 /* ============================================================
@@ -439,8 +437,23 @@ function mesmaMensagem(
   if (
     a.remoteJid &&
     b.remoteJid &&
-    a.remoteJid !==
-      b.remoteJid
+    a.remoteJid !== b.remoteJid
+  ) {
+    return false
+  }
+
+  if (
+    typeof a.fromMe === 'boolean' &&
+    typeof b.fromMe === 'boolean' &&
+    a.fromMe !== b.fromMe
+  ) {
+    return false
+  }
+
+  if (
+    a.participant &&
+    b.participant &&
+    a.participant !== b.participant
   ) {
     return false
   }
@@ -449,272 +462,61 @@ function mesmaMensagem(
 }
 
 
-function esperarRevoke(
-  socket,
-  key,
-  timeoutMs = 5000
-) {
-
-  return new Promise(
-    resolve => {
-
-      let finalizado =
-        false
-
-      let timer =
-        null
-
-      const limpar =
-        () => {
-
-          if (timer) {
-            clearTimeout(
-              timer
-            )
-          }
-
-          try {
-
-            socket
-              ?.ev
-              ?.off(
-                'messages.update',
-                onUpdate
-              )
-
-          } catch {}
-
-          try {
-
-            socket
-              ?.ev
-              ?.off(
-                'messages.delete',
-                onDelete
-              )
-
-          } catch {}
-
-        }
-
-
-      const concluir =
-        valor => {
-
-          if (
-            finalizado
-          ) {
-            return
-          }
-
-          finalizado =
-            true
-
-          limpar()
-
-          resolve(
-            valor
-          )
-        }
-
-
-      const onUpdate =
-        updates => {
-
-          for (
-            const item of
-              Array.isArray(updates)
-                ? updates
-                : []
-          ) {
-
-            if (
-              !mesmaMensagem(
-                item?.key,
-                key
-              )
-            ) {
-              continue
-            }
-
-            /*
-             * Revoke processado pelo Baileys:
-             * update.message === null
-             */
-            if (
-              item?.update?.message ===
-              null
-            ) {
-
-              console.log(
-                '[KYARA][APAGAR] ✅ REVOKE CONFIRMADO pelo Baileys:',
-                key.id
-              )
-
-              concluir(
-                true
-              )
-
-              return
-            }
-          }
-        }
-
-
-      const onDelete =
-        data => {
-
-          for (
-            const item of
-              Array.isArray(
-                data?.keys
-              )
-                ? data.keys
-                : []
-          ) {
-
-            if (
-              mesmaMensagem(
-                item,
-                key
-              )
-            ) {
-
-              console.log(
-                '[KYARA][APAGAR] ✅ messages.delete CONFIRMADO:',
-                key.id
-              )
-
-              concluir(
-                true
-              )
-
-              return
-            }
-          }
-        }
-
-
-      try {
-
-        socket
-          ?.ev
-          ?.on(
-            'messages.update',
-            onUpdate
-          )
-
-        socket
-          ?.ev
-          ?.on(
-            'messages.delete',
-            onDelete
-          )
-
-      } catch {
-
-        concluir(
-          false
-        )
-
-        return
-      }
-
-
-      timer =
-        setTimeout(
-          () => {
-
-            if (
-              !finalizado
-            ) {
-
-              console.log(
-                '[KYARA][APAGAR] ⏱️ Sem confirmação de revoke:',
-                key.id
-              )
-
-              concluir(
-                false
-              )
-            }
-
-          },
-          timeoutMs
-        )
-
-    }
-  )
-}
-
-
-/* ============================================================
- * DELETE CONFIRMADO
- * ============================================================
- */
-
 async function deleteConfirmado(
   socket,
   key,
   timeoutMs = 5000
 ) {
-
   if (
     !socket ||
-    typeof socket.sendMessage !==
-      'function' ||
+    typeof socket.sendMessage !== 'function' ||
     !key?.remoteJid ||
-    !key?.id
+    !key?.id ||
+    typeof key.fromMe !== 'boolean'
   ) {
-
     return false
   }
 
-
+  /*
+   * Usa a KEY original.
+   * Não inventa participant, PN ou LID.
+   */
   console.log(
-    '[KYARA][APAGAR] 🔑 KEY ENVIADA:',
-    JSON.stringify(
-      key,
-      null,
-      2
-    )
+    '[KYARA][APAGAR] 🔑 KEY ORIGINAL DO PAGAMENTO:',
+    JSON.stringify(key, null, 2)
   )
 
-
-  /*
-   * Listener fica pronto ANTES do envio.
-   */
-  const espera =
-    esperarRevoke(
-      socket,
-      key,
-      timeoutMs
-    )
-
-
   try {
-
-    await socket.sendMessage(
+    const enviado = await socket.sendMessage(
       key.remoteJid,
       {
-        delete:
-          key
+        delete: key
       }
     )
 
-  } catch (erro) {
+    console.log(
+      '[KYARA][APAGAR] 📨 Solicitação de revoke transmitida:',
+      JSON.stringify({
+        alvo: key.id,
+        idDoRevoke: enviado?.key?.id || null
+      })
+    )
 
+    /*
+     * O envio foi transmitido pelo socket.
+     * Não tratamos o eco local messages.update
+     * como prova de remoção remota.
+     */
+    return true
+
+  } catch (erro) {
     console.log(
       '[KYARA][APAGAR] ❌ DELETE rejeitado:',
-      erro?.message ||
-      erro
+      erro?.message || erro
     )
 
     return false
   }
-
-
-  return await espera
 }
 
 
@@ -731,276 +533,111 @@ async function obterChavesPagamento(
   paymentStoreKey,
   cacheItem
 ) {
+  const original =
+    paymentStoreKey?.id === id
+      ? paymentStoreKey
+      : cacheItem?.key?.id === id
+        ? cacheItem.key
+        : null
 
-  const candidatas =
-    []
-
-
-  const vistos =
-    new Set()
-
-
-  function adicionar(
-    key,
-    rotulo
-  ) {
-
-    if (
-      !key?.remoteJid ||
-      !key?.id
-    ) {
-      return
-    }
-
-    const assinatura =
-      JSON.stringify(
-        key
-      )
-
-    if (
-      vistos.has(
-        assinatura
-      )
-    ) {
-      return
-    }
-
-    vistos.add(
-      assinatura
-    )
-
-    candidatas.push(
+  /*
+   * Pagamento enviado pelo bot:
+   * usa exatamente a KEY retornada no envio.
+   */
+  if (original?.fromMe === true) {
+    return [
       {
-        key,
-        rotulo
+        key: {
+          ...original
+        },
+        rotulo: 'KEY ORIGINAL RETORNADA PELO ENVIO'
       }
-    )
+    ]
   }
-
-
-  let participant =
-    normalizarJid(
-      quotedParticipant
-    )
-
-
-  if (
-    !participant
-  ) {
-    participant =
-      normalizarJid(
-        paymentStoreKey?.participant
-      )
-  }
-
-
-  if (
-    !participant
-  ) {
-    participant =
-      normalizarJid(
-        cacheItem?.key?.participant
-      )
-  }
-
 
   /*
-   * Em requestPaymentMessage criado pelo próprio Kyara,
-   * o participante usado no revoke pode ser o LID da própria
-   * conta do bot.
+   * Mantém suporte a pagamentos enviados por terceiros.
    */
-  if (
-    !participant
-  ) {
+  const candidatas = []
+  const vistos = new Set()
 
-    participant =
-      normalizarJid(
-        socket?.user?.id
-      )
+  function adicionar(key, rotulo) {
+    if (!key?.remoteJid || !key?.id) return
+
+    const assinatura = JSON.stringify(key)
+
+    if (vistos.has(assinatura)) return
+
+    vistos.add(assinatura)
+    candidatas.push({ key, rotulo })
   }
 
+  const participant =
+    normalizarJid(quotedParticipant) ||
+    normalizarJid(original?.participant)
 
-  let pn =
-    null
+  let pn = null
 
-
-  if (
-    participant &&
-    ehLid(participant)
-  ) {
-
-    pn =
-      await resolverLid(
-        socket,
-        participant
-      )
+  if (participant && ehLid(participant)) {
+    pn = await resolverLid(socket, participant)
   }
 
-
-  if (
-    paymentStoreKey?.participant &&
-    ehLid(
-      normalizarJid(
-        paymentStoreKey.participant
-      )
-    )
-  ) {
-
-    const storeLid =
-      normalizarJid(
-        paymentStoreKey.participant
-      )
-
-    if (
-      !participant
-    ) {
-      participant =
-        storeLid
-    }
-
-    if (
-      !pn
-    ) {
-      pn =
-        await resolverLid(
-          socket,
-          storeLid
-        )
-    }
+  if (!pn && original?.participantAlt) {
+    pn = normalizarJid(original.participantAlt)
   }
 
-
-  console.log(
-    '[KYARA][PAGAMENTO] 👤 Participant:',
-    participant || null
-  )
-
-  console.log(
-    '[KYARA][PAGAMENTO] 📱 ParticipantAlt:',
-    pn || null
-  )
-
-
-  /*
-   * CANDIDATA 1
-   *
-   * É a que já funcionou no teste real:
-   * fromMe=false + LID + PN
-   */
-  if (
-    participant &&
-    ehLid(participant) &&
-    pn
-  ) {
-
+  if (participant && pn && participant !== pn) {
     adicionar(
       {
         remoteJid,
         id,
-        fromMe:
-          false,
+        fromMe: false,
         participant,
-        participantAlt:
-          pn
+        participantAlt: pn
       },
-      'LID + PN'
+      'TERCEIRO • LID + PN'
     )
   }
 
-
-  /*
-   * CANDIDATA 2
-   */
-  if (
-    pn
-  ) {
-
+  if (pn) {
     adicionar(
       {
         remoteJid,
         id,
-        fromMe:
-          false,
-        participant:
-          pn
+        fromMe: false,
+        participant: pn
       },
-      'PN'
+      'TERCEIRO • PN'
     )
   }
 
-
-  /*
-   * CANDIDATA 3
-   */
-  if (
-    participant
-  ) {
-
+  if (participant) {
     adicionar(
       {
         remoteJid,
         id,
-        fromMe:
-          false,
+        fromMe: false,
         participant
       },
-      'LID/participant'
+      'TERCEIRO • PARTICIPANT'
     )
   }
 
-
-  /*
-   * CANDIDATA 4
-   *
-   * Sem participante.
-   */
   adicionar(
     {
       remoteJid,
       id,
-      fromMe:
-        false
+      fromMe: false
     },
-    'SEM PARTICIPANT'
+    'TERCEIRO • SEM PARTICIPANT'
   )
 
-
-  /*
-   * CANDIDATA 5
-   *
-   * Somente depois das chaves especiais,
-   * tentamos a chave original salva.
-   */
-  if (
-    paymentStoreKey?.id === id
-  ) {
-
+  if (original) {
     adicionar(
-      {
-        ...paymentStoreKey,
-        remoteJid
-      },
-      'STORE ORIGINAL'
+      { ...original },
+      'KEY ORIGINAL'
     )
   }
-
-
-  /*
-   * CANDIDATA 6
-   */
-  if (
-    cacheItem?.key?.id === id
-  ) {
-
-    adicionar(
-      {
-        ...cacheItem.key,
-        remoteJid
-      },
-      'CACHE ORIGINAL'
-    )
-  }
-
 
   return candidatas
 }
@@ -1145,6 +782,33 @@ async function execute(
   }
 
 
+  /*
+   * Mantém as permissões do comando #d ativo.
+   * Pagamentos também passam por estas verificações.
+   */
+  const dono = Boolean(isDono)
+
+  if (!isGroup) {
+    try {
+      await reply?.('❌ Este comando só pode ser usado em grupos!')
+    } catch {}
+    return false
+  }
+
+  if (!isAdm && !dono && !isMonitor) {
+    try {
+      await reply?.('❌ Apenas administradores podem usar este comando!')
+    } catch {}
+    return false
+  }
+
+  if (!isBotAdm) {
+    try {
+      await reply?.('❌ O bot precisa ser administrador para isso!')
+    } catch {}
+    return false
+  }
+
   const alvo =
     extrairAlvo(
       info,
@@ -1254,7 +918,8 @@ async function execute(
           id,
           participant:
             alvo.participant || null,
-          isStatus,
+          isStatus:
+            alvo.isStatus,
           paymentDetectado
         },
         null,
@@ -1343,17 +1008,11 @@ async function execute(
         )
 
         console.log(
-          '[BOT-KYARA][PAGAMENTO] ✅ APAGADO DE VERDADE:',
+          '[BOT-KYARA][PAGAMENTO] 📨 SOLICITAÇÃO DE EXCLUSÃO TRANSMITIDA:',
           id
         )
 
 
-        try {
-          forgetPaymentRequest(
-            remoteJid,
-            id
-          )
-        } catch {}
 
 
         if (

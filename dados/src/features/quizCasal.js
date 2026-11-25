@@ -443,7 +443,7 @@ function encontrarSessao(id) {
  */
 
 async function enviarTexto(
-  nazu,
+  kya,
   jid,
   texto,
   mentions = []
@@ -459,7 +459,7 @@ async function enviarTexto(
     mensagem.mentions = mentions;
   }
 
-  return nazu.sendMessage(
+  return kya.sendMessage(
     jid,
     mensagem
   );
@@ -472,7 +472,7 @@ async function enviarTexto(
  */
 
 async function enviarFlow(
-  nazu,
+  kya,
   jid,
   texto,
   botoes,
@@ -528,7 +528,7 @@ async function enviarFlow(
   const messageId =
     `QZ${idAleatorio(8)}`;
 
-  await nazu.relayMessage(
+  await kya.relayMessage(
     jid,
     mensagem,
     {
@@ -555,14 +555,14 @@ async function enviarFlow(
  */
 
 async function apagarMensagem(
-  nazu,
+  kya,
   jid,
   key
 ) {
   if (!key) return;
 
   try {
-    await nazu.sendMessage(
+    await kya.sendMessage(
       jid,
       {
         delete: key
@@ -651,7 +651,7 @@ function criarBotaoAvancar(sessao) {
  */
 
 async function mostrarPerguntaDono(
-  nazu,
+  kya,
   sessao
 ) {
   const indice =
@@ -662,7 +662,7 @@ async function mostrarPerguntaDono(
 
   if (!pergunta) {
     return iniciarQuizParceiro(
-      nazu,
+      kya,
       sessao
     );
   }
@@ -736,7 +736,7 @@ async function mostrarPerguntaDono(
 
   if (sessao.mensagemAtualDono) {
     await apagarMensagem(
-      nazu,
+      kya,
       sessao.dono,
       sessao.mensagemAtualDono
     );
@@ -744,7 +744,7 @@ async function mostrarPerguntaDono(
 
   const enviada =
     await enviarFlow(
-      nazu,
+      kya,
       sessao.dono,
       texto,
       botoes
@@ -758,7 +758,7 @@ async function mostrarPerguntaDono(
 
 
 async function selecionarRespostaDono(
-  nazu,
+  kya,
   sessao,
   sender,
   indice,
@@ -813,7 +813,7 @@ async function selecionarRespostaDono(
   salvarSessao(sessao);
 
   await mostrarPerguntaDono(
-    nazu,
+    kya,
     sessao
   );
 
@@ -822,7 +822,7 @@ async function selecionarRespostaDono(
 
 
 async function iniciarRespostaManualDono(
-  nazu,
+  kya,
   sessao,
   sender,
   indice
@@ -859,7 +859,7 @@ async function iniciarRespostaManualDono(
   salvarSessao(sessao);
 
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.dono,
     sessao.mensagemAtualDono
   );
@@ -868,7 +868,7 @@ async function iniciarRespostaManualDono(
     null;
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     '✍️ *Digite a resposta correta:*\n\n' +
     '❓ ' +
@@ -882,7 +882,7 @@ async function iniciarRespostaManualDono(
 
 
 async function processarRespostaManualDono(
-  nazu,
+  kya,
   sessao,
   texto
 ) {
@@ -927,7 +927,7 @@ async function processarRespostaManualDono(
   salvarSessao(sessao);
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     '✅ *Resposta salva!*\n\n' +
     '🎯 Resposta correta: *' +
@@ -937,7 +937,7 @@ async function processarRespostaManualDono(
   );
 
   await mostrarPerguntaDono(
-    nazu,
+    kya,
     sessao
   );
 
@@ -946,7 +946,7 @@ async function processarRespostaManualDono(
 
 
 async function avancarDono(
-  nazu,
+  kya,
   sessao,
   sender,
   indice
@@ -982,7 +982,7 @@ async function avancarDono(
     !pergunta.correta
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sessao.dono,
       '⚠️ Primeiro marque uma alternativa ou use *✍️ Escrever resposta*.'
     );
@@ -1000,13 +1000,13 @@ async function avancarDono(
     TOTAL
   ) {
     return finalizarConfiguracao(
-      nazu,
+      kya,
       sessao
     );
   }
 
   await mostrarPerguntaDono(
-    nazu,
+    kya,
     sessao
   );
 
@@ -1021,7 +1021,7 @@ async function avancarDono(
  */
 
 async function processarRespostaDono(
-  nazu,
+  kya,
   sessao,
   texto
 ) {
@@ -1050,7 +1050,7 @@ async function processarRespostaDono(
     sessao.indiceConfiguracao >= TOTAL
   ) {
     await finalizarConfiguracao(
-      nazu,
+      kya,
       sessao
     );
 
@@ -1058,7 +1058,7 @@ async function processarRespostaDono(
   }
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     `✅ *Resposta salva!*\n\n` +
     `🎯 Correta: *${resposta}*\n\n` +
@@ -1067,7 +1067,7 @@ async function processarRespostaDono(
   );
 
   await mostrarPerguntaDono(
-    nazu,
+    kya,
     sessao
   );
 
@@ -1081,7 +1081,7 @@ async function processarRespostaDono(
  */
 
 async function finalizarConfiguracao(
-  nazu,
+  kya,
   sessao
 ) {
   sessao.fase = 'CONVIDANDO';
@@ -1090,7 +1090,7 @@ async function finalizarConfiguracao(
   salvarSessao(sessao);
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     `💕 *QUIZ DO CASAL FINALIZADO!*\n\n` +
     `🆔 Código: *${sessao.id}*\n` +
@@ -1100,7 +1100,7 @@ async function finalizarConfiguracao(
   );
 
   await enviarConvite(
-    nazu,
+    kya,
     sessao
   );
 }
@@ -1112,7 +1112,7 @@ async function finalizarConfiguracao(
  */
 
 async function enviarConvite(
-  nazu,
+  kya,
   sessao
 ) {
   const texto =
@@ -1128,7 +1128,7 @@ async function enviarConvite(
 
   const enviada =
     await enviarFlow(
-      nazu,
+      kya,
       sessao.parceiro,
       texto,
       [
@@ -1169,7 +1169,7 @@ async function enviarConvite(
  */
 
 async function iniciarQuizParceiro(
-  nazu,
+  kya,
   sessao
 ) {
   sessao.fase = 'RESPONDENDO';
@@ -1180,7 +1180,7 @@ async function iniciarQuizParceiro(
   salvarSessao(sessao);
 
   await mostrarPerguntaParceiro(
-    nazu,
+    kya,
     sessao
   );
 }
@@ -1192,7 +1192,7 @@ async function iniciarQuizParceiro(
  */
 
 async function mostrarPerguntaParceiro(
-  nazu,
+  kya,
   sessao
 ) {
   const pergunta =
@@ -1202,7 +1202,7 @@ async function mostrarPerguntaParceiro(
 
   if (!pergunta) {
     return finalizarQuiz(
-      nazu,
+      kya,
       sessao
     );
   }
@@ -1261,7 +1261,7 @@ async function mostrarPerguntaParceiro(
 
   if (sessao.mensagemAtualParceiro) {
     await apagarMensagem(
-      nazu,
+      kya,
       sessao.parceiro,
       sessao.mensagemAtualParceiro
     );
@@ -1279,7 +1279,7 @@ async function mostrarPerguntaParceiro(
 
   const enviada =
     await enviarFlow(
-      nazu,
+      kya,
       sessao.parceiro,
       texto,
       botoes
@@ -1608,7 +1608,7 @@ function calcularResultadoFinal(
  */
 
 async function finalizarQuizReal(
-  nazu,
+  kya,
   sessao
 ) {
   if (
@@ -1695,7 +1695,7 @@ async function finalizarQuizReal(
    * para deixar o resultado limpo.
    */
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.parceiro,
     sessao.mensagemAtualParceiro
   );
@@ -1707,7 +1707,7 @@ async function finalizarQuizReal(
    * Resultado no PV do parceiro.
    */
   await enviarTexto(
-    nazu,
+    kya,
     sessao.parceiro,
     resultadoParaUsuario(
       sessao,
@@ -1720,7 +1720,7 @@ async function finalizarQuizReal(
    * Resultado no PV do dono.
    */
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     resultadoParaUsuario(
       sessao,
@@ -1739,7 +1739,7 @@ async function finalizarQuizReal(
  */
 
 async function aceitarConviteReal(
-  nazu,
+  kya,
   sessao,
   sender
 ) {
@@ -1754,7 +1754,7 @@ async function aceitarConviteReal(
     )
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⛔ Este convite foi enviado para outro @usuário."
     );
@@ -1767,7 +1767,7 @@ async function aceitarConviteReal(
     "CONVIDANDO"
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⚠️ Este quiz não está mais aguardando uma resposta."
     );
@@ -1787,7 +1787,7 @@ async function aceitarConviteReal(
   salvarSessao(sessao);
 
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.parceiro,
     sessao.mensagemAtualParceiro
   );
@@ -1796,7 +1796,7 @@ async function aceitarConviteReal(
     null;
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.parceiro,
     `💕 *QUIZ DO CASAL*\n\n` +
     `✅ Você entrou no quiz *${sessao.id}*!\n\n` +
@@ -1807,7 +1807,7 @@ async function aceitarConviteReal(
   );
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     `💕 *QUIZ DO CASAL*\n\n` +
     `✅ ${mencionar(sessao.parceiro)} aceitou o quiz!\n\n` +
@@ -1817,7 +1817,7 @@ async function aceitarConviteReal(
   );
 
   await mostrarPerguntaParceiro(
-    nazu,
+    kya,
     sessao
   );
 
@@ -1831,7 +1831,7 @@ async function aceitarConviteReal(
  */
 
 async function recusarConviteReal(
-  nazu,
+  kya,
   sessao,
   sender
 ) {
@@ -1842,7 +1842,7 @@ async function recusarConviteReal(
     )
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⛔ Este convite não pertence a você."
     );
@@ -1859,20 +1859,20 @@ async function recusarConviteReal(
   salvarSessao(sessao);
 
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.parceiro,
     sessao.mensagemAtualParceiro
   );
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.parceiro,
     `❌ *QUIZ RECUSADO*\n\n` +
     `O Quiz do Casal *${sessao.id}* foi recusado.`
   );
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     `❌ *QUIZ ENCERRADO*\n\n` +
     `${mencionar(sessao.parceiro)} recusou o convite.`,
@@ -1889,7 +1889,7 @@ async function recusarConviteReal(
  */
 
 async function selecionarAlternativaReal(
-  nazu,
+  kya,
   sessao,
   sender,
   indice,
@@ -1902,7 +1902,7 @@ async function selecionarAlternativaReal(
     )
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⛔ Esta seleção pertence ao participante do quiz."
     );
@@ -1915,7 +1915,7 @@ async function selecionarAlternativaReal(
     "RESPONDENDO"
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⚠️ Este quiz não está mais ativo."
     );
@@ -1928,7 +1928,7 @@ async function selecionarAlternativaReal(
     Number(sessao.indiceQuiz)
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⚠️ Esta pergunta não está mais ativa."
     );
@@ -1954,7 +1954,7 @@ async function selecionarAlternativaReal(
     )
   ) {
     await mostrarPerguntaParceiro(
-      nazu,
+      kya,
       sessao
     );
 
@@ -1970,7 +1970,7 @@ async function selecionarAlternativaReal(
 
   if (!opcao) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "❌ Alternativa inválida."
     );
@@ -2006,7 +2006,7 @@ async function selecionarAlternativaReal(
    * a versão selecionada.
    */
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.parceiro,
     sessao.mensagemAtualParceiro
   );
@@ -2023,7 +2023,7 @@ async function selecionarAlternativaReal(
 
   const enviada =
     await enviarFlow(
-      nazu,
+      kya,
       sessao.parceiro,
       texto,
       [
@@ -2079,7 +2079,7 @@ async function selecionarAlternativaReal(
  */
 
 async function avancarReal(
-  nazu,
+  kya,
   sessao,
   sender,
   indice
@@ -2118,7 +2118,7 @@ async function avancarReal(
     )
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sender,
       "⚠️ Escolha uma alternativa antes de avançar."
     );
@@ -2134,13 +2134,13 @@ async function avancarReal(
     sessao.perguntas.length - 1
   ) {
     return finalizarQuizReal(
-      nazu,
+      kya,
       sessao
     );
   }
 
   await apagarMensagem(
-    nazu,
+    kya,
     sessao.parceiro,
     sessao.mensagemAtualParceiro
   );
@@ -2169,7 +2169,7 @@ async function avancarReal(
   );
 
   await mostrarPerguntaParceiro(
-    nazu,
+    kya,
     sessao
   );
 
@@ -2189,7 +2189,7 @@ async function avancarReal(
  */
 
 export async function handleQuizCasalButton({
-  nazu,
+  kya,
   jid,
   sender,
   buttonId
@@ -2225,7 +2225,7 @@ export async function handleQuizCasalButton({
 
     if (!sessao) {
       await enviarTexto(
-        nazu,
+        kya,
         jid,
         "⚠️ Este Quiz do Casal não existe mais."
       );
@@ -2251,7 +2251,7 @@ export async function handleQuizCasalButton({
         "aceitar"
       ) {
         return aceitarConviteReal(
-          nazu,
+          kya,
           sessao,
           sender
         );
@@ -2262,7 +2262,7 @@ export async function handleQuizCasalButton({
         "recusar"
       ) {
         return recusarConviteReal(
-          nazu,
+          kya,
           sessao,
           sender
         );
@@ -2301,7 +2301,7 @@ export async function handleQuizCasalButton({
         'selecionar'
       ) {
         return selecionarRespostaDono(
-          nazu,
+          kya,
           sessao,
           sender,
           indice,
@@ -2314,7 +2314,7 @@ export async function handleQuizCasalButton({
         'manual'
       ) {
         return iniciarRespostaManualDono(
-          nazu,
+          kya,
           sessao,
           sender,
           indice
@@ -2326,7 +2326,7 @@ export async function handleQuizCasalButton({
         'avancar'
       ) {
         return avancarDono(
-          nazu,
+          kya,
           sessao,
           sender,
           indice
@@ -2364,7 +2364,7 @@ export async function handleQuizCasalButton({
         "selecionar"
       ) {
         return selecionarAlternativaReal(
-          nazu,
+          kya,
           sessao,
           sender,
           indice,
@@ -2377,7 +2377,7 @@ export async function handleQuizCasalButton({
         "bloqueada"
       ) {
         await enviarTexto(
-          nazu,
+          kya,
           sender,
           "🔒 Essa pergunta já foi respondida."
         );
@@ -2404,7 +2404,7 @@ export async function handleQuizCasalButton({
         );
 
       return avancarReal(
-        nazu,
+        kya,
         sessao,
         sender,
         indice
@@ -2442,7 +2442,7 @@ export async function handleQuizCasalButton({
         "select"
       ) {
         return selecionarAlternativaReal(
-          nazu,
+          kya,
           sessao,
           sender,
           indice,
@@ -2455,7 +2455,7 @@ export async function handleQuizCasalButton({
         "next"
       ) {
         return avancarReal(
-          nazu,
+          kya,
           sessao,
           sender,
           indice
@@ -2467,7 +2467,7 @@ export async function handleQuizCasalButton({
         "noop"
       ) {
         await enviarTexto(
-          nazu,
+          kya,
           sender,
           "🔒 Essa seleção já foi registrada."
         );
@@ -2496,7 +2496,7 @@ export async function handleQuizCasalButton({
  */
 
 export async function handleQuizCasal({
-  nazu,
+  kya,
   jid,
   sender,
   args = [],
@@ -2530,7 +2530,7 @@ export async function handleQuizCasal({
       )
     ) {
       return handleQuizCasalButton({
-        nazu,
+        kya,
         jid,
         sender,
         buttonId:
@@ -2555,7 +2555,7 @@ export async function handleQuizCasal({
 
     if (!parceiro) {
       await enviarTexto(
-        nazu,
+        kya,
         jid || sender,
         `💕 *QUIZ DO CASAL*\n\n` +
         `Marque o @usuário que vai participar.\n\n` +
@@ -2577,7 +2577,7 @@ export async function handleQuizCasal({
       )
     ) {
       await enviarTexto(
-        nazu,
+        kya,
         jid || sender,
         "❌ Você não pode fazer o Quiz do Casal consigo mesmo."
       );
@@ -2592,7 +2592,7 @@ export async function handleQuizCasal({
      */
     if (isGroup) {
       await enviarTexto(
-        nazu,
+        kya,
         jid,
         `💕 *QUIZ DO CASAL*\n\n` +
         `✅ O quiz foi iniciado no seu *PV*.\n\n` +
@@ -2604,7 +2604,7 @@ export async function handleQuizCasal({
      * A partir daqui, tudo no PV do dono.
      */
     await iniciarCriacao(
-      nazu,
+      kya,
       sender,
       parceiro,
       prefix
@@ -2620,7 +2620,7 @@ export async function handleQuizCasal({
     );
 
     await enviarTexto(
-      nazu,
+      kya,
       jid || sender,
       `❌ Erro no Quiz do Casal.\n\n` +
       `${error?.message || error}`
@@ -2648,7 +2648,7 @@ export async function handleQuizCasal({
  */
 
 export async function handleQuizCasalMessage({
-  nazu,
+  kya,
   jid,
   sender,
   body,
@@ -2700,7 +2700,7 @@ export async function handleQuizCasalMessage({
     }
 
     return processarRespostaManualDono(
-      nazu,
+      kya,
       sessao,
       texto
     );
@@ -2723,7 +2723,7 @@ export async function handleQuizCasalMessage({
  */
 
 export async function cancelarQuizCasal({
-  nazu,
+  kya,
   jid,
   sender
 }) {
@@ -2758,7 +2758,7 @@ export async function cancelarQuizCasal({
 
   if (!sessao) {
     await enviarTexto(
-      nazu,
+      kya,
       jid || sender,
       "ℹ️ Você não possui um Quiz do Casal ativo."
     );
@@ -2775,7 +2775,7 @@ export async function cancelarQuizCasal({
   salvarSessao(sessao);
 
   await enviarTexto(
-    nazu,
+    kya,
     sessao.dono,
     `🛑 *QUIZ DO CASAL CANCELADO*\n\n` +
     `🆔 ${sessao.id}`
@@ -2785,7 +2785,7 @@ export async function cancelarQuizCasal({
     sessao.parceiro
   ) {
     await enviarTexto(
-      nazu,
+      kya,
       sessao.parceiro,
       `🛑 *QUIZ DO CASAL ENCERRADO*\n\n` +
       `O quiz foi cancelado.`
@@ -2830,7 +2830,7 @@ export default {
  */
 
 async function iniciarCriacao(
-  nazu,
+  kya,
   donoJid,
   parceiroJid,
   prefixo = '#'
@@ -2852,7 +2852,7 @@ async function iniciarCriacao(
 
   if (mesmoJid(donoJid, parceiroJid)) {
     return enviarTexto(
-      nazu,
+      kya,
       donoJid,
       '❌ Você não pode criar um Quiz do Casal com você mesmo.'
     );
@@ -2883,7 +2883,7 @@ async function iniciarCriacao(
 
   if (existente) {
     return enviarTexto(
-      nazu,
+      kya,
       donoJid,
       `⚠️ Você já possui um QuizCasal ativo com essa pessoa.\n\n🆔 Código: *${existente.id}*`
     );
@@ -2899,7 +2899,7 @@ async function iniciarCriacao(
   salvarDB(banco);
 
   await enviarTexto(
-    nazu,
+    kya,
     donoJid,
     `💕 *QUIZ DO CASAL*\n\n` +
     `🆔 Código: *${session.id}*\n\n` +
@@ -2912,7 +2912,7 @@ async function iniciarCriacao(
   );
 
   await mostrarPerguntaDono(
-    nazu,
+    kya,
     session
   );
 

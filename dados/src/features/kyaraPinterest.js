@@ -75,7 +75,8 @@ import { proto, generateWAMessageFromContent, prepareWAMessageMedia } from 'bail
 import axios from "axios";
 import sharp from "sharp";
 import * as pinterest from "../funcs/downloads/pinterest.js";
-const MAX_IMAGES = 10;
+import { sendKyaraMediaAlbum } from "../core/mediaAlbum/index.js";
+const MAX_IMAGES = 20;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const REQUEST_TIMEOUT = 16000;
 
@@ -502,176 +503,111 @@ function pinterestImageCandidates(value) {
   }
 }
 
+
+async function mapLimitOrdered(items, concurrency, mapper, maxSuccesses = Infinity) {
+  const source = Array.isArray(items) ? items : [];
+  const output = new Array(source.length);
+  const limit = Math.max(1, Math.min(source.length || 1, Number(concurrency) || 1));
+  let nextIndex = 0;
+  let successful = 0;
+
+  await Promise.all(Array.from({ length: limit }, async () => {
+    while (true) {
+      if (successful >= maxSuccesses) return;
+      const index = nextIndex++;
+      if (index >= source.length) return;
+
+      try {
+        output[index] = await mapper(source[index], index);
+        if (output[index]) successful++;
+      } catch {
+        output[index] = null;
+      }
+    }
+  }));
+
+  return output;
+}
+
 async function loadImages(urls, query = "") {
-  const chave =
-    kyaraPinQueryKey(query);
+  const startedAt = Date.now();
+  const chave = kyaraPinQueryKey(query);
+  const anteriores = KYARA_PIN_RECENTES.get(chave) || new Set();
+  const embaralhadas = kyaraPinShuffle(Array.isArray(urls) ? urls : []);
 
-  const anteriores =
-    KYARA_PIN_RECENTES.get(chave) ||
-    new Set();
+  const novas = embaralhadas.filter(url => !anteriores.has(String(url)));
+  const ordemBruta = [
+    ...novas,
+    ...embaralhadas.filter(url => anteriores.has(String(url)))
+  ];
 
-  const embaralhadas =
-    kyaraPinShuffle(
-      Array.isArray(urls)
-        ? urls
-        : []
-    );
+  const seen = new Set();
+  const ordem = ordemBruta.filter(url => {
+    const key = String(url || "").trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  /*
-   * Primeiro tenta URLs que não apareceram
-   * recentemente para essa mesma pesquisa.
-   */
-  const novas =
-    embaralhadas.filter(
-      url => !anteriores.has(
-        String(url)
-      )
-    );
+  const carregadas = await mapLimitOrdered(ordem, 4, async url => {
+    const candidates = pinterestImageCandidates(url);
+    let raw = null;
+    let finalUrl = null;
+    let lastError = null;
 
-  /*
-   * Se o Pinterest devolveu poucos resultados
-   * novos, completa com os antigos.
-   */
-  const ordem =
-    [
-      ...novas,
-      ...embaralhadas.filter(
-        url =>
-          anteriores.has(
-            String(url)
-          )
-      )
-    ];
-
-  const out = [];
-  const usadasNestaBusca =
-    new Set();
-
-  for (
-    const url of ordem
-  ) {
-    if (
-      out.length >= MAX_IMAGES
-    ) {
-      break;
-    }
-
-    const urlKey =
-      String(url);
-
-    if (
-      usadasNestaBusca.has(
-        urlKey
-      )
-    ) {
-      continue;
-    }
-
-    usadasNestaBusca.add(
-      urlKey
-    );
-
-    try {
-
-      const candidates =
-        pinterestImageCandidates(
-          url
-        );
-
-      let raw = null;
-      let finalUrl = null;
-      let lastError = null;
-
-      /*
-       * Tenta ORIGINAL primeiro.
-       * Se retornar 404/erro, tenta 736x,
-       * depois 564x e assim por diante.
-       */
-      for(const candidate of candidates){
-
-        try {
-
-          const candidateBuffer =
-            await downloadImage(
-              candidate
-            );
-
-          if(
-            candidateBuffer &&
-            candidateBuffer.length
-          ){
-            raw = candidateBuffer;
-            finalUrl = candidate;
-            break;
-          }
-
-        } catch(error){
-          lastError = error;
+    for (const candidate of candidates) {
+      try {
+        const buffer = await downloadImage(candidate);
+        if (buffer && buffer.length) {
+          raw = buffer;
+          finalUrl = candidate;
+          break;
         }
+      } catch (error) {
+        lastError = error;
       }
+    }
 
-      if(!raw){
-        throw (
-          lastError ||
-          new Error(
-            "Nenhuma versão válida da imagem."
-          )
-        );
-      }
-
-      const compact =
-        await compressImage(
-          raw
-        );
-
-      out.push({
-        url: finalUrl || url,
-        sourceUrl: url,
-        image:
-          toDataUrl(
-            compact
-          )
-      });
-
-    } catch (error) {
+    if (!raw) {
       console.log(
         "[PINTEREST] ⚠️ Imagem ignorada:",
+        lastError?.message || "nenhuma variante disponível"
+      );
+      return null;
+    }
+
+    try {
+      const compact = await compressImage(raw);
+      return {
+        url: finalUrl || url,
+        sourceUrl: url,
+        image: toDataUrl(compact)
+      };
+    } catch (error) {
+      console.log(
+        "[PINTEREST] ⚠️ Falha ao comprimir imagem:",
         error?.message || error
       );
+      return null;
     }
-  }
+  }, MAX_IMAGES);
 
-  /*
-   * Guarda somente URLs realmente entregues.
-   */
-  const historico =
-    Array.from(
-      new Set([
-        ...anteriores,
-        ...out.map(
-          item =>
-            String(item.url)
-        )
-      ])
-    );
+  const out = carregadas.filter(Boolean).slice(0, MAX_IMAGES);
 
-  /*
-   * Mantém histórico limitado.
-   */
+  const historico = Array.from(new Set([
+    ...anteriores,
+    ...out.map(item => String(item.sourceUrl || item.url))
+  ]));
+
   KYARA_PIN_RECENTES.set(
     chave,
-    new Set(
-      historico.slice(
-        -MAX_IMAGES * 3
-      )
-    )
+    new Set(historico.slice(-MAX_IMAGES * 3))
   );
 
-  /*
-   * Último embaralhamento para evitar
-   * que a posição da imagem principal
-   * seja sempre igual.
-   */
+  console.log(
+    `[PINTEREST] ⏱️ ${out.length} imagem(ns) carregada(s) em ${Date.now() - startedAt} ms`
+  );
+
   return kyaraPinShuffle(out);
 }
 
@@ -1498,7 +1434,7 @@ function kyaraPinAdditionalNodes(jid) {
 }
 
 export async function kyaraPinterestNativeCarousel(
-  nazu,
+  kya,
   from,
   requesterId,
   query,
@@ -1705,96 +1641,65 @@ export async function kyaraPinterestNativeCarousel(
     session
   );
 
-  const cards = [];
+  const cards = (
+    await mapLimitOrdered(
+      resultados.slice(0, 10),
+      3,
+      async (resultado, index) => {
+        const numero = index + 1;
 
-  for (
-    let i = 0;
-    i < resultados.length;
-    i++
-  ) {
-    const resultado = resultados[i];
-    const numero = i + 1;
+        try {
+          const itemImage = await prepareWAMessageMedia(
+            { image: resultado.buffer },
+            { upload: kya.waUploadToServer }
+          );
 
-    try {
-      const itemImage =
-        await prepareWAMessageMedia(
-          {
-            image: resultado.buffer
-          },
-          {
-            upload:
-              nazu.waUploadToServer
-          }
-        );
+          const selectId = kyaraPinFlowId(token, numero);
 
-      const selectId =
-        kyaraPinFlowId(
-          token,
-          numero
-        );
-
-      const card =
-        proto
-          .Message
-          .InteractiveMessage
-          .fromObject({
+          const card = proto.Message.InteractiveMessage.fromObject({
             header: {
-              title:
-                `📌 ${String(query || 'Pinterest')}`
-                  .slice(0, 180),
-
+              title: `📌 ${String(query || "Pinterest")}`.slice(0, 180),
               hasMediaAttachment: true,
-
-              imageMessage:
-                itemImage.imageMessage
+              imageMessage: itemImage.imageMessage
             },
-
             body: {
               text:
                 `🖼️ Imagem ${numero}/${resultados.length}\n` +
                 `📍 Pinterest\n` +
-                `🔎 ${String(query || '').slice(0, 400)}`
+                `🔎 ${String(query || "").slice(0, 400)}`
             },
-
             footer: {
               text:
-                `${getKyaraEmoji('brand')} ${getConfiguredBotName()} • PINTEREST • ${numero}/${resultados.length}`
+                `${getKyaraEmoji("brand")} ${getConfiguredBotName()} • PINTEREST • ${numero}/${resultados.length}`
             },
-
             nativeFlowMessage: {
-              buttons: [
-                {
-                  name: 'quick_reply',
-
-                  buttonParamsJson:
-                    JSON.stringify({
-                      display_text:
-                        '✅ SELECIONAR',
-
-                      id:
-                        selectId
-                    })
-                }
-              ],
-
-              messageParamsJson: '{}',
-
+              buttons: [{
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                  display_text: "✅ SELECIONAR",
+                  id: selectId
+                })
+              }],
+              messageParamsJson: "{}",
               messageVersion: 1
             }
           });
 
-      cards.push(card);
+          console.log(
+            `[PINTEREST] ✅ Card ${numero}/${resultados.length} preparado`
+          );
 
-      console.log(
-        `[PINTEREST] ✅ Card ${numero}/${resultados.length} preparado`
-      );
-    } catch (err) {
-      console.log(
-        `[PINTEREST] ⚠️ Falha no card ${numero}:`,
-        err?.message || err
-      );
-    }
-  }
+          return card;
+        } catch (err) {
+          console.log(
+            `[PINTEREST] ⚠️ Falha no card ${numero}:`,
+            err?.message || err
+          );
+          return null;
+        }
+      }
+    )
+  ).filter(Boolean);
 
   if (!cards.length) {
     throw new Error(
@@ -1840,13 +1745,13 @@ export async function kyaraPinterestNativeCarousel(
       messageContent,
       {
         userJid:
-          nazu?.user?.id || from,
+          kya?.user?.id || from,
         quoted:
           undefined
       }
     );
 
-  await nazu.relayMessage(
+  await kya.relayMessage(
     from,
     waMessage.message,
     {
@@ -1986,16 +1891,16 @@ export async function handlePinterestClick(
 }
 
 async function kyaraPinterestVisualCard(
-  nazu,
+  kya,
   jid,
   requesterId,
   query,
   images
 ) {
   if (
-    !nazu ||
+    !kya ||
     !jid ||
-    typeof nazu.sendMessage !== "function"
+    typeof kya.sendMessage !== "function"
   ) {
     throw new Error(
       "Socket do WhatsApp indisponível."
@@ -2581,7 +2486,7 @@ async function kyaraPinterestVisualCard(
    * A imagem é enviada como imagem REAL.
    * Não depende do renderer do interactiveMessage.
    */
-  await nazu.sendMessage(
+  await kya.sendMessage(
     jid,
     {
       image: card,
@@ -2672,12 +2577,12 @@ async function kyaraPinterestVisualCard(
       },
       {
         userJid:
-          nazu.user?.id ||
+          kya.user?.id ||
           jid
       }
     );
 
-  await nazu.relayMessage(
+  await kya.relayMessage(
     jid,
     native.message,
     {
@@ -2704,6 +2609,11 @@ export async function handlePinterest(
       options.text ||
       ""
     ).trim();
+
+  const requestedCount = Math.max(
+    1,
+    Math.min(20, Number(options.requestedCount) || 5)
+  );
 
   const reply =
     typeof options.reply ===
@@ -2779,7 +2689,7 @@ export async function handlePinterest(
 
     const images =
       await loadImages(
-        urls,
+        urls.slice(0, requestedCount),
         query
       );
 
@@ -2801,14 +2711,14 @@ export async function handlePinterest(
     if(reply){
 
       await reply(
-        "🎠 *Preparando carousel com as imagens encontradas...*"
+        "🖼️ *Preparando álbum com as imagens encontradas...*"
       );
 
     }
 
 
-    const nazu =
-      options.nazu ||
+    const kya =
+      options.kya ||
       options.sock ||
       options.socket;
 
@@ -2818,36 +2728,99 @@ export async function handlePinterest(
       options.jid ||
       options.info?.key?.remoteJid;
 
-    const requesterId =
-      options.requesterId ||
-      options.senderId ||
-      options.participant ||
-      options.info?.participant ||
-      from;
-
     if (
-      !nazu ||
-      typeof nazu.relayMessage !== "function"
+      !kya ||
+      typeof kya.sendMessage !== "function" ||
+      !from
     ) {
       throw new Error(
-        "Socket do Pinterest não encontrado."
+        "Socket ou destino do Pinterest não encontrado."
+      );
+    }
+
+    const albumItems = images
+      .slice(0, requestedCount)
+      .map(item => {
+        const dataUrl = String(item?.image || "");
+
+        const match =
+          /^data:image\/([a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(
+            dataUrl
+          );
+
+        if (!match) return null;
+
+        const buffer = Buffer.from(match[2], "base64");
+
+        if (!buffer.length) return null;
+
+        let subtype = match[1].toLowerCase();
+
+        if (subtype === "jpg") {
+          subtype = "jpeg";
+        }
+
+        return {
+          type: "image",
+          source: buffer,
+          mimetype: `image/${subtype}`
+        };
+      })
+      .filter(Boolean);
+
+    if (!albumItems.length) {
+      throw new Error(
+        "Não consegui preparar imagens válidas para o álbum."
       );
     }
 
     console.log(
-      `[PINTEREST] 🎠 Enviando carousel nativo: ${images.length} imagem(ns)`
+      `[PINTEREST] 🖼️ Enviando ${albumItems.length} imagem(ns) em álbum`
     );
 
-    await kyaraPinterestNativeCarousel(
-      nazu,
-      from,
-      requesterId,
-      query,
-      images
-    );
+    let sentCount = 0;
+
+    // O módulo existente aceita até 10 imagens por álbum.
+    // Acima disso, envia um segundo álbum.
+    for (
+      let offset = 0;
+      offset < albumItems.length;
+      offset += 10
+    ) {
+      const batch = albumItems.slice(offset, offset + 10);
+
+      // Cada álbum recebe legenda na primeira imagem.
+      batch[0] = {
+        ...batch[0],
+        caption: `📌 ${title} • Pinterest`
+      };
+
+      const result = await sendKyaraMediaAlbum(
+        kya,
+        from,
+        batch,
+        {
+          parentOptions: options.info
+            ? { quoted: options.info }
+            : {},
+          childOptions: {}
+        }
+      );
+
+      const sent = Number(result?.enviados);
+
+      sentCount += Number.isFinite(sent)
+        ? sent
+        : batch.length;
+
+      console.log(
+        `[PINTEREST] ✅ Lote ${Math.floor(offset / 10) + 1}: ` +
+        `${sentCount}/${albumItems.length} imagem(ns) acumuladas`
+      );
+    }
 
     console.log(
-      `[PINTEREST] ✅ Carousel nativo enviado: ${images.length} imagem(ns)`
+      `[PINTEREST] 🎉 Total enviado: ${sentCount} imagem(ns)`
     );
 
     if(reply){

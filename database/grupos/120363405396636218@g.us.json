@@ -1,0 +1,81 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-15T20:42:44.556Z",
+  "groupName": "么ĆĦΔŦ ĐΔ_ĦỮŦΔØ ₣ΞǤŞ᭄",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "127350092079264@lid",
+      "msg": 0,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "Daniel",
+      "firstSeen": "2026-09-15T20:42:44.565Z",
+      "lastActivity": "2026-09-15T20:42:44.565Z"
+    },
+    {
+      "id": "74290770780395@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 3,
+      "pushname": "𝑨𝒈𝒂𝒕𝒉𝒂 - Bot de Administração!",
+      "firstSeen": "2026-09-15T20:43:00.924Z",
+      "lastActivity": "2026-09-15T21:24:16.531Z"
+    },
+    {
+      "id": "4836821061781@lid",
+      "msg": 5,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "ㄚ.卂.几.ᗪ.乇.尺.乇",
+      "firstSeen": "2026-09-15T20:43:04.085Z",
+      "lastActivity": "2026-09-15T21:25:43.917Z"
+    },
+    {
+      "id": "277584239702210@lid",
+      "msg": 2,
+      "cmd": 1,
+      "figu": 0,
+      "pushname": "Biel 🎮🏀",
+      "firstSeen": "2026-09-15T21:03:47.175Z",
+      "lastActivity": "2026-09-15T21:24:36.542Z"
+    },
+    {
+      "id": "171553895489679@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "⠀",
+      "firstSeen": "2026-09-15T21:22:00.523Z",
+      "lastActivity": "2026-09-15T21:23:56.151Z"
+    },
+    {
+      "id": "140699186004026@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "Egoísta",
+      "firstSeen": "2026-09-15T21:22:58.004Z",
+      "lastActivity": "2026-09-15T21:23:47.386Z"
+    },
+    {
+      "id": "75673616044263@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "✿᭄ ℂ𝕒𝕣𝕝𝕚𝕟𝕙𝕒 ♡᭄",
+      "firstSeen": "2026-09-15T21:23:50.645Z",
+      "lastActivity": "2026-09-15T21:23:50.645Z"
+    }
+  ]
+}

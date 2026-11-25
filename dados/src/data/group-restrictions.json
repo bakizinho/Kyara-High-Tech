@@ -1,1 +1,17 @@
-{}
+{
+  "120363999999999999@g.us": {
+    "anti-payment": false
+  },
+  "120363430506272986@g.us": {
+    "anti-payment": true
+  },
+  "120363427154196756@g.us": {
+    "anti-payment": false
+  },
+  "120363411573557488@g.us": {
+    "anti-payment": true
+  },
+  "120363411080248073@g.us": {
+    "anti-payment": true
+  }
+}

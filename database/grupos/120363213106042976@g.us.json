@@ -1,0 +1,117 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-03T12:13:23.283Z",
+  "groupName": "𝐃𝐢𝐯𝐮𝐥𝐠𝐚𝐜̧𝐚̃𝐨 𝟐𝟒 𝐇𝐨𝐫𝐚𝐬",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "159399859454166@lid",
+      "msg": 5,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Igor",
+      "firstSeen": "2026-09-03T12:13:23.303Z",
+      "lastActivity": "2026-09-22T09:51:10.340Z"
+    },
+    {
+      "id": "252106778894409@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Fasul Ead",
+      "firstSeen": "2026-09-10T13:19:32.715Z",
+      "lastActivity": "2026-09-10T13:19:32.715Z"
+    },
+    {
+      "id": "57415374532683@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "G7",
+      "firstSeen": "2026-09-10T17:37:10.916Z",
+      "lastActivity": "2026-09-10T17:37:11.794Z"
+    },
+    {
+      "id": "72160483758271@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Teste",
+      "firstSeen": "2026-09-12T02:32:55.427Z",
+      "lastActivity": "2026-09-12T02:32:55.436Z"
+    },
+    {
+      "id": "70949286215712@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Dudaah Moraes ",
+      "firstSeen": "2026-09-12T10:12:59.772Z",
+      "lastActivity": "2026-09-12T10:12:59.777Z"
+    },
+    {
+      "id": "208924926017590@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "SHIELD CORE™",
+      "firstSeen": "2026-09-13T00:50:57.449Z",
+      "lastActivity": "2026-09-13T00:50:58.223Z"
+    },
+    {
+      "id": "103255963091004@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Jama",
+      "firstSeen": "2026-09-16T15:46:58.584Z",
+      "lastActivity": "2026-09-16T15:46:58.584Z"
+    },
+    {
+      "id": "139131606843395@lid",
+      "msg": 3,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": ".",
+      "firstSeen": "2026-09-19T02:09:24.099Z",
+      "lastActivity": "2026-09-24T01:55:47.410Z"
+    },
+    {
+      "id": "93386279231707@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Is",
+      "firstSeen": "2026-09-20T16:58:13.670Z",
+      "lastActivity": "2026-09-20T16:58:13.671Z"
+    },
+    {
+      "id": "280311292272678@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": "Wellyson",
+      "firstSeen": "2026-09-22T04:44:59.119Z",
+      "lastActivity": "2026-09-22T04:44:59.136Z"
+    },
+    {
+      "id": "134089483014215@lid",
+      "msg": 1,
+      "cmd": 0,
+      "figu": 0,
+      "pushname": ".",
+      "firstSeen": "2026-09-22T18:40:57.292Z",
+      "lastActivity": "2026-09-22T18:40:57.292Z"
+    }
+  ],
+  "levelingConfigured": true
+}

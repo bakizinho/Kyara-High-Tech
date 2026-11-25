@@ -1,0 +1,67 @@
+{
+  "mark": {},
+  "createdAt": "2026-09-10T20:06:30.376Z",
+  "groupName": "Show 😃👍",
+  "modorpg": false,
+  "minMessage": null,
+  "moderators": [],
+  "allowedModCommands": [],
+  "mutedUsers": {},
+  "mutedUsers2": {},
+  "levelingEnabled": false,
+  "levelingConfigured": true,
+  "adminWhitelist": {},
+  "roles": {},
+  "roleMessages": {},
+  "contador": [
+    {
+      "id": "28145558278209@lid",
+      "msg": 210,
+      "cmd": 33,
+      "figu": 62,
+      "pushname": "© 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-10T20:06:30.398Z",
+      "lastActivity": "2026-10-07T03:20:06.367Z"
+    },
+    {
+      "id": "87244476010549@lid",
+      "msg": 13,
+      "cmd": 2,
+      "figu": 1,
+      "pushname": "亗⃝ 𝙑Ø𝙓-𝙈𝘿",
+      "firstSeen": "2026-09-10T20:15:26.389Z",
+      "lastActivity": "2026-10-04T15:36:45.779Z"
+    },
+    {
+      "id": "215255674261734@lid",
+      "msg": 215,
+      "cmd": 0,
+      "figu": 11,
+      "pushname": "Isaac Melo",
+      "firstSeen": "2026-09-11T15:34:59.126Z",
+      "lastActivity": "2026-10-04T13:48:55.930Z"
+    },
+    {
+      "id": "179392948998174@lid",
+      "msg": 210,
+      "cmd": 1,
+      "figu": 38,
+      "pushname": "Allan Diego",
+      "firstSeen": "2026-09-11T15:36:05.219Z",
+      "lastActivity": "2026-10-07T03:01:19.446Z"
+    },
+    {
+      "id": "168169931026620@lid",
+      "msg": 2,
+      "cmd": 0,
+      "figu": 1,
+      "pushname": "João Pedro",
+      "firstSeen": "2026-09-21T23:58:47.671Z",
+      "lastActivity": "2026-09-22T00:00:49.681Z"
+    }
+  ],
+  "autodlMode": "video",
+  "autodl": true,
+  "assistente": true,
+  "assistentePersonality": "kyara"
+}

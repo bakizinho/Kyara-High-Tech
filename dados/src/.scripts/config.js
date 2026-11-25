@@ -252,7 +252,7 @@ async function main() {
         lidowner: '',
 
         github_ofc: 'https://github.com/bakizinho/BKkyara-',
-        autor: 'baki',
+        autor: '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
         repositorio: 'kyara',
         modoaluguel: false,
 

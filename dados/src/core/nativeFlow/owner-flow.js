@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+
 import {
   getMenuMedia
 } from '../menuAdaptativo/menu-media.js'
@@ -17,6 +19,39 @@ import {
   KYARA_OFFICIAL_CHANNELS,
   formatCommand
 } from '../runtime/kyara-runtime.js'
+
+import { isInteractiveMenu } from '../../menus/menu-mode.js'
+import { applyMenuFont, loadMenuDesign } from '../../utils/database.js'
+
+
+function ownerSandStyle(text, botName, prefix) {
+  const clean = String(text || '');
+
+  const lines = clean
+    .split('\n')
+    .filter(line => !/VER CANAL|O COMEÇO|BOT-KYARA/i.test(line));
+
+  return [
+    `╭┈⊰ ${botName}-ᴅᴏɴᴏ`,
+    `┊ ᴘᴀɪɴᴇʟ ᴅᴏ ᴅᴏɴᴏ`,
+    `╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯`,
+    '',
+    ...lines.map(line => {
+      const x = line.trim();
+
+      if (!x) return '┊';
+
+      if (
+        /^📚|^👤|^⚡|^🧠|^⌨️|^Categorias/i.test(x)
+      ) {
+        return `┊ ${x}`;
+      }
+
+      return `┊ 亗⃝ ${x}`;
+    }),
+    '╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯'
+  ].join('\n');
+}
 
 export const CATS = [
   {
@@ -145,6 +180,7 @@ export const CMDS = {
 
   design: [
     'designmenu',
+    'fontes',
     'setborda',
     'setbordafim',
     'setbordameio',
@@ -263,6 +299,7 @@ export const CMDS = {
     'antipvmsg',
     'antispamcmd',
     'viewmsg',
+    'antideletepv',
     'cases',
     'getcase',
     'modoliteglobal',
@@ -411,7 +448,7 @@ function commandRow(
   )
 }
 
-function categorySections() {
+function categorySections(botName = 'KYARA') {
   return chunk(
     CATS,
     8
@@ -478,6 +515,186 @@ function greeting() {
   return 'Boa noite'
 }
 
+function smallCaps(value) {
+  const map = {
+    a:'ᴀ', b:'ʙ', c:'ᴄ', d:'ᴅ', e:'ᴇ',
+    f:'ꜰ', g:'ɢ', h:'ʜ', i:'ɪ', j:'ᴊ',
+    k:'ᴋ', l:'ʟ', m:'ᴍ', n:'ɴ', o:'ᴏ',
+    p:'ᴘ', q:'ǫ', r:'ʀ', s:'s', t:'ᴛ',
+    u:'ᴜ', v:'ᴠ', w:'ᴡ', x:'x', y:'ʏ', z:'ᴢ'
+  }
+
+  return Array.from(
+    String(value ?? '').toLowerCase()
+  )
+    .map(c => map[c] || c)
+    .join('')
+}
+
+function ownerText(
+  botName,
+  ownerName,
+  prefix,
+  categoryId = null
+) {
+  const design = loadMenuDesign() || {};
+
+  const cats = categoryId
+    ? CATS.filter(c => c.id === categoryId)
+    : CATS;
+
+  const separatorIcon = String(design.separatorIcon ?? '❁');
+  const replaceSeparator = value =>
+    String(value ?? '').replace(/❁/g, separatorIcon);
+
+  const topBorder = replaceSeparator(
+    design.menuTopBorder ?? '╭┈'
+  );
+  const bottomBorder = replaceSeparator(
+    design.bottomBorder ?? '╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯'
+  );
+  const titleIcon = replaceSeparator(
+    design.menuTitleIcon ?? '❁'
+  );
+  const itemIcon = String(
+    design.menuItemIcon ?? '亗⃝ '
+  );
+  const middleBorder = replaceSeparator(
+    design.middleBorder ?? '┊'
+  );
+
+  const defaultHeader = [
+    '╭┈⊰ {botName}-ᴍᴅ',
+    '┊ ᴏʟᴀ́, {userName}!',
+    '╰─┈┈┈┈┈◜❁◞┈┈┈┈┈─╯'
+  ].join('\n');
+
+  let header = String(design.header || defaultHeader)
+    .replace(/\{botName\}/g, '__KYARA_OWNER_BOT__')
+    .replace(/\{userName\}/g, String(ownerName))
+    .replace(/\{greeting\}/g, 'ᴏʟᴀ́, ' + ownerName + '!');
+
+  header = header
+    .replace(
+      /__KYARA_OWNER_BOT__-ᴍᴅ/g,
+      String(botName) + '-ᴅᴏɴᴏ'
+    )
+    .replace(
+      /__KYARA_OWNER_BOT__/g,
+      String(botName) + '-ᴅᴏɴᴏ'
+    );
+
+  header = replaceSeparator(header);
+
+  const lines = [header, ''];
+
+  for (const category of cats) {
+    lines.push(
+      topBorder + titleIcon + ' ' + smallCaps(category.title),
+      middleBorder
+    );
+
+    for (const command of (CMDS[category.id] || [])) {
+      lines.push(
+        middleBorder + ' ' + itemIcon + prefix + command
+      );
+    }
+
+    lines.push(bottomBorder, '');
+  }
+
+  return applyMenuFont(
+    lines.join('\n').trim(),
+    String(design.menuFonts?.dono ?? design.globalFontStyle ?? design.fontStyle ?? 'normal'),
+    prefix
+  );
+}
+
+async function sendOwnerTextFallback(Kyara, jid, text, media = null) {
+  try {
+    if (media?.path && fs.existsSync(media.path)) {
+      const buffer = fs.readFileSync(media.path);
+
+      if (buffer.length) {
+        const fullText = String(text || '');
+        const longCaption = false;
+        const caption = longCaption
+          ? '👑 KYARA • PAINEL DO DONO\nLista completa enviada abaixo.'
+          : fullText;
+
+        const isVideo =
+          media.type === 'video' || /\.mp4$/i.test(String(media.path));
+
+        const content = isVideo
+          ? {
+              video: buffer,
+              mimetype: 'video/mp4',
+              caption,
+              gifPlayback: true
+            }
+          : {
+              image: buffer,
+              caption
+            };
+
+        const sent = await Kyara.sendMessage(jid, content);
+
+        if (longCaption) {
+          await Kyara.sendMessage(jid, { text: fullText });
+        }
+
+        return sent;
+      }
+    }
+  } catch (mediaError) {
+    console.warn(
+      '[MENUDONO] Mídia do fallback não enviada:',
+      mediaError?.message || mediaError
+    );
+  }
+
+  return Kyara.sendMessage(jid, { text });
+}
+
+async function sendOwnerFlowWithFallback(Kyara, jid, payload, label) {
+  try {
+    const result = await sendFlow(Kyara, jid, { ...payload, viewOnce: false });
+
+    if (!result?.message || !result?.key?.id) {
+      throw new Error('Native Flow não gerou uma mensagem válida.');
+    }
+
+    return result;
+  } catch (error) {
+    console.error(
+      '[MENUDONO] Falha no Native Flow (' + label + '):',
+      error?.stack || error
+    );
+
+    try {
+      const fallback = await sendOwnerTextFallback(
+        Kyara,
+        jid,
+        String(payload?.text || 'Painel do dono da Kyara.'),
+        payload?.media
+      );
+
+      console.warn(
+        '[MENUDONO] Fallback normal enviado (' + label + ').'
+      );
+
+      return fallback;
+    } catch (fallbackError) {
+      console.error(
+        '[MENUDONO] Falha também no fallback normal (' + label + '):',
+        fallbackError?.stack || fallbackError
+      );
+
+      throw fallbackError;
+    }
+  }
+}
+
 export async function sendOwnerMain(
   Kyara,
   jid,
@@ -508,49 +725,39 @@ export async function sendOwnerMain(
     )
 
   const media =
-    await getMenuMedia(
-      'admin'
-    ).catch(
+    await getMenuMedia('global').catch(
       () => null
     )
 
-  const text = [
-    '👑 *KYARA • DONO MODE*',
+  const text =
+    ownerText(
+      botName,
+      ownerName,
+      prefix
+    )
 
-    `${greeting()}, ${ownerName}! 🌸`,
-
-    '',
-
-    `🌸 *${botName}*`,
-
-    '👤 👑 DONO',
-
-    `⚡ Online: ${metrics.up}s`,
-
-    `🧠 RAM: ${metrics.ram} MB`,
-
-    `⌨️ Prefixo: ${prefix}`,
-
-    '',
-
-    '📚 *CENTRAL KYARA*',
-
-    `Categorias: ${CATS.length}`,
-
-    '',
-
-    'Escolha uma categoria no seletor abaixo.',
-
-    'Cada categoria abre seus comandos organizados.',
-
-    '',
-
-    '📢 Acompanhe os canais oficiais O COMEÇO e BOT-KYARA nos botões abaixo.'
-  ].join(
-    '\n'
+  const wizardButton = singleSelect(
+    '🧭 CONFIGURAÇÃO GUIADA',
+    [
+      {
+        title: 'Assistente',
+        rows: [
+          row(
+            'Iniciar assistente',
+            'Nome, prefixo e nome do dono',
+            'owner:setup:start'
+          )
+        ]
+      }
+    ]
   )
 
-  return sendFlow(
+  if (!isInteractiveMenu()) {
+    console.log('[MENUDONO] Modo NORMAL — enviando painel com capa, sem botões.');
+    return sendOwnerTextFallback(Kyara, jid, text, media);
+  }
+
+  return sendOwnerFlowWithFallback(
     Kyara,
     jid,
     {
@@ -567,20 +774,12 @@ export async function sendOwnerMain(
       buttons: [
         singleSelect(
           '📂 ABRIR PAINEL',
-          categorySections()
+          categorySections(botName)
         ),
-
-        channelButton(
-          '📢 VER CANAL • O COMEÇO',
-          KYARA_OFFICIAL_CHANNELS.oComeco
-        ),
-
-        channelButton(
-          '🤖 VER CANAL • BOT-KYARA',
-          KYARA_OFFICIAL_CHANNELS.botKyara
-        )
+        wizardButton
       ]
-    }
+    },
+    'painel principal'
   )
 }
 
@@ -627,9 +826,7 @@ export async function sendOwnerCategory(
     )
 
   const media =
-    await getMenuMedia(
-      'admin'
-    ).catch(
+    await getMenuMedia('global').catch(
       () => null
     )
 
@@ -686,31 +883,23 @@ export async function sendOwnerCategory(
     )
   ]
 
-  const text = [
-    `👑 ${category.title}`,
+  const text =
+    ownerText(
+      botName,
+      safe(
+        config.nomedono,
+        getOwnerName()
+      ),
+      prefix,
+      categoryId
+    )
 
-    category.desc,
+  if (!isInteractiveMenu()) {
+    console.log('[MENUDONO] Categoria em modo NORMAL — enviando texto puro.');
+    return Kyara.sendMessage(jid, { text });
+  }
 
-    '',
-
-    `📦 ${commands.length} comandos`,
-
-    `⌨️ Prefixo: ${prefix}`,
-
-    '',
-
-    'Toque em um comando para executar.',
-
-    'O comando interno permanece sem prefixo; a apresentação acompanha o prefixo atual.',
-
-    '',
-
-    `🌸 ${botName}`
-  ].join(
-    '\n'
-  )
-
-  return sendFlow(
+  return sendOwnerFlowWithFallback(
     Kyara,
     jid,
     {
@@ -728,18 +917,9 @@ export async function sendOwnerCategory(
         singleSelect(
           '🛠️ COMANDOS',
           sections
-        ),
-
-        channelButton(
-          '📢 O COMEÇO',
-          KYARA_OFFICIAL_CHANNELS.oComeco
-        ),
-
-        channelButton(
-          '🤖 BOT-KYARA',
-          KYARA_OFFICIAL_CHANNELS.botKyara
         )
       ]
-    }
+    },
+    'categoria ' + category.title
   )
 }

@@ -2,13 +2,14 @@ import axios from 'axios';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { fileURLToPath } from 'url';
-
-const UA =
-  'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const UA =
+  'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36';
 
 const HISTORY_FILE = path.join(
   __dirname,
@@ -18,11 +19,8 @@ const HISTORY_FILE = path.join(
   'sticker-history.json'
 );
 
-/*
- * ============================================================
- * 🚫 FILTRO ABSOLUTO DE CONTEÚDO ADULTO
- * ============================================================
- */
+const MAX_PACK = 40;
+const MAX_STICKER_SIZE = 1024 * 1024;
 
 const BLOCKED_TERMS = [
   'porn',
@@ -38,14 +36,11 @@ const BLOCKED_TERMS = [
   'sex',
   'sexual',
   'erotic',
-  'erotica',
   'fetish',
   'rule34',
   'booru',
-  'doujin',
   'adult',
   '18+',
-  '18plus',
   'explicit',
   'genital',
   'breast',
@@ -71,11 +66,11 @@ function blocked(value = '') {
 
 function validUrl(value) {
   try {
-    const u = new URL(String(value));
+    const url = new URL(String(value));
 
     return (
-      u.protocol === 'http:' ||
-      u.protocol === 'https:'
+      url.protocol === 'http:' ||
+      url.protocol === 'https:'
     );
   } catch {
     return false;
@@ -97,39 +92,30 @@ function decodeHtml(value = '') {
     .replace(/\\"/g, '"');
 }
 
-/*
- * ============================================================
- * HISTÓRICO
- *
- * Guarda URLs recentemente usadas por tema.
- * Assim:
- *
- * /figurinhas goku 4
- * depois /figurinhas goku 4
- *
- * NÃO pega simplesmente os mesmos 4 links.
- * ============================================================
- */
+function themeKey(theme) {
+  return normalizeText(theme)
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+}
 
 function loadHistory() {
   try {
-    const dir = path.dirname(HISTORY_FILE);
-
-    fs.mkdirSync(dir, {
-      recursive: true
-    });
+    fs.mkdirSync(
+      path.dirname(HISTORY_FILE),
+      { recursive: true }
+    );
 
     if (!fs.existsSync(HISTORY_FILE)) {
       return {};
     }
 
-    const data =
-      JSON.parse(
-        fs.readFileSync(
-          HISTORY_FILE,
-          'utf8'
-        )
-      );
+    const data = JSON.parse(
+      fs.readFileSync(
+        HISTORY_FILE,
+        'utf8'
+      )
+    );
 
     return (
       data &&
@@ -156,33 +142,46 @@ function saveHistory(history) {
         history,
         null,
         2
-      )
+      ),
+      'utf8'
     );
+
   } catch (error) {
     console.error(
-      '[THEME STICKER] Erro salvando histórico:',
+      '[PACOTE PRIME] Erro no histórico:',
       error.message
     );
   }
 }
 
-function themeKey(theme) {
-  return normalizeText(theme)
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 100);
-}
+function shuffle(array) {
+  const lista = [...array];
 
-/*
- * ============================================================
- * BING IMAGES
- * ============================================================
- */
+  for (
+    let i = lista.length - 1;
+    i > 0;
+    i--
+  ) {
+    const j =
+      Math.floor(
+        Math.random() * (i + 1)
+      );
+
+    [
+      lista[i],
+      lista[j]
+    ] = [
+      lista[j],
+      lista[i]
+    ];
+  }
+
+  return lista;
+}
 
 async function searchBingImages(
   query,
-  limit,
-  offset = 0
+  limit = 100
 ) {
   const url =
     new URL(
@@ -206,7 +205,11 @@ async function searchBingImages(
 
   url.searchParams.set(
     'first',
-    String(Math.max(1, offset))
+    String(
+      Math.floor(
+        Math.random() * 80
+      ) + 1
+    )
   );
 
   const response =
@@ -225,10 +228,12 @@ async function searchBingImages(
     );
 
   const html =
-    String(response.data || '');
+    String(
+      response.data || ''
+    );
 
-  const results = [];
-  const seen = new Set();
+  const resultados = [];
+  const vistos = new Set();
 
   const patterns = [
     /"murl":"(.*?)"/g,
@@ -237,12 +242,14 @@ async function searchBingImages(
     /"turl":"(.*?)"/g
   ];
 
-  for (const pattern of patterns) {
-
+  for (
+    const pattern of patterns
+  ) {
     let match;
 
     while (
-      (match = pattern.exec(html))
+      (match =
+        pattern.exec(html))
     ) {
       let value =
         decodeHtml(match[1]);
@@ -252,11 +259,10 @@ async function searchBingImages(
           decodeURIComponent(value);
       } catch {}
 
-      if (!validUrl(value)) {
-        continue;
-      }
-
-      if (blocked(value)) {
+      if (
+        !validUrl(value) ||
+        blocked(value)
+      ) {
         continue;
       }
 
@@ -264,304 +270,94 @@ async function searchBingImages(
         value.toLowerCase();
 
       if (
-        lower.includes(
-          'bing.com/images'
-        ) ||
-        lower.includes(
-          'google.com'
-        ) ||
-        lower.includes(
-          'gstatic.com'
-        ) ||
-        lower.includes(
-          'data:image'
-        ) ||
+        lower.includes('bing.com') ||
+        lower.includes('google.com') ||
+        lower.includes('gstatic.com') ||
         lower.endsWith('.svg')
       ) {
         continue;
       }
 
-      if (!seen.has(value)) {
-        seen.add(value);
-        results.push(value);
+      if (
+        vistos.has(value)
+      ) {
+        continue;
       }
+
+      vistos.add(value);
+      resultados.push(value);
 
       if (
-        results.length >= limit
+        resultados.length >= limit
       ) {
-        return results;
+        return resultados;
       }
     }
   }
 
-  return results;
+  return resultados;
 }
 
-/*
- * ============================================================
- * BUSCA VARIADA
- *
- * Não faz uma única pesquisa estática.
- * Usa várias descrições diferentes + posições diferentes
- * no Bing.
- * ============================================================
- */
+async function buscarImagens(tema) {
+  const base = String(tema || '').trim();
 
-export async function searchThemeImages(
-  theme,
-  limit = 30
-) {
-  const clean =
-    String(theme || '')
-      .replace(
-        /[^\p{L}\p{N}\s_-]/gu,
-        ' '
-      )
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 100);
+  const consultas = shuffle([
+    base + ' sticker',
+    base + ' whatsapp sticker',
+    base + ' anime sticker',
+    base + ' png',
+    base + ' transparent',
+    base + ' meme',
+    base + ' reaction',
+    base + ' chibi',
+    base + ' funny',
+    base + ' character'
+  ]).slice(0, 5);
 
-  if (!clean) {
-    return [];
-  }
-
-  if (blocked(clean)) {
-    console.log(
-      `[THEME STICKER] 🚫 Tema bloqueado: ${clean}`
-    );
-
-    return [];
-  }
-
-  const history =
-    loadHistory();
-
-  const key =
-    themeKey(clean);
-
-  const used =
-    new Set(
-      Array.isArray(history[key])
-        ? history[key]
-        : []
-    );
-
-  /*
-   * Embaralha os termos.
-   */
-  const variants = [
-    `${clean} anime`,
-    `${clean} character`,
-    `${clean} anime character`,
-    `${clean} manga`,
-    `${clean} drawing`,
-    `${clean} illustration`,
-    `${clean} artwork`,
-    `${clean} action`,
-    `${clean} funny`,
-    `${clean} face expression`,
-    `${clean} pose`,
-    `${clean} wallpaper`
-  ];
-
-  /*
-   * Fisher-Yates.
-   */
-  for (
-    let i = variants.length - 1;
-    i > 0;
-    i--
-  ) {
-    const j =
-      Math.floor(
-        Math.random() * (i + 1)
-      );
-
-    [
-      variants[i],
-      variants[j]
-    ] = [
-      variants[j],
-      variants[i]
-    ];
-  }
-
-  const results = [];
-  const seen = new Set();
-
-  /*
-   * Começa em posições aleatórias.
-   * Isso evita sempre pegar os primeiros resultados.
-   */
-  const offsets = [];
-
-  for (
-    let i = 0;
-    i < variants.length;
-    i++
-  ) {
-    offsets.push(
-      Math.floor(
-        Math.random() * 80
-      )
-    );
-  }
-
-  for (
-    let i = 0;
-    i < variants.length;
-    i++
-  ) {
-    if (
-      results.length >= limit
-    ) {
-      break;
-    }
-
-    const query =
-      variants[i];
-
-    try {
-
-      const found =
-        await searchBingImages(
-          query,
-          Math.max(20, limit),
-          offsets[i]
-        );
-
-      let fresh = 0;
-
-      for (
-        const url of found
-      ) {
-
-        /*
-         * Evita:
-         * - repetição na mesma busca
-         * - repetição recente do tema
-         */
-        if (
-          seen.has(url) ||
-          used.has(url)
-        ) {
-          continue;
-        }
-
-        seen.add(url);
-        results.push(url);
-        fresh++;
-
-        if (
-          results.length >= limit
-        ) {
-          break;
-        }
-      }
-
-      console.log(
-        `[THEME STICKER] ${query} @${offsets[i]}: ${fresh} novas`
-      );
-
-    } catch (error) {
-
-      console.error(
-        `[THEME STICKER] Erro Bing: ${error.message}`
-      );
-    }
-  }
-
-  /*
-   * Se o histórico ficou grande demais,
-   * mantém somente os últimos 120.
-   */
-  history[key] = [
-    ...(Array.isArray(history[key])
-      ? history[key]
-      : [])
-  ];
-
-  saveHistory(history);
-
-  console.log(
-    `[THEME STICKER] ${clean}: ${results.length} imagens NOVAS`
+  const lotes = await Promise.allSettled(
+    consultas.map(consulta => searchBingImages(consulta, 80))
   );
 
-  return results;
+  const resultados = [];
+  const vistos = new Set();
+
+  for (let i = 0; i < lotes.length; i++) {
+    const lote = lotes[i];
+
+    if (lote.status !== 'fulfilled') {
+      console.log(
+        '[PACOTE PRIME] Busca falhou:',
+        lote.reason?.message || lote.reason
+      );
+      continue;
+    }
+
+    for (const url of lote.value || []) {
+      if (vistos.has(url)) continue;
+
+      vistos.add(url);
+      resultados.push(url);
+
+      if (resultados.length >= 180) break;
+    }
+
+    if (resultados.length >= 180) break;
+  }
+
+  console.log(
+    '[PACOTE PRIME] URLs encontradas: ' + resultados.length
+  );
+
+  return shuffle(resultados);
 }
 
-/*
- * ============================================================
- * VALIDAÇÃO DA IMAGEM
- * ============================================================
- */
-
-function looksLikeImage(
-  buffer,
-  contentType = ''
-) {
-  const type =
-    String(
-      contentType || ''
-    ).toLowerCase();
-
-  if (
-    type.startsWith('image/')
-  ) {
-    return true;
-  }
-
-  if (
-    !buffer ||
-    buffer.length < 100
-  ) {
-    return false;
-  }
-
-  if (
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47
-  ) {
-    return true;
-  }
-
-  if (
-    buffer[0] === 0xff &&
-    buffer[1] === 0xd8
-  ) {
-    return true;
-  }
-
-  if (
-    buffer.slice(0, 4).toString() ===
-      'RIFF' &&
-    buffer.slice(8, 12).toString() ===
-      'WEBP'
-  ) {
-    return true;
-  }
-
-  if (
-    buffer.slice(0, 6).toString() ===
-      'GIF87a' ||
-    buffer.slice(0, 6).toString() ===
-      'GIF89a'
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-async function downloadImage(url) {
+async function baixarImagem(url) {
   if (
     !validUrl(url) ||
     blocked(url)
   ) {
     throw new Error(
-      'URL bloqueada pelo filtro'
+      'URL inválida'
     );
   }
 
@@ -572,8 +368,7 @@ async function downloadImage(url) {
         responseType:
           'arraybuffer',
 
-        timeout:
-          20000,
+        timeout: 20000,
 
         maxContentLength:
           12 * 1024 * 1024,
@@ -581,66 +376,216 @@ async function downloadImage(url) {
         maxBodyLength:
           12 * 1024 * 1024,
 
-        validateStatus:
-          status =>
-            status >= 200 &&
-            status < 400,
-
         headers: {
           'User-Agent': UA,
           Accept:
-            'image/avif,image/webp,image/apng,image/png,image/jpeg,image/gif,image/*;q=0.8,*/*;q=0.2'
+            'image/avif,image/webp,image/png,image/jpeg,image/*'
         }
       }
     );
 
-  const buffer =
-    Buffer.from(
-      response.data || []
-    );
-
-  if (
-    !looksLikeImage(
-      buffer,
-      response.headers?.[
-        'content-type'
-      ]
-    )
-  ) {
-    throw new Error(
-      'conteúdo recebido não é imagem'
-    );
-  }
-
-  return buffer;
+  return Buffer.from(
+    response.data
+  );
 }
 
-/*
- * ============================================================
- * ENVIO
- * ============================================================
- */
+async function converterWebp(
+  buffer
+) {
+  let qualidade = 84;
 
-export async function sendThemeStickers({
-  nazu,
-  destino,
-  imagens,
-  tema = '',
-  quantidade,
-  author = 'Baki',
-  packname = 'Kyara',
-  quoted
-}) {
-  const requested =
-    Math.max(
-      1,
-      Math.min(40, Number(quantidade) || 1)
+  for (
+    let tentativa = 0;
+    tentativa < 6;
+    tentativa++
+  ) {
+    const webp =
+      await sharp(buffer)
+        .rotate()
+        .ensureAlpha()
+        .resize({
+          width: 512,
+          height: 512,
+          fit: 'contain',
+          background: {
+            r: 0,
+            g: 0,
+            b: 0,
+            alpha: 0
+          }
+        })
+        .webp({
+          quality: qualidade,
+          alphaQuality: 100,
+          effort: 3
+        })
+        .toBuffer();
+
+    if (
+      webp.length <=
+      MAX_STICKER_SIZE
+    ) {
+      return webp;
+    }
+
+    qualidade -= 10;
+  }
+
+  throw new Error(
+    'figurinha maior que 1 MB'
+  );
+}
+
+const STICKER_BUFFER_CACHE = new Map();
+
+async function converterWebpAnimado(buffer) {
+  const metadata = await sharp(buffer, {
+    animated: true
+  }).metadata();
+
+  const totalFrames = Number(metadata.pages) || 1;
+
+  if (totalFrames < 2) {
+    throw new Error('A imagem encontrada não tem animação');
+  }
+
+  const sourceDelays = Array.isArray(metadata.delay)
+    ? metadata.delay
+    : [];
+
+  const delays = [];
+  let duration = 0;
+
+  for (let i = 0; i < totalFrames; i++) {
+    const delay = Math.max(
+      20,
+      Math.min(500, Number(sourceDelays[i]) || 100)
     );
 
-  if (
-    !nazu ||
-    !destino
-  ) {
+    if (duration + delay > 10000) break;
+
+    delays.push(delay);
+    duration += delay;
+  }
+
+  if (delays.length < 2) {
+    delays.length = 0;
+    delays.push(100, 100);
+  }
+
+  const frameCount = Math.min(totalFrames, delays.length);
+  const outputDelays = delays.slice(0, frameCount);
+  const maximumBytes = 500 * 1024;
+
+  for (const quality of [68, 58, 48, 38, 28]) {
+    const webp = await sharp(buffer, {
+      pages: frameCount
+    })
+      .rotate()
+      .ensureAlpha()
+      .resize({
+        width: 512,
+        height: 512,
+        fit: 'contain',
+        background: {
+          r: 0,
+          g: 0,
+          b: 0,
+          alpha: 0
+        }
+      })
+      .webp({
+        quality,
+        alphaQuality: 70,
+        effort: 3,
+        loop: 0,
+        delay: outputDelays,
+        mixed: true
+      })
+      .toBuffer();
+
+    if (webp.length <= maximumBytes) {
+      const check = await sharp(webp, {
+        animated: true
+      }).metadata();
+
+      if ((Number(check.pages) || 1) >= 2) {
+        return webp;
+      }
+    }
+  }
+
+  throw new Error('Não foi possível gerar WebP animado de até 500 KB');
+}
+
+async function processThemeStickerPack({
+  kya,
+  destino,
+  tema,
+  quantidade = 12,
+  author = '𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠',
+  packname = 'Kyara',
+  quoted,
+  animado = false
+}) {
+
+  const limitePacote = animado ? Math.min(MAX_PACK, 30) : MAX_PACK;
+  const requested = Math.min(
+    limitePacote,
+    Math.max(1, Number(quantidade) || 12)
+  );
+
+  tema =
+    String(tema || '')
+      .trim();
+
+  if (!tema) {
+    return {
+      requested,
+      sent: 0,
+      failed: requested
+    };
+  }
+
+  if (blocked(tema)) {
+    return {
+      requested,
+      sent: 0,
+      failed: requested
+    };
+  }
+
+  console.log(
+    `[PACOTE PRIME] Criando pacote: ${tema} (${requested})`
+  );
+
+  /*
+   * =========================================================
+   * HISTÓRICO
+   * =========================================================
+   */
+
+  const history =
+    loadHistory();
+
+  const key = themeKey(animado ? `${tema} animado` : tema);
+
+  const usados =
+    new Set(
+      Array.isArray(history[key])
+        ? history[key]
+        : []
+    );
+
+  /*
+   * =========================================================
+   * BUSCA
+   * =========================================================
+   */
+
+  const urls = await buscarImagens(animado ? `${tema} animated GIF` : tema);
+
+  if (!urls.length) {
     return {
       requested,
       sent: 0,
@@ -649,175 +594,187 @@ export async function sendThemeStickers({
   }
 
   /*
-   * Busca MUITO mais do que precisa.
+   * =========================================================
+   * CONVERTE TUDO PRIMEIRO
+   *
+   * IMPORTANTE:
+   * NENHUM sendSticker AQUI.
+   *
+   * Primeiro montamos o pacote inteiro.
+   * =========================================================
    */
-  let urls =
-    await searchThemeImages(
-      tema,
-      Math.max(
-        requested * 6,
-        30
-      )
-    );
 
-  if (
-    Array.isArray(imagens)
-  ) {
-    urls = [
-      ...urls,
-      ...imagens
-    ];
+  const stickers = [];
+  const hashes = new Set();
+  const novasURLs = [];
+
+  const pendentes = urls.filter(url => !usados.has(url));
+  let cursor = 0;
+  const concorrencia = Math.min(animado ? 2 : 6, pendentes.length);
+
+  async function prepararWorker() {
+    while (stickers.length < requested) {
+      const posicao = cursor++;
+
+      if (posicao >= pendentes.length) return;
+
+      const url = pendentes[posicao];
+
+      try {
+        const cacheKey = `${animado ? 'a' : 's'}:${url}`;
+        let webp = STICKER_BUFFER_CACHE.get(cacheKey);
+
+        if (!webp) {
+          const original = await baixarImagem(url);
+          if (stickers.length >= requested) return;
+
+          webp = animado
+            ? await converterWebpAnimado(original)
+            : await converterWebp(original);
+
+          if (stickers.length >= requested) return;
+
+          if (webp.length <= 160 * 1024) {
+            if (STICKER_BUFFER_CACHE.size >= 16) {
+              STICKER_BUFFER_CACHE.delete(
+                STICKER_BUFFER_CACHE.keys().next().value
+              );
+            }
+            STICKER_BUFFER_CACHE.set(cacheKey, webp);
+          }
+        }
+
+        if (stickers.length >= requested) return;
+        const hash = crypto
+          .createHash('sha256')
+          .update(webp)
+          .digest('hex');
+
+        if (hashes.has(hash)) continue;
+
+        hashes.add(hash);
+
+        stickers.push({
+          data: webp,
+          emojis: ['😎']
+        });
+
+        novasURLs.push(url);
+
+        console.log(
+          '[PACOTE PRIME] Preparada ' +
+          stickers.length + '/' + requested
+        );
+
+      } catch (error) {
+        console.log(
+          '[PACOTE PRIME] Imagem ignorada:',
+          error.message
+        );
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: concorrencia },
+      () => prepararWorker()
+    )
+  );
+
+  if (stickers.length < (animado ? 3 : 1)) {
+    return {
+      requested,
+      sent: 0,
+      failed: requested
+    };
   }
 
   /*
-   * Embaralha novamente.
+   * =========================================================
+   * ENVIO
+   *
+   * UMA ÚNICA MENSAGEM.
+   *
+   * destino DEVE ser o grupo recebido pelo comando.
+   * =========================================================
    */
-  for (
-    let i = urls.length - 1;
-    i > 0;
-    i--
-  ) {
-    const j =
-      Math.floor(
-        Math.random() * (i + 1)
-      );
 
-    [
-      urls[i],
-      urls[j]
-    ] = [
-      urls[j],
-      urls[i]
-    ];
-  }
-
-  const {
-    sendSticker
-  } = await import(
-    '../funcs/utils/sticker.js'
+  console.log(
+    `[PACOTE PRIME] Enviando UM pacote com ${stickers.length} figurinhas para ${destino}`
   );
 
-  const hashes =
-    new Set();
+  await kya.sendMessage(
+    destino,
+    {
+      cover: stickers[0].data,
 
-  const history =
-    loadHistory();
+      stickers,
 
-  const key =
-    themeKey(tema);
+      name: `📦 ${animado ? 'ANIMADO • ' : ''}${tema}`.slice(0, 60),
 
-  const recent =
+      publisher:
+        String(author)
+          .slice(0, 60),
+
+      description: `Kyara • ${stickers.length} figurinhas${animado ? ' animadas' : ''}`
+    },
+    {
+      quoted
+    }
+  );
+
+  /*
+   * =========================================================
+   * SALVA HISTÓRICO SOMENTE DEPOIS DO ENVIO
+   * =========================================================
+   */
+
+  const historicoAtual =
     Array.isArray(history[key])
       ? history[key]
       : [];
 
-  let sent = 0;
-  let failed = 0;
+  history[key] =
+    [
+      ...historicoAtual,
+      ...novasURLs
+    ].slice(-180);
 
-  for (
-    const url of urls
-  ) {
-    if (
-      sent >= requested
-    ) {
-      break;
-    }
+  saveHistory(
+    history
+  );
 
-    try {
-
-      const buffer =
-        await downloadImage(
-          url
-        );
-
-      const hash =
-        crypto
-          .createHash('sha256')
-          .update(buffer)
-          .digest('hex');
-
-      /*
-       * Mesmo arquivo = mesma figurinha.
-       */
-      if (
-        hashes.has(hash)
-      ) {
-        continue;
-      }
-
-      hashes.add(hash);
-
-      await sendSticker(
-        nazu,
-        destino,
-        {
-          sticker: buffer,
-          type: 'image',
-          author,
-          packname
-        },
-        { quoted }
-      );
-
-      sent++;
-
-      /*
-       * Guarda a URL usada.
-       */
-      if (
-        !recent.includes(url)
-      ) {
-        recent.push(url);
-      }
-
-      /*
-       * Últimas 120 por tema.
-       */
-      if (
-        recent.length > 120
-      ) {
-        recent.splice(
-          0,
-          recent.length - 120
-        );
-      }
-
-      history[key] =
-        recent;
-
-      saveHistory(
-        history
-      );
-
-      console.log(
-        `[THEME STICKER] ✅ ${sent}/${requested}`
-      );
-
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            500
-          )
-      );
-
-    } catch (error) {
-
-      failed++;
-
-      console.error(
-        `[THEME STICKER] ⚠️ ${error.message}`
-      );
-    }
-  }
+  console.log(
+    `[PACOTE PRIME] ✅ PACOTE ENVIADO: ${stickers.length}/${requested}`
+  );
 
   return {
     requested,
-    sent,
+    sent: stickers.length,
     failed:
-      Math.max(
-        failed,
-        requested - sent
-      )
+      requested -
+      stickers.length
   };
+}
+
+
+export async function sendThemeStickers(options = {}) {
+  return processThemeStickerPack({
+    ...options,
+    animado: false
+  });
+}
+
+export async function sendAnimatedThemeStickers(options = {}) {
+  const quantidade = Math.min(
+    30,
+    Math.max(3, Number(options.quantidade) || 30)
+  );
+
+  return processThemeStickerPack({
+    ...options,
+    quantidade,
+    animado: true
+  });
 }

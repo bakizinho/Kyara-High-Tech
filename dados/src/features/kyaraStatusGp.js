@@ -3,7 +3,7 @@
  * 🌸 KYARA GROUP STATUS V2 — CORREÇÃO DEFINITIVA
  * ============================================================
  *
- * BAKI / BAKIZINHO
+ * 𝗩Ø𝗫-𝗦𝗬𝗦𝗧Ξ𝗠 / BAKIZINHO
  *
  * Suporta:
  *   • texto
@@ -423,7 +423,7 @@ function buildTextInnerMessage(
 
 
 async function buildImageMessage({
-  nazu,
+  kya,
   mediaInfo,
   buffer,
   caption
@@ -440,7 +440,7 @@ async function buildImageMessage({
       },
       {
         upload:
-          nazu.waUploadToServer
+          kya.waUploadToServer
       }
     );
 
@@ -475,7 +475,7 @@ async function buildImageMessage({
 
 
 async function buildVideoMessage({
-  nazu,
+  kya,
   mediaInfo,
   buffer,
   caption
@@ -492,7 +492,7 @@ async function buildVideoMessage({
       },
       {
         upload:
-          nazu.waUploadToServer
+          kya.waUploadToServer
       }
     );
 
@@ -537,7 +537,7 @@ async function buildVideoMessage({
 
 
 async function buildAudioMessage({
-  nazu,
+  kya,
   mediaInfo,
   buffer
 }) {
@@ -566,7 +566,7 @@ async function buildAudioMessage({
       },
       {
         upload:
-          nazu.waUploadToServer
+          kya.waUploadToServer
       }
     );
 
@@ -592,7 +592,7 @@ async function buildAudioMessage({
 
 
 async function buildMediaInnerMessage({
-  nazu,
+  kya,
   mediaInfo,
   buffer,
   caption
@@ -601,7 +601,7 @@ async function buildMediaInnerMessage({
     mediaInfo.type === 'image'
   ) {
     return buildImageMessage({
-      nazu,
+      kya,
       mediaInfo,
       buffer,
       caption
@@ -612,7 +612,7 @@ async function buildMediaInnerMessage({
     mediaInfo.type === 'video'
   ) {
     return buildVideoMessage({
-      nazu,
+      kya,
       mediaInfo,
       buffer,
       caption
@@ -623,7 +623,7 @@ async function buildMediaInnerMessage({
     mediaInfo.type === 'audio'
   ) {
     return buildAudioMessage({
-      nazu,
+      kya,
       mediaInfo,
       buffer
     });
@@ -665,7 +665,7 @@ async function buildMediaInnerMessage({
  * ============================================================
  */
 async function relayGroupStatusV2({
-  nazu,
+  kya,
   groupJid,
   innerMessage
 }) {
@@ -764,7 +764,7 @@ async function relayGroupStatusV2({
    * O payload é enviado diretamente como
    * groupStatusMessageV2.
    */
-  await nazu.relayMessage(
+  await kya.relayMessage(
     groupJid,
     generated.message,
     {
@@ -790,7 +790,7 @@ async function relayGroupStatusV2({
 
 
 async function sendTextStatus({
-  nazu,
+  kya,
   groupJid,
   senderJid,
   text
@@ -802,7 +802,7 @@ async function sendTextStatus({
     );
 
   return relayGroupStatusV2({
-    nazu,
+    kya,
     groupJid,
     innerMessage
   });
@@ -810,7 +810,7 @@ async function sendTextStatus({
 
 
 async function sendMediaStatus({
-  nazu,
+  kya,
   groupJid,
   mediaInfo,
   buffer,
@@ -818,14 +818,14 @@ async function sendMediaStatus({
 }) {
   const innerMessage =
     await buildMediaInnerMessage({
-      nazu,
+      kya,
       mediaInfo,
       buffer,
       caption
     });
 
   return relayGroupStatusV2({
-    nazu,
+    kya,
     groupJid,
     innerMessage
   });
@@ -833,7 +833,7 @@ async function sendMediaStatus({
 
 
 export async function handleKyaraStatusGp({
-  nazu,
+  kya,
   info,
   from,
   command,
@@ -868,7 +868,7 @@ export async function handleKyaraStatusGp({
 
   const senderJid =
     jidNormalizedUser(
-      nazu?.user?.id
+      kya?.user?.id
     );
 
   if (!senderJid) {
@@ -951,7 +951,7 @@ export async function handleKyaraStatusGp({
 
       const result =
         await sendTextStatus({
-          nazu,
+          kya,
           groupJid,
           senderJid,
           text
@@ -1111,7 +1111,7 @@ export async function handleKyaraStatusGp({
 
     const result =
       await sendMediaStatus({
-        nazu,
+        kya,
         groupJid,
         mediaInfo,
         buffer,
